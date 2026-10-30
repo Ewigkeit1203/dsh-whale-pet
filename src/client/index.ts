@@ -176,6 +176,7 @@ export function apply(ctx: Context): void {
 
     const handleFocusIn = (e: FocusEvent) => {
       if (isComposerElement(e.target)) {
+        stateMachine.resetActivity()
         stateMachine.setInputFocus(true)
       }
     }
@@ -188,6 +189,7 @@ export function apply(ctx: Context): void {
 
     const handleInput = (e: Event) => {
       if (isComposerElement(e.target)) {
+        stateMachine.resetActivity()
         stateMachine.setInputFocus(true)
       }
     }
@@ -197,6 +199,7 @@ export function apply(ctx: Context): void {
       // Guard against initial autofocus or startup events within the first 1.8s
       if (Date.now() - loadTime < 1800) return
 
+      stateMachine.resetActivity()
       const status = stateMachine.getStatus()
       if (!status.autoGalGameOnChat) return
       const target = e.target as HTMLElement | null

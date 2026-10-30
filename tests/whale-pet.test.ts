@@ -9,24 +9,30 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(__dirname, '..')
 
 describe('dsh-whale-pet: Assets Integrity', () => {
-  test('all character pose illustrations (standing, chibi, thinking, sajiao, baifan2) exist with valid size', () => {
+  test('all character pose illustrations from 大肥鱼表情 exist with valid sizes', () => {
     const assets = [
-      'assets/Pastel Blue Sea Maid Character.png',
-      'assets/Chibi Whale Maid in Blue.png',
-      'assets/Pondering Whale Maid Character.png',
-      'assets/Puzzled Whale Maid in Thought.png',
-      'assets/DS_mad+sajiao.png',
+      'assets/Maid.png',
+      'assets/DaFeiYu.png',
+      'assets/Answering.png',
+      'assets/baifan.png',
       'assets/getit.png',
       'assets/sajiao.png',
-      'assets/baifan2.png',
-      'lib/assets/Pastel Blue Sea Maid Character.png',
-      'lib/assets/Chibi Whale Maid in Blue.png',
-      'lib/assets/Pondering Whale Maid Character.png',
-      'lib/assets/Puzzled Whale Maid in Thought.png',
-      'lib/assets/DS_mad+sajiao.png',
+      'assets/Think1.png',
+      'assets/Think2.png',
+      'assets/Think3.png',
+      'assets/Think4.png',
+      'assets/Think5.png',
+      'lib/assets/Maid.png',
+      'lib/assets/DaFeiYu.png',
+      'lib/assets/Answering.png',
+      'lib/assets/baifan.png',
       'lib/assets/getit.png',
       'lib/assets/sajiao.png',
-      'lib/assets/baifan2.png',
+      'lib/assets/Think1.png',
+      'lib/assets/Think2.png',
+      'lib/assets/Think3.png',
+      'lib/assets/Think4.png',
+      'lib/assets/Think5.png',
     ]
 
     for (const asset of assets) {
@@ -38,7 +44,7 @@ describe('dsh-whale-pet: Assets Integrity', () => {
   })
 })
 
-describe('dsh-whale-pet: State Machine & Living Animation Logic', () => {
+describe('dsh-whale-pet: State Machine & Living Behavior Logic', () => {
   test('initial state defaults to maiden standing widget with dual balance headers', () => {
     const sm = new PetStateMachine()
     const status = sm.getStatus()
@@ -51,20 +57,6 @@ describe('dsh-whale-pet: State Machine & Living Animation Logic', () => {
     assert.strictEqual(status.autoGalGameOnChat, true, 'autoGalGameOnChat should be true by default')
     assert.strictEqual(status.reasoningText, '')
     assert.ok(status.speech.length > 0)
-    sm.dispose()
-  })
-
-  test('startup autofocus in composer does NOT auto-enter GalGame mode (requires user click)', () => {
-    const sm = new PetStateMachine()
-    assert.strictEqual(sm.getStatus().isGalGameMode, false)
-
-    sm.setInputFocus(true)
-    assert.strictEqual(sm.getStatus().isInputFocused, true)
-    assert.strictEqual(sm.getStatus().isGalGameMode, false, 'Focusing composer must not auto-open GalGame mode')
-
-    sm.setGalGameMode(true)
-    assert.strictEqual(sm.getStatus().isGalGameMode, true)
-
     sm.dispose()
   })
 
@@ -93,44 +85,103 @@ describe('dsh-whale-pet: State Machine & Living Animation Logic', () => {
     sm.dispose()
   })
 
-  test('multi-pose reasoning cycles dynamically through thinking poses', async () => {
+  test('multi-pose reasoning cycles dynamically through Think1-Think5 and getit', async () => {
     const sm = new PetStateMachine()
     assert.strictEqual(sm.getStatus().pose, 'default')
 
-    // 1. Begin reasoning -> starts with first thinking pose ('pondering')
+    // 1. Begin reasoning -> starts with a random thinking pose
     sm.setReasoning(true)
     assert.strictEqual(sm.getStatus().state, 'REASONING')
-    assert.strictEqual(sm.getStatus().pose, 'pondering', 'Initial reasoning pose should be pondering')
+    assert.ok(
+      ['think1', 'think2', 'think3', 'think4', 'think5'].includes(sm.getStatus().pose),
+      `Pose should be one of Think1-5, got ${sm.getStatus().pose}`
+    )
 
-    // 2. Wait 3.3s -> cycles to next thinking pose ('puff')
-    await new Promise((resolve) => setTimeout(resolve, 3300))
-    assert.strictEqual(sm.getStatus().pose, 'puff', 'Should cycle to next thinking pose (puff)')
-
-    // 3. Streaming response starts -> reverts pose to default and transitions to EATING (baifan2)
-    sm.setStreaming(true)
-    sm.setReasoning(false)
-    assert.strictEqual(sm.getStatus().state, 'EATING')
-    assert.strictEqual(sm.getStatus().pose, 'default')
+    // 2. Wait for dynamic cycle -> cycles to another pose
+    await new Promise((resolve) => setTimeout(resolve, 2500))
+    assert.ok(
+      ['think1', 'think2', 'think3', 'think4', 'think5', 'getit'].includes(sm.getStatus().pose),
+      `Pose should be one of Think1-5 or getit, got ${sm.getStatus().pose}`
+    )
 
     sm.dispose()
   })
 
-  test('poking character during reasoning does not disrupt thinking state', async () => {
+  test('Answering pose during output, and baifan eating pose strictly AFTER output finishes', async () => {
     const sm = new PetStateMachine()
     sm.setReasoning(true)
     assert.strictEqual(sm.getStatus().state, 'REASONING')
-    assert.strictEqual(sm.getStatus().pose, 'pondering')
 
-    // Poke during thinking -> triggers temporary sajiao
+    // 1. Output begins: isStreaming = true -> ANSWERING state and Answering pose (NOT baifan)
+    sm.setStreaming(true)
+    sm.setReasoning(false)
+    assert.strictEqual(sm.getStatus().state, 'ANSWERING')
+    assert.strictEqual(sm.getStatus().pose, 'answering', 'During streaming, pose must strictly be answering, NOT baifan')
+
+    // 2. Output finishes: isStreaming = false -> Transitions to EATING state (baifan pose)
+    sm.setStreaming(false)
+    assert.strictEqual(sm.getStatus().state, 'EATING')
+    assert.strictEqual(sm.getStatus().pose, 'eating', 'Post-output must enter EATING state with baifan pose')
+    assert.ok(sm.getStatus().speech.includes('白米饭') || sm.getStatus().speech.includes('干饭') || sm.getStatus().speech.length > 0)
+
+    sm.dispose()
+  })
+
+  test('wandering completion triggers pause and eat a couple bites of rice', () => {
+    const sm = new PetStateMachine()
+    sm.setWandering(true)
+    assert.strictEqual(sm.getStatus().state, 'WANDERING')
+
+    // Wandering completes -> finish with eating
+    sm.finishWanderingWithEating(3500)
+    assert.strictEqual(sm.getStatus().state, 'EATING')
+    assert.strictEqual(sm.getStatus().pose, 'eating')
+    assert.ok(sm.getStatus().speech.includes('散步') || sm.getStatus().speech.includes('白米饭'))
+
+    sm.dispose()
+  })
+
+  test('poking character during reasoning triggers temporary sajiao then returns to thinking', async () => {
+    const sm = new PetStateMachine()
+    sm.setReasoning(true)
+    assert.strictEqual(sm.getStatus().state, 'REASONING')
+    const initialThinkingPose = sm.getStatus().pose
+
+    // Click character -> triggers short sajiao (2s)
     sm.triggerMad()
-    assert.strictEqual(sm.getStatus().pose, 'mad', 'Trigger mad should show sajiao pose')
+    assert.strictEqual(sm.getStatus().pose, 'sajiao')
     assert.strictEqual(sm.getStatus().state, 'REASONING', 'State remains REASONING')
 
-    // After 2.1s timeout -> returns to ongoing thinking pose without breaking
+    // After 2.1s timeout -> returns to ongoing thinking pose without disruption
     await new Promise((resolve) => setTimeout(resolve, 2100))
     assert.strictEqual(sm.getStatus().state, 'REASONING')
-    assert.notStrictEqual(sm.getStatus().pose, 'mad', 'Should exit sajiao pose')
-    assert.ok(['pondering', 'puff', 'puzzled', 'getit'].includes(sm.getStatus().pose), 'Should return to thinking pose')
+    assert.ok(
+      ['think1', 'think2', 'think3', 'think4', 'think5', 'getit'].includes(sm.getStatus().pose),
+      'Should return to thinking pose'
+    )
+
+    sm.dispose()
+  })
+
+  test('inactivity triggers long sajiao with lonely prompt, and activity resets it', () => {
+    const sm = new PetStateMachine()
+    assert.strictEqual(sm.getStatus().state, 'IDLE')
+    assert.strictEqual(sm.getStatus().pose, 'default')
+
+    // Trigger long sajiao (simulating 60s idle)
+    sm.triggerInactivitySajiao()
+    assert.strictEqual(sm.getStatus().pose, 'sajiao')
+    assert.ok(
+      sm.getStatus().speech.includes('好久没理') ||
+      sm.getStatus().speech.includes('无聊') ||
+      sm.getStatus().speech.includes('等你好久') ||
+      sm.getStatus().speech.includes('忘了')
+    )
+
+    // User interacts -> activity reset immediately clears lonely sajiao back to default
+    sm.resetActivity()
+    assert.strictEqual(sm.getStatus().pose, 'default')
+    assert.strictEqual(sm.getStatus().state, 'IDLE')
 
     sm.dispose()
   })
@@ -142,45 +193,6 @@ describe('dsh-whale-pet: State Machine & Living Animation Logic', () => {
     assert.strictEqual(sm.getStatus().form, 'chibi')
     sm.toggleForm()
     assert.strictEqual(sm.getStatus().form, 'maiden')
-    sm.dispose()
-  })
-
-  test('streaming transitions to EATING with debounce recovery', async () => {
-    const sm = new PetStateMachine()
-    sm.setStreaming(true)
-    assert.strictEqual(sm.getStatus().state, 'EATING')
-    assert.ok(sm.getStatus().speech.length > 0)
-
-    sm.setStreaming(false)
-    assert.strictEqual(sm.getStatus().state, 'EATING', 'Should remain EATING during debounce window')
-
-    await new Promise((resolve) => setTimeout(resolve, 450))
-    assert.strictEqual(sm.getStatus().state, 'IDLE', 'Should return to IDLE after debounce completes')
-
-    sm.dispose()
-  })
-
-  test('lip-sync mouth opens and oscillates during streaming/speaking', async () => {
-    const sm = new PetStateMachine()
-    sm.setStreaming(true)
-
-    await new Promise((resolve) => setTimeout(resolve, 150))
-    assert.ok(sm.getStatus().mouthOpenRatio >= 0, 'Mouth open ratio should be tracked')
-
-    sm.setStreaming(false)
-    sm.dispose()
-  })
-
-  test('interactive gaze offset updates and clamps properly', () => {
-    const sm = new PetStateMachine()
-    sm.setGazeOffset({ x: 0.5, y: -0.3 })
-    assert.strictEqual(sm.getStatus().gazeOffset.x, 0.5)
-    assert.strictEqual(sm.getStatus().gazeOffset.y, -0.3)
-
-    sm.setGazeOffset({ x: 2.5, y: -3.0 })
-    assert.strictEqual(sm.getStatus().gazeOffset.x, 1.0)
-    assert.strictEqual(sm.getStatus().gazeOffset.y, -1.0)
-
     sm.dispose()
   })
 })

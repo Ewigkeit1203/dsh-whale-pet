@@ -3,14 +3,17 @@ import type { PetStateMachine } from './state-machine.js'
 import type { PetStatusInfo, PetPosition } from './types.js'
 import { LivingPuppet } from './LivingPuppet.js'
 import {
-  MAIDEN_DATA_URI,
+  MAID_DATA_URI,
   CHIBI_DATA_URI,
-  PONDERING_DATA_URI,
-  PUZZLED_DATA_URI,
-  PUFF_DATA_URI,
+  ANSWERING_DATA_URI,
+  BAIFAN_DATA_URI,
   GETIT_DATA_URI,
   SAJIAO_DATA_URI,
-  BAIFAN_DATA_URI,
+  THINK1_DATA_URI,
+  THINK2_DATA_URI,
+  THINK3_DATA_URI,
+  THINK4_DATA_URI,
+  THINK5_DATA_URI,
 } from './assets-data.js'
 import styles from './PetOverlay.module.css'
 
@@ -206,7 +209,8 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       }))
 
       setTimeout(() => {
-        stateMachine.setWandering(false)
+        // Wandering finishes: pause and eat a couple bites of white rice
+        stateMachine.finishWanderingWithEating(3500)
       }, 3300)
     }, 14000)
 
@@ -220,6 +224,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   // Dragging and click handlers for floating widget (Double-click shrunk state completely removed)
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (status.isGalGameMode) return
+    stateMachine.resetActivity()
     isDraggingRef.current = true
     setIsDragging(true)
     stateMachine.setWandering(false)
@@ -387,24 +392,24 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   }
 
   // Dynamic Image Selection
-  // 正式输出或干饭动作时切换为大口吃白饭插画（baifan2.png）
   const resolveCharacterImage = (): string => {
-    if (status.state === 'EATING' || status.pose === 'eating') {
-      return BAIFAN_DATA_URI
-    }
     if (status.form === 'chibi') {
-      return CHIBI_DATA_URI
+      return CHIBI_DATA_URI // DaFeiYu.png
     }
-    if (status.pose === 'mad') {
-      return SAJIAO_DATA_URI
-    }
+    // Maiden form poses:
+    if (status.pose === 'sajiao' || status.pose === 'mad') return SAJIAO_DATA_URI
+    if (status.pose === 'eating' || status.state === 'EATING') return BAIFAN_DATA_URI
+    if (status.pose === 'answering' || status.state === 'ANSWERING') return ANSWERING_DATA_URI
+    if (status.pose === 'getit') return GETIT_DATA_URI
+    if (status.pose === 'think1') return THINK1_DATA_URI
+    if (status.pose === 'think2') return THINK2_DATA_URI
+    if (status.pose === 'think3') return THINK3_DATA_URI
+    if (status.pose === 'think4') return THINK4_DATA_URI
+    if (status.pose === 'think5') return THINK5_DATA_URI
     if (status.state === 'REASONING') {
-      if (status.pose === 'puzzled') return PUZZLED_DATA_URI
-      if (status.pose === 'puff') return PUFF_DATA_URI
-      if (status.pose === 'getit') return GETIT_DATA_URI
-      return PONDERING_DATA_URI
+      return THINK1_DATA_URI
     }
-    return MAIDEN_DATA_URI
+    return MAID_DATA_URI
   }
 
   const isMaiden = status.form === 'maiden'
@@ -416,6 +421,8 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       ? styles.statePeeking
       : status.state === 'REASONING'
       ? styles.stateReasoning
+      : status.state === 'ANSWERING'
+      ? styles.stateAnswering
       : status.state === 'EATING'
       ? styles.stateEating
       : status.state === 'WANDERING'

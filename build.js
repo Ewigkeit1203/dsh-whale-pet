@@ -174,89 +174,73 @@ function ensureTransparentPNG(srcFile, dstFile) {
   writeFileSync(dstFile, outBuf)
 }
 
-for (const desk of desktopDirs) {
-  // 1. Maiden standing
-  const maidenSrc = join(desk, 'Pastel Blue Sea Maid Character.png')
-  if (existsSync(maidenSrc)) {
-    cpSync(maidenSrc, join(srcAssetsDir, 'Pastel Blue Sea Maid Character.png'))
-    cpSync(maidenSrc, join(srcAssetsDir, 'DeepSeek.png'))
-    cpSync(maidenSrc, join(srcAssetsDir, 'whale-maid-standing.png'))
-  }
-  // 2. Chibi
-  const chibiSrc = join(desk, 'Chibi Whale Maid in Blue.png')
-  if (existsSync(chibiSrc)) {
-    cpSync(chibiSrc, join(srcAssetsDir, 'Chibi Whale Maid in Blue.png'))
-    cpSync(chibiSrc, join(srcAssetsDir, 'MiniDeepSeek.png'))
-    cpSync(chibiSrc, join(srcAssetsDir, 'whale-maid-chibi.png'))
-    cpSync(chibiSrc, join(srcAssetsDir, '641.png'))
-  }
-  // 3. Pondering (thinking pose)
-  const ponderingSrc = join(desk, 'Pondering Whale Maid Character.png')
-  if (existsSync(ponderingSrc)) {
-    ensureTransparentPNG(ponderingSrc, join(srcAssetsDir, 'Pondering Whale Maid Character.png'))
-  }
-  // 4. Puzzled (hard thinking pose)
-  const puzzledSrc = join(desk, 'Puzzled Whale Maid in Thought.png')
-  if (existsSync(puzzledSrc)) {
-    ensureTransparentPNG(puzzledSrc, join(srcAssetsDir, 'Puzzled Whale Maid in Thought.png'))
-  }
-  // 5. Puff cheeks (thinking pose 3 / DS_mad+sajiao.png)
-  const puffSrc = join(desk, 'DS_mad+sajiao.png')
-  if (existsSync(puffSrc)) {
-    cpSync(puffSrc, join(srcAssetsDir, 'DS_mad+sajiao.png'))
-  }
-  // 6. Getit (thinking pose 4 / getit.png)
-  const getitSrc = join(desk, 'getit.png')
-  if (existsSync(getitSrc)) {
-    cpSync(getitSrc, join(srcAssetsDir, 'getit.png'))
-  }
-  // 7. Sajiao (pouting / winking sajiao.png)
-  const sajiaoSrc = join(desk, 'sajiao.png')
-  if (existsSync(sajiaoSrc)) {
-    cpSync(sajiaoSrc, join(srcAssetsDir, 'sajiao.png'))
-  }
-  // 8. Baifan2 (eating rice with sparkles baifan2.png)
-  const baifanSrc = join(desk, 'baifan2.png')
-  if (existsSync(baifanSrc)) {
-    cpSync(baifanSrc, join(srcAssetsDir, 'baifan2.png'))
+console.log('[build] 1. Syncing latest character files from 大肥鱼表情...')
+const expressionDirs = [
+  'C:/Users/etern/OneDrive/Desktop/大肥鱼表情',
+  'C:/Users/etern/Desktop/大肥鱼表情',
+]
+
+for (const exprDir of expressionDirs) {
+  if (existsSync(exprDir)) {
+    const files = [
+      'Maid.png', 'DaFeiYu.png', 'Answering.png', 'baifan.png',
+      'getit.png', 'sajiao.png', 'Think1.png', 'Think2.png',
+      'Think3.png', 'Think4.png', 'Think5.png'
+    ]
+    for (const file of files) {
+      const src = join(exprDir, file)
+      if (existsSync(src)) {
+        cpSync(src, join(srcAssetsDir, file))
+      }
+    }
   }
 }
 
 console.log('[build] 2. Generating src/client/assets-data.ts with base64 Data URIs...')
-const maidenB64 = readFileSync(join(srcAssetsDir, 'Pastel Blue Sea Maid Character.png')).toString('base64')
-const chibiB64 = readFileSync(join(srcAssetsDir, 'Chibi Whale Maid in Blue.png')).toString('base64')
-const ponderingB64 = readFileSync(join(srcAssetsDir, 'Pondering Whale Maid Character.png')).toString('base64')
-const puzzledB64 = readFileSync(join(srcAssetsDir, 'Puzzled Whale Maid in Thought.png')).toString('base64')
-const puffB64 = readFileSync(join(srcAssetsDir, 'DS_mad+sajiao.png')).toString('base64')
+const maidB64 = readFileSync(join(srcAssetsDir, 'Maid.png')).toString('base64')
+const chibiB64 = readFileSync(join(srcAssetsDir, 'DaFeiYu.png')).toString('base64')
+const answeringB64 = readFileSync(join(srcAssetsDir, 'Answering.png')).toString('base64')
+const baifanB64 = readFileSync(join(srcAssetsDir, 'baifan.png')).toString('base64')
 const getitB64 = readFileSync(join(srcAssetsDir, 'getit.png')).toString('base64')
 const sajiaoB64 = readFileSync(join(srcAssetsDir, 'sajiao.png')).toString('base64')
-const baifanB64 = readFileSync(join(srcAssetsDir, 'baifan2.png')).toString('base64')
+const think1B64 = readFileSync(join(srcAssetsDir, 'Think1.png')).toString('base64')
+const think2B64 = readFileSync(join(srcAssetsDir, 'Think2.png')).toString('base64')
+const think3B64 = readFileSync(join(srcAssetsDir, 'Think3.png')).toString('base64')
+const think4B64 = readFileSync(join(srcAssetsDir, 'Think4.png')).toString('base64')
+const think5B64 = readFileSync(join(srcAssetsDir, 'Think5.png')).toString('base64')
 const riceBowlB64 = readFileSync(join(srcAssetsDir, 'rice-bowl.svg')).toString('base64')
 
-const maidenDataUri = `data:image/png;base64,${maidenB64}`
+const maidDataUri = `data:image/png;base64,${maidB64}`
 const chibiDataUri = `data:image/png;base64,${chibiB64}`
-const ponderingDataUri = `data:image/png;base64,${ponderingB64}`
-const puzzledDataUri = `data:image/png;base64,${puzzledB64}`
-const puffDataUri = `data:image/png;base64,${puffB64}`
+const answeringDataUri = `data:image/png;base64,${answeringB64}`
+const baifanDataUri = `data:image/png;base64,${baifanB64}`
 const getitDataUri = `data:image/png;base64,${getitB64}`
 const sajiaoDataUri = `data:image/png;base64,${sajiaoB64}`
-const baifanDataUri = `data:image/png;base64,${baifanB64}`
+const think1DataUri = `data:image/png;base64,${think1B64}`
+const think2DataUri = `data:image/png;base64,${think2B64}`
+const think3DataUri = `data:image/png;base64,${think3B64}`
+const think4DataUri = `data:image/png;base64,${think4B64}`
+const think5DataUri = `data:image/png;base64,${think5B64}`
 const riceBowlDataUri = `data:image/svg+xml;base64,${riceBowlB64}`
 
 const assetsDataTs = `/**
  * Embedded character image Data URIs for dsh-whale-pet.
- * Generated by build.js from assets/ (high-fidelity poses + baifan2 + thinking poses).
+ * Generated by build.js from assets/ (大肥鱼表情).
  * Eliminates 404 network errors in DSH desktop & web environments.
  */
-export const MAIDEN_DATA_URI = ${JSON.stringify(maidenDataUri)}
+export const MAID_DATA_URI = ${JSON.stringify(maidDataUri)}
+export const MAIDEN_DATA_URI = MAID_DATA_URI
 export const CHIBI_DATA_URI = ${JSON.stringify(chibiDataUri)}
-export const PONDERING_DATA_URI = ${JSON.stringify(ponderingDataUri)}
-export const PUZZLED_DATA_URI = ${JSON.stringify(puzzledDataUri)}
-export const PUFF_DATA_URI = ${JSON.stringify(puffDataUri)}
+export const ANSWERING_DATA_URI = ${JSON.stringify(answeringDataUri)}
+export const BAIFAN_DATA_URI = ${JSON.stringify(baifanDataUri)}
 export const GETIT_DATA_URI = ${JSON.stringify(getitDataUri)}
 export const SAJIAO_DATA_URI = ${JSON.stringify(sajiaoDataUri)}
-export const MAD_DATA_URI = ${JSON.stringify(sajiaoDataUri)}
-export const BAIFAN_DATA_URI = ${JSON.stringify(baifanDataUri)}
+export const MAD_DATA_URI = SAJIAO_DATA_URI
+export const THINK1_DATA_URI = ${JSON.stringify(think1DataUri)}
+export const THINK2_DATA_URI = ${JSON.stringify(think2DataUri)}
+export const THINK3_DATA_URI = ${JSON.stringify(think3DataUri)}
+export const THINK4_DATA_URI = ${JSON.stringify(think4DataUri)}
+export const THINK5_DATA_URI = ${JSON.stringify(think5DataUri)}
 export const RICE_BOWL_DATA_URI = ${JSON.stringify(riceBowlDataUri)}
 `
 writeFileSync(join(__dirname, 'src', 'client', 'assets-data.ts'), assetsDataTs, 'utf-8')
@@ -325,12 +309,20 @@ const clientBundleSource = `/**
           '唔……让我想想看，深海知识库检索中……',
           '手指抵住下巴——正在认真梳理逻辑链条！',
           '咕噜噜……正在组织最有条理的回答哦~',
+          '思路灵光一闪……好像快要想通了！',
+        ],
+        ANSWERING: [
+          '回答生成中！大肥鱼正在全力输出~',
+          '找到了找到了！这就把答案告诉你！',
+          '呼呼~这次的思路非常顺畅哦！',
+          '认真回答中——请主人过目！',
         ],
         EATING: [
-          '掏出大铁盆！大口大口吃白米饭！',
+          '呼~终于输出完毕！大铁盆开动，大口吃白米饭！',
           '吧唧吧唧，白米饭真是太香啦~',
-          '干饭鱼！吃饱了才有力气推理~',
-          '吨吨吨！再来一盆！',
+          '干饭鱼！补充体力中~',
+          '吨吨吨！一大碗热腾腾的白米饭下肚超满足！',
+          '散步累了，停下来吃两口热腾腾的白米饭补充能量~',
         ],
         WANDERING: [
           '游啊游，在网页边缘散步中~',
@@ -338,17 +330,18 @@ const clientBundleSource = `/**
         ],
       };
 
-      const PUZZLED_DIALOGUES = [
-        '呜……这个推理有点烧脑，头顶要冒小混乱云啦！',
-        '努力挠头中……等等我，马上就解开这个谜题了！',
-        '逻辑风暴超频运转中，呼呼，主人再给我几秒钟！',
-      ];
-
-      const MAD_DIALOGUES = [
+      const SAJIAO_CLICK_DIALOGUES = [
         '哼！不许随便戳大肥鱼，大肥鱼也是有脾气的！',
         '（鼓起腮帮子）主人坏心眼，就知道逗我玩~',
         '撒娇中……必须补偿一碗热腾腾的白米饭才能哄好！',
         '气鼓鼓！再戳我就要把你的消息吞进肚子里啦！',
+      ];
+
+      const SAJIAO_LONELY_DIALOGUES = [
+        '主人……好久没理大肥鱼了，陪陪我嘛~',
+        '（扯衣角）大肥鱼一个人待机好无聊，主人来跟我说说话呀~',
+        '戳戳主人！大肥鱼在这里等你好久啦，快来看看我~',
+        '呼呼……主人是不是把我忘了？大肥鱼在旁边画圈圈中……',
       ];
 
       function paginateDialogue(text, targetLength) {
@@ -397,6 +390,10 @@ const clientBundleSource = `/**
           this.isInputFocused = false;
           this.isReasoning = false;
           this.isStreaming = false;
+          this.isWandering = false;
+          this.isEatingPostOutput = false;
+          this.isEatingWandering = false;
+          this.isLongSajiao = false;
           this.isGalGameMode = false;
           this.autoGalGameOnChat = true;
           this.speech = this.getRandomDialogue('IDLE');
@@ -412,14 +409,18 @@ const clientBundleSource = `/**
           this.debounceTimer = null;
           this.animationTimer = null;
           this.blinkTimer = null;
-          this.reasoningCycleTimer = null;
+          this.thinkingCycleTimer = null;
           this.madTimer = null;
+          this.eatingTimer = null;
+          this.inactivityTimer = null;
           this.listeners = new Set();
 
-          this.thinkingPoseIndex = 0;
-          this.thinkingPoses = ['pondering', 'puff', 'puzzled', 'getit'];
+          this.lastThinkingPose = 'think1';
+          this.thinkingPool = ['think1', 'think2', 'think3', 'think4', 'think5'];
+          this.INACTIVITY_DELAY = 60000;
 
           this.startLivingAnimationLoops();
+          this.scheduleInactivityCheck();
         }
 
         getStatus() {
@@ -464,7 +465,7 @@ const clientBundleSource = `/**
         startLivingAnimationLoops() {
           let mouthPhase = 0;
           this.animationTimer = setInterval(() => {
-            if (this.isStreaming || this.state === 'EATING') {
+            if (this.isStreaming || this.state === 'ANSWERING' || this.state === 'EATING') {
               mouthPhase += 0.35;
               const raw = (Math.sin(mouthPhase) + 1) / 2;
               this.mouthOpenRatio = Math.min(1, Math.max(0, raw * 0.9));
@@ -508,6 +509,54 @@ const clientBundleSource = `/**
           }, 90);
         }
 
+        resetActivity() {
+          if (this.inactivityTimer !== null) {
+            clearTimeout(this.inactivityTimer);
+            this.inactivityTimer = null;
+          }
+          if (this.isLongSajiao && (this.pose === 'sajiao' || this.pose === 'mad')) {
+            this.isLongSajiao = false;
+            if (this.madTimer !== null) {
+              clearTimeout(this.madTimer);
+              this.madTimer = null;
+            }
+            this.pose = 'default';
+            this.recomputeState();
+          }
+          this.scheduleInactivityCheck();
+        }
+
+        scheduleInactivityCheck() {
+          if (this.inactivityTimer !== null) {
+            clearTimeout(this.inactivityTimer);
+          }
+          this.inactivityTimer = setTimeout(() => {
+            this.triggerInactivitySajiao();
+          }, this.INACTIVITY_DELAY);
+        }
+
+        triggerInactivitySajiao() {
+          if (this.state !== 'IDLE' || this.isGalGameMode || this.isReasoning || this.isStreaming) {
+            this.scheduleInactivityCheck();
+            return;
+          }
+          this.isLongSajiao = true;
+          this.pose = 'sajiao';
+          this.speech = SAJIAO_LONELY_DIALOGUES[Math.floor(Math.random() * SAJIAO_LONELY_DIALOGUES.length)];
+          this.notify();
+
+          this.madTimer = setTimeout(() => {
+            this.madTimer = null;
+            this.isLongSajiao = false;
+            if (this.pose === 'sajiao' || this.pose === 'mad') {
+              this.pose = 'default';
+              this.speech = this.getRandomDialogue('IDLE');
+              this.notify();
+            }
+            this.scheduleInactivityCheck();
+          }, 9000);
+        }
+
         setBalances(toppedUp, granted) {
           if (this.toppedUpBalance === toppedUp && this.grantedBalance === granted) return;
           this.toppedUpBalance = toppedUp;
@@ -516,6 +565,7 @@ const clientBundleSource = `/**
         }
 
         setInputFocus(focused) {
+          this.resetActivity();
           if (this.isInputFocused === focused) return;
           this.isInputFocused = focused;
           if (focused) {
@@ -527,33 +577,52 @@ const clientBundleSource = `/**
         }
 
         setReasoning(reasoning) {
+          this.resetActivity();
           if (this.isReasoning === reasoning) return;
           this.isReasoning = reasoning;
 
-          if (this.reasoningCycleTimer !== null) {
-            clearInterval(this.reasoningCycleTimer);
-            this.reasoningCycleTimer = null;
+          if (this.thinkingCycleTimer !== null) {
+            clearTimeout(this.thinkingCycleTimer);
+            this.thinkingCycleTimer = null;
           }
 
           if (reasoning) {
-            this.thinkingPoseIndex = 0;
-            this.pose = this.thinkingPoses[0];
+            this.lastThinkingPose = this.thinkingPool[Math.floor(Math.random() * this.thinkingPool.length)];
+            this.pose = this.lastThinkingPose;
             this.speech = this.getRandomDialogue('REASONING');
-
-            this.reasoningCycleTimer = setInterval(() => {
-              if (this.isReasoning && this.pose !== 'mad') {
-                this.thinkingPoseIndex = (this.thinkingPoseIndex + 1) % this.thinkingPoses.length;
-                this.pose = this.thinkingPoses[this.thinkingPoseIndex];
-                this.notify();
-              }
-            }, 3200);
+            const randomDuration = 2000 + Math.floor(Math.random() * 1800);
+            this.thinkingCycleTimer = setTimeout(() => {
+              this.scheduleNextThinkingPose();
+            }, randomDuration);
           } else {
-            if (['pondering', 'puff', 'puzzled', 'getit'].includes(this.pose)) {
+            if (['think1', 'think2', 'think3', 'think4', 'think5', 'getit'].includes(this.pose)) {
               this.pose = 'default';
             }
           }
 
           this.recomputeState();
+        }
+
+        scheduleNextThinkingPose() {
+          if (!this.isReasoning) return;
+          const candidates = this.thinkingPool.filter((p) => p !== this.pose);
+          let nextPose;
+          if (Math.random() < 0.2) {
+            nextPose = 'getit';
+          } else {
+            nextPose = candidates[Math.floor(Math.random() * candidates.length)];
+          }
+
+          this.lastThinkingPose = nextPose;
+          if (this.pose !== 'sajiao' && this.pose !== 'mad') {
+            this.pose = nextPose;
+            this.notify();
+          }
+
+          const randomDuration = 2000 + Math.floor(Math.random() * 1800);
+          this.thinkingCycleTimer = setTimeout(() => {
+            this.scheduleNextThinkingPose();
+          }, randomDuration);
         }
 
         setReasoningText(text) {
@@ -569,40 +638,105 @@ const clientBundleSource = `/**
         }
 
         setStreaming(streaming) {
+          this.resetActivity();
           if (this.isStreaming === streaming) return;
+          const wasStreaming = this.isStreaming;
           this.isStreaming = streaming;
 
           if (streaming) {
-            if (this.reasoningCycleTimer !== null) {
-              clearInterval(this.reasoningCycleTimer);
-              this.reasoningCycleTimer = null;
+            if (this.thinkingCycleTimer !== null) {
+              clearTimeout(this.thinkingCycleTimer);
+              this.thinkingCycleTimer = null;
             }
-            this.pose = 'default';
+            if (this.eatingTimer !== null) {
+              clearTimeout(this.eatingTimer);
+              this.eatingTimer = null;
+            }
+            this.isEatingPostOutput = false;
+            this.isEatingWandering = false;
+            this.pose = 'answering';
+          } else if (wasStreaming && !streaming) {
+            this.triggerPostOutputEating(4500);
           }
 
           this.recomputeState();
         }
 
+        triggerPostOutputEating(durationMs) {
+          durationMs = durationMs || 4500;
+          if (this.eatingTimer !== null) {
+            clearTimeout(this.eatingTimer);
+          }
+          this.isEatingPostOutput = true;
+          this.pose = 'eating';
+          this.speech = this.getRandomDialogue('EATING');
+          this.recomputeState();
+
+          this.eatingTimer = setTimeout(() => {
+            this.eatingTimer = null;
+            this.isEatingPostOutput = false;
+            if (this.pose === 'eating') {
+              this.pose = 'default';
+            }
+            this.recomputeState();
+          }, durationMs);
+        }
+
+        finishWanderingWithEating(durationMs) {
+          durationMs = durationMs || 3500;
+          this.isWandering = false;
+          this.isEatingWandering = true;
+          this.pose = 'eating';
+          this.speech = '散步累了，停下来吃两口热腾腾的白米饭补充能量~';
+          this.recomputeState();
+
+          if (this.eatingTimer !== null) {
+            clearTimeout(this.eatingTimer);
+          }
+          this.eatingTimer = setTimeout(() => {
+            this.eatingTimer = null;
+            this.isEatingWandering = false;
+            if (this.pose === 'eating') {
+              this.pose = 'default';
+            }
+            this.recomputeState();
+          }, durationMs);
+        }
+
         triggerMad() {
+          this.triggerSajiao(false);
+        }
+
+        triggerSajiao(isLong) {
+          this.resetActivity();
           if (this.madTimer !== null) {
             clearTimeout(this.madTimer);
           }
-          this.pose = 'mad';
-          this.speech = MAD_DIALOGUES[Math.floor(Math.random() * MAD_DIALOGUES.length)];
+          this.isLongSajiao = Boolean(isLong);
+          this.pose = 'sajiao';
+          this.speech = isLong
+            ? SAJIAO_LONELY_DIALOGUES[Math.floor(Math.random() * SAJIAO_LONELY_DIALOGUES.length)]
+            : SAJIAO_CLICK_DIALOGUES[Math.floor(Math.random() * SAJIAO_CLICK_DIALOGUES.length)];
           this.notify();
 
+          const duration = isLong ? 9000 : 2000;
           this.madTimer = setTimeout(() => {
             this.madTimer = null;
-            if (this.pose === 'mad') {
+            this.isLongSajiao = false;
+            if (this.pose === 'sajiao' || this.pose === 'mad') {
               if (this.isReasoning) {
-                this.pose = this.thinkingPoses[this.thinkingPoseIndex];
+                this.pose = this.lastThinkingPose || 'think1';
+              } else if (this.isStreaming) {
+                this.pose = 'answering';
+              } else if (this.isEatingPostOutput || this.isEatingWandering) {
+                this.pose = 'eating';
               } else {
                 this.pose = 'default';
               }
               this.speech = this.getRandomDialogue(this.state);
               this.notify();
             }
-          }, 2000);
+          }, duration);
         }
 
         setPose(pose) {
@@ -633,6 +767,7 @@ const clientBundleSource = `/**
         }
 
         setForm(form) {
+          this.resetActivity();
           if (this.form === form) return;
           this.form = form;
           this.notify();
@@ -643,6 +778,7 @@ const clientBundleSource = `/**
         }
 
         setGalGameMode(enabled) {
+          this.resetActivity();
           if (this.isGalGameMode === enabled) return;
           this.isGalGameMode = enabled;
           this.notify();
@@ -653,33 +789,37 @@ const clientBundleSource = `/**
         }
 
         setWandering(wandering) {
-          if (this.state === 'EATING' || this.state === 'REASONING' || this.isInputFocused || this.isGalGameMode) return;
+          if (this.isStreaming || this.isReasoning || this.isInputFocused || this.isGalGameMode) return;
           if (wandering && this.state === 'IDLE') {
+            this.isWandering = true;
             this.state = 'WANDERING';
             this.speech = this.getRandomDialogue('WANDERING');
             this.notify();
           } else if (!wandering && this.state === 'WANDERING') {
-            this.state = 'IDLE';
-            this.speech = this.getRandomDialogue('IDLE');
-            this.notify();
+            this.finishWanderingWithEating(3500);
           }
         }
 
         recomputeState() {
           let nextState = 'IDLE';
           if (this.isStreaming) {
+            nextState = 'ANSWERING';
+          } else if (this.isEatingPostOutput || this.isEatingWandering) {
             nextState = 'EATING';
           } else if (this.isReasoning) {
             nextState = 'REASONING';
           } else if (this.isInputFocused) {
             nextState = 'PEEKING';
+          } else if (this.isWandering) {
+            nextState = 'WANDERING';
           } else {
             nextState = 'IDLE';
           }
 
           if (nextState === this.state) return;
 
-          if ((this.state === 'EATING' || this.state === 'REASONING') && nextState !== 'EATING' && nextState !== 'REASONING') {
+          if ((this.state === 'ANSWERING' || this.state === 'EATING' || this.state === 'REASONING') &&
+              nextState !== 'ANSWERING' && nextState !== 'EATING' && nextState !== 'REASONING') {
             if (this.debounceTimer !== null) clearTimeout(this.debounceTimer);
             this.debounceTimer = setTimeout(() => {
               this.debounceTimer = null;
@@ -697,14 +837,14 @@ const clientBundleSource = `/**
 
         commitState(nextState) {
           this.state = nextState;
-          if (this.pose !== 'mad') {
+          if (this.pose !== 'sajiao' && this.pose !== 'mad') {
             this.speech = this.getRandomDialogue(nextState);
           }
           this.notify();
 
           if (this.speechTimer !== null) clearTimeout(this.speechTimer);
           this.speechTimer = setTimeout(() => {
-            if (this.pose !== 'mad') {
+            if (this.pose !== 'sajiao' && this.pose !== 'mad') {
               this.speech = this.getRandomDialogue(this.state);
               this.notify();
             }
@@ -716,21 +856,26 @@ const clientBundleSource = `/**
           if (this.speechTimer !== null) clearTimeout(this.speechTimer);
           if (this.animationTimer !== null) clearInterval(this.animationTimer);
           if (this.blinkTimer !== null) clearTimeout(this.blinkTimer);
-          if (this.reasoningCycleTimer !== null) clearInterval(this.reasoningCycleTimer);
+          if (this.thinkingCycleTimer !== null) clearTimeout(this.thinkingCycleTimer);
           if (this.madTimer !== null) clearTimeout(this.madTimer);
+          if (this.eatingTimer !== null) clearTimeout(this.eatingTimer);
+          if (this.inactivityTimer !== null) clearTimeout(this.inactivityTimer);
           this.listeners.clear();
         }
       }
 
       // Self-contained embedded Base64 Data URIs
-      const MAIDEN_PATH = ${JSON.stringify(maidenDataUri)};
+      const MAIDEN_PATH = ${JSON.stringify(maidDataUri)};
       const CHIBI_PATH = ${JSON.stringify(chibiDataUri)};
-      const PONDERING_PATH = ${JSON.stringify(ponderingDataUri)};
-      const PUZZLED_PATH = ${JSON.stringify(puzzledDataUri)};
-      const PUFF_PATH = ${JSON.stringify(puffDataUri)};
+      const ANSWERING_PATH = ${JSON.stringify(answeringDataUri)};
+      const BAIFAN_PATH = ${JSON.stringify(baifanDataUri)};
       const GETIT_PATH = ${JSON.stringify(getitDataUri)};
       const SAJIAO_PATH = ${JSON.stringify(sajiaoDataUri)};
-      const BAIFAN_PATH = ${JSON.stringify(baifanDataUri)};
+      const THINK1_PATH = ${JSON.stringify(think1DataUri)};
+      const THINK2_PATH = ${JSON.stringify(think2DataUri)};
+      const THINK3_PATH = ${JSON.stringify(think3DataUri)};
+      const THINK4_PATH = ${JSON.stringify(think4DataUri)};
+      const THINK5_PATH = ${JSON.stringify(think5DataUri)};
       const RICE_BOWL_PATH = ${JSON.stringify(riceBowlDataUri)};
 
       function LivingPuppet(props) {
@@ -744,7 +889,7 @@ const clientBundleSource = `/**
           : { transform: 'perspective(700px) rotateY(' + rotY + 'deg) rotateX(' + rotX + 'deg) translate(' + transX + 'px, ' + transY + 'px)' };
 
         const isMaiden = props.isMaiden;
-        const isTalking = props.mouthOpenRatio > 0.15 || props.state === 'EATING';
+        const isTalking = props.mouthOpenRatio > 0.15 || props.state === 'EATING' || props.state === 'ANSWERING';
 
         const imgClass = isMaiden
           ? (props.isGalGameMode ? 'standingGalGame' : 'standingBase')
@@ -900,7 +1045,7 @@ const clientBundleSource = `/**
             });
 
             setTimeout(() => {
-              stateMachine.setWandering(false);
+              stateMachine.finishWanderingWithEating(3500);
             }, 3300);
           }, 14000);
 
@@ -909,10 +1054,11 @@ const clientBundleSource = `/**
             clearInterval(interval);
             wanderTimerRef.current = null;
           };
-        }, [wanderingEnabled, status.form, status.isGalGameMode]);
+        }, [wanderingEnabled, status.form, status.isGalGameMode, stateMachine]);
 
         const handleMouseDown = useCallback((e) => {
           if (status.isGalGameMode) return;
+          stateMachine.resetActivity();
           isDraggingRef.current = true;
           setIsDragging(true);
           stateMachine.setWandering(false);
@@ -1062,17 +1208,18 @@ const clientBundleSource = `/**
           }, 80);
         };
 
-        // 正式输出或干饭动作时切换为大口吃白饭插画（baifan2.png）
         const resolveCharacterImage = () => {
-          if (status.state === 'EATING' || status.pose === 'eating') return BAIFAN_PATH;
           if (status.form === 'chibi') return CHIBI_PATH;
-          if (status.pose === 'mad') return SAJIAO_PATH;
-          if (status.state === 'REASONING') {
-            if (status.pose === 'puzzled') return PUZZLED_PATH;
-            if (status.pose === 'puff') return PUFF_PATH;
-            if (status.pose === 'getit') return GETIT_PATH;
-            return PONDERING_PATH;
-          }
+          if (status.pose === 'sajiao' || status.pose === 'mad') return SAJIAO_PATH;
+          if (status.pose === 'eating' || status.state === 'EATING') return BAIFAN_PATH;
+          if (status.pose === 'answering' || status.state === 'ANSWERING') return ANSWERING_PATH;
+          if (status.pose === 'getit') return GETIT_PATH;
+          if (status.pose === 'think1') return THINK1_PATH;
+          if (status.pose === 'think2') return THINK2_PATH;
+          if (status.pose === 'think3') return THINK3_PATH;
+          if (status.pose === 'think4') return THINK4_PATH;
+          if (status.pose === 'think5') return THINK5_PATH;
+          if (status.state === 'REASONING') return THINK1_PATH;
           return MAIDEN_PATH;
         };
 
@@ -1083,6 +1230,7 @@ const clientBundleSource = `/**
         const stateClass =
           status.state === 'PEEKING' ? 'statePeeking' :
           status.state === 'REASONING' ? 'stateReasoning' :
+          status.state === 'ANSWERING' ? 'stateAnswering' :
           status.state === 'EATING' ? 'stateEating' :
           status.state === 'WANDERING' ? 'stateWandering' : 'stateIdle';
 
@@ -1351,11 +1499,21 @@ const clientBundleSource = `/**
                      (el.closest && el.closest('[data-composer-seat]') !== null);
             };
 
-            const onFocusIn = (e) => { if (isComposer(e.target)) stateMachine.setInputFocus(true); };
-            const onFocusOut = (e) => { if (isComposer(e.target)) stateMachine.setInputFocus(false); };
-            const onInput = (e) => { if (isComposer(e.target)) stateMachine.setInputFocus(true); };
+            const onFocusIn = (e) => {
+              stateMachine.resetActivity();
+              if (isComposer(e.target)) stateMachine.setInputFocus(true);
+            };
+            const onFocusOut = (e) => {
+              stateMachine.resetActivity();
+              if (isComposer(e.target)) stateMachine.setInputFocus(false);
+            };
+            const onInput = (e) => {
+              stateMachine.resetActivity();
+              if (isComposer(e.target)) stateMachine.setInputFocus(true);
+            };
 
             const onComposerClick = (e) => {
+              stateMachine.resetActivity();
               if (Date.now() - loadTime < 1800) return;
               if (!stateMachine.getStatus().autoGalGameOnChat) return;
               const target = e.target;

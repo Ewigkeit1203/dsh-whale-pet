@@ -2,11 +2,22 @@
  * Type definitions for DeepSeek Whale Pet plugin (dsh-whale-pet).
  */
 
-export type PetState = 'IDLE' | 'PEEKING' | 'REASONING' | 'EATING' | 'WANDERING'
+export type PetState = 'IDLE' | 'PEEKING' | 'REASONING' | 'ANSWERING' | 'EATING' | 'WANDERING'
 
 export type PetForm = 'chibi' | 'maiden'
 
-export type PetPose = 'default' | 'pondering' | 'puzzled' | 'puff' | 'getit' | 'mad' | 'eating'
+export type PetPose =
+  | 'default'
+  | 'answering'
+  | 'eating'
+  | 'sajiao'
+  | 'getit'
+  | 'think1'
+  | 'think2'
+  | 'think3'
+  | 'think4'
+  | 'think5'
+  | 'mad' // backwards compatibility alias for sajiao
 
 export interface PetPosition {
   x: number

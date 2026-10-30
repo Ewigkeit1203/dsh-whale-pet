@@ -96,6 +96,22 @@
   }
 }
 
+/* Answering: Delivering articulate answer with cheerful glow */
+.stateAnswering .petImage {
+  filter: drop-shadow(0 0 16px rgba(50, 180, 255, 0.8))
+          drop-shadow(0 6px 14px rgba(0, 20, 50, 0.25));
+  animation: answeringGlow 1.8s ease-in-out infinite;
+}
+
+@keyframes answeringGlow {
+  0%, 100% {
+    transform: translateY(0) scale(1.0);
+  }
+  50% {
+    transform: translateY(-5px) scale(1.02);
+  }
+}
+
 /* Eating: Happily munching white rice from the iron basin */
 .stateEating .petImage {
   animation: eatingBounce 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) infinite;
