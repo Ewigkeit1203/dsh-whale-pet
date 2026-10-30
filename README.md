@@ -1,6 +1,6 @@
 # DeepSeek Little Whale Maid (dsh-whale-pet)
 
-[English](#english) | [中文说明](#chinese)
+[English](#english) | [中文说明](#chinese) | [Changelog / 更新日志](CHANGELOG.md)
 
 ---
 

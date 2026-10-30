@@ -1,5 +1,10 @@
-# Release Notes - v0.2.0
+# Release Notes - v0.2.0 / 发布日志
 
+[English Version](#english) | [中文版本](#chinese)
+
+---
+
+<a name="english"></a>
 ## English
 
 ### What's New in v0.2.0
@@ -20,7 +25,8 @@
 
 ---
 
-## 中文说明
+<a name="chinese"></a>
+## 中文版本
 
 ### v0.2.0 更新内容
 
