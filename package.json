@@ -2,6 +2,14 @@
   "name": "dsh-whale-pet",
   "version": "0.1.0",
   "description": "DeepSeek Little Whale Maid ('Big Fat Fish') Desktop/Web Pet for DSH",
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "deepseek",
+    "cordis",
+    "desktop-pet",
+    "galgame"
+  ],
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",

@@ -1,49 +1,47 @@
-# 🐋 DeepSeek Little Whale Maid ("大肥鱼") v0.1.0 首发版本
+# DeepSeek Little Whale Maid ("dsh-whale-pet") v0.1.0
 
-首个正式发布版本！专为 **DeepSeek Harness (DSH)** 官方客户端打造的高互动性活体桌宠与 GalGame 沉浸式对话插件。
-
----
-
-## 🌟 核心特性速览
-
-### 1. 🐋 少女立绘与迷你Q版双形态
-- **少女立绘形态**：端庄可人的蓝发女仆长裙立绘大图，展现完整身材与鲸鱼刺绣围裙细节。
-- **迷你Q版形态**：圆滚滚包子脸、插腰猫咪嘴的萌系常驻挂件，默认停靠在右下角。
-- **一键切换**：悬停工具条点击「切换形态」即可实时改变。
-
-### 2. 💭 独立漫画深度思考气泡（CoT）
-- 思考过程不再遮挡角色与对话框，独立展示在角色头旁的漫画气泡中。
-- **全过程可滚动回看**：大模型的深度思考链（Chain-of-Thought）完整记录，支持自由上下滚动。
-
-### 3. 🎭 4 姿态动态思考轮播
-- 推理期间每隔 3.2 秒自动轮播 4 种姿态，活灵活现：
-  1. 托腮思考 (`Pondering`)
-  2. 鼓起腮帮子思考 (`DS_mad+sajiao`)
-  3. 挠头苦思混乱云 (`Puzzled`)
-  4. 亮灯泡顿悟 (`getit`)
-
-### 4. 🍚 爱心闪光干饭动画
-- 模型正式开始输出回复时，自动掏出大铁盆切换为开心地大口吃白米饭插画（`baifan2.png`），带有可爱的心心与闪光特效。
-
-### 5. 📖 GalGame 剧场文字分页推进
-- 角色居中舞台，下方超大剧场对话框展现模型回复。
-- **智能分段排版**：长文本按完整句意分页，点击对话框即可如视觉小说一般逐段翻页推进。
-
-### 6. 💰 实时双额度常驻展示
-- 悬停工具栏上方直接读取并显示当前账号真实的：
-  - **充值余额（Topped-up balance）**
-  - **赠金余额（Granted balance）**
-
-### 7. 💖 点击撒娇互动与动画保护
-- 戳戳角色触发 Q 弹果冻跳动与眨眼托腮撒娇表情（`sajiao.png`）。
-- **动画保护**：2 秒撒娇结束后自动恢复正在进行的思考轮播或干饭动画，绝不打断大模型推理与输出流程。
-
-### 8. 🚀 零依赖一键安装
-- 解压后双击 `install.bat` / `一键安装.bat` 即可全自动注入 DSH。
-- 所有插画素材采用 Base64 本地内嵌编译，绝不报 404，不依赖任何外部网络。
+Initial release of DeepSeek Little Whale Maid (`dsh-whale-pet`), an interactive desktop pet and GalGame conversational stage plugin for DeepSeek Harness (DSH).
 
 ---
 
-## 📦 快速使用
+## Release Highlights
 
-下载下方 Assets 中的 **`dsh-whale-pet.zip`**，解压后双击 **`install.bat`**，然后在 DeepSeek Harness 中按下 **`Ctrl + R`** 即可立即体验！
+### 1. Dual Character Forms
+- Maiden standing portrait with detailed maid dress, ribbons, and whale emblem apron.
+- Chibi badge form for minimal footprint at the viewport corner.
+- Quick switching via hover toolbar.
+
+### 2. Independent Comic Thought Bubble (CoT)
+- Reasoning output is rendered in an independent comic thought bubble beside the character's head.
+- Supports smooth vertical scrolling to review the complete Chain-of-Thought reasoning history without blocking dialogue or illustrations.
+
+### 3. Dynamic 4-Pose Thinking Rotation
+- Automatically cycles between 4 expressive poses every 3.2 seconds during reasoning:
+  1. Pondering (hand to chin)
+  2. Cheeks Puffed (pouting concentration)
+  3. Puzzled (confused cloud)
+  4. Lightbulb Idea (inspiration)
+
+### 4. Joyful Rice Eating Animation
+- When the assistant begins streaming response content, the character automatically switches to the festive white rice eating illustration (`baifan2.png`).
+
+### 5. GalGame Theatre Text Progression
+- Center stage layout with a wide Visual Novel dialogue box.
+- Sentences are comfortably paginated; click anywhere on the box to advance to the next paragraph.
+
+### 6. Real-Time Dual Balance Display
+- Directly queries DSH balance data and displays both Topped-up balance and Granted balance on the toolbar header.
+
+### 7. Interactive Touch with Animation Protection
+- Poking or clicking the character triggers a 2-second playful pouting reaction.
+- Safeguard mechanism: smoothly returns to the ongoing thinking rotation or eating animation after 2 seconds without cancelling generation.
+
+### 8. Self-Contained Deployment
+- Automated `install.bat` and `uninstall.bat` scripts included.
+- All graphics are Base64-inlined into `lib/client.js` to ensure zero asset loading errors.
+
+---
+
+## Installation
+
+Download `dsh-whale-pet.zip` from Assets below, extract to any local folder, run `install.bat`, and refresh DeepSeek Harness (`Ctrl + R`).
