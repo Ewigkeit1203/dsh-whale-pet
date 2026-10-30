@@ -1,0 +1,5 @@
+# DeepSeek Whale Pet (dsh-whale-pet) Cordis Patch
+# Mounts the Whale Maid desktop/web pet into DeepSeek Harness Web GUI
+- insert:
+    - id: dsh-whale-pet
+      name: 'file:///C:/Users/etern/.gemini/antigravity/scratch/dsh-whale-pet/lib/index.js'

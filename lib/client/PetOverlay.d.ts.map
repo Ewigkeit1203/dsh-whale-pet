@@ -1,0 +1,1 @@
+{"version":3,"file":"PetOverlay.d.ts","sourceRoot":"","sources":["../../src/client/PetOverlay.tsx"],"names":[],"mappings":"AAAA,OAAO,KAA4D,MAAM,OAAO,CAAA;AAChF,OAAO,KAAK,EAAE,eAAe,EAAE,MAAM,oBAAoB,CAAA;AAezD,MAAM,WAAW,eAAe;IAC9B,YAAY,EAAE,eAAe,CAAA;CAC9B;AA2CD,wBAAgB,UAAU,CAAC,EAAE,YAAY,EAAE,EAAE,eAAe,qBAkpB3D"}

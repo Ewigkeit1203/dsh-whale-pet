@@ -1,0 +1,51 @@
+{
+  "name": "dsh-whale-pet",
+  "version": "0.1.0",
+  "description": "DeepSeek Little Whale Maid ('Big Fat Fish') Desktop/Web Pet for DSH",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./assets/*": "./assets/*",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "assets",
+    "cordis.yml",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout"
+      ]
+    }
+  },
+  "scripts": {
+    "build": "node build.js",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/whale-pet.test.ts"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "typescript": "^5.7.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "*",
+    "react": "*"
+  }
+}
