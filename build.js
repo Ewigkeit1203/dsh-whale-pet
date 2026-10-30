@@ -13,166 +13,8 @@ import zlib from 'node:zlib'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-console.log('[build] 1. Syncing latest desktop character files...')
-const desktopDirs = [
-  'C:/Users/etern/OneDrive/Desktop',
-  'C:/Users/etern/Desktop',
-]
-
 const srcAssetsDir = join(__dirname, 'assets')
 mkdirSync(srcAssetsDir, { recursive: true })
-
-// Helper to remove white backgrounds from RGB PNGs via perimeter flood fill
-function ensureTransparentPNG(srcFile, dstFile) {
-  const buf = readFileSync(srcFile)
-  let pos = 8
-  const idats = []
-  let w = 0, h = 0, colorType = 0
-  while (pos < buf.length) {
-    const len = buf.readUInt32BE(pos)
-    const type = buf.toString('ascii', pos + 4, pos + 8)
-    if (type === 'IHDR') {
-      w = buf.readUInt32BE(pos + 8)
-      h = buf.readUInt32BE(pos + 12)
-      colorType = buf[pos + 8 + 9]
-    } else if (type === 'IDAT') {
-      idats.push(buf.slice(pos + 8, pos + 8 + len))
-    }
-    pos += 8 + len + 4
-  }
-
-  if (colorType === 6 || colorType === 3) {
-    cpSync(srcFile, dstFile)
-    return
-  }
-
-  const decompressed = zlib.inflateSync(Buffer.concat(idats))
-  const bpp = colorType === 6 ? 4 : colorType === 2 ? 3 : 1
-  const rowLen = 1 + w * bpp
-  const raw = Buffer.alloc(w * h * bpp)
-
-  let prevRow = null
-  for (let y = 0; y < h; y++) {
-    const filter = decompressed[y * rowLen]
-    const srcRow = decompressed.slice(y * rowLen + 1, (y + 1) * rowLen)
-    const dstRow = raw.slice(y * w * bpp, (y + 1) * w * bpp)
-
-    for (let x = 0; x < w * bpp; x++) {
-      const a = x >= bpp ? dstRow[x - bpp] : 0
-      const b = prevRow ? prevRow[x] : 0
-      const c = (x >= bpp && prevRow) ? prevRow[x - bpp] : 0
-      let val = srcRow[x]
-      if (filter === 0) {}
-      else if (filter === 1) { val = (val + a) & 0xff }
-      else if (filter === 2) { val = (val + b) & 0xff }
-      else if (filter === 3) { val = (val + Math.floor((a + b) / 2)) & 0xff }
-      else if (filter === 4) {
-        const p = a + b - c
-        const pa = Math.abs(p - a)
-        const pb = Math.abs(p - b)
-        const pc = Math.abs(p - c)
-        const pr = (pa <= pb && pa <= pc) ? a : (pb <= pc ? b : c)
-        val = (val + pr) & 0xff
-      }
-      dstRow[x] = val
-    }
-    prevRow = dstRow
-  }
-
-  const rgba = Buffer.alloc(w * h * 4)
-  const visited = new Uint8Array(w * h)
-  for (let i = 0; i < w * h; i++) {
-    rgba[i * 4] = raw[i * bpp]
-    rgba[i * 4 + 1] = raw[i * bpp + 1]
-    rgba[i * 4 + 2] = raw[i * bpp + 2]
-    rgba[i * 4 + 3] = bpp === 4 ? raw[i * bpp + 3] : 255
-  }
-
-  const queue = []
-  for (let x = 0; x < w; x++) { queue.push(x, 0); queue.push(x, h - 1); }
-  for (let y = 0; y < h; y++) { queue.push(0, y); queue.push(w - 1, y); }
-
-  let head = 0
-  while (head < queue.length) {
-    const x = queue[head++]
-    const y = queue[head++]
-    const idx = y * w + x
-    if (visited[idx]) continue
-    visited[idx] = 1
-
-    const r = rgba[idx * 4]
-    const g = rgba[idx * 4 + 1]
-    const b = rgba[idx * 4 + 2]
-
-    const isBg = (r > 238 && g > 238 && b > 238) || (r > 225 && g > 225 && b > 225 && Math.abs(r - g) < 15 && Math.abs(g - b) < 15 && Math.abs(r - b) < 15)
-    if (isBg) {
-      rgba[idx * 4 + 3] = 0
-      if (x > 0 && !visited[idx - 1]) queue.push(x - 1, y)
-      if (x < w - 1 && !visited[idx + 1]) queue.push(x + 1, y)
-      if (y > 0 && !visited[idx - w]) queue.push(x, y - 1)
-      if (y < h - 1 && !visited[idx + w]) queue.push(x, y + 1)
-    }
-  }
-
-  // Edge feathering
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      const idx = y * w + x
-      if (rgba[idx * 4 + 3] === 255) {
-        const hasTrans = (rgba[(idx - 1) * 4 + 3] === 0 || rgba[(idx + 1) * 4 + 3] === 0 || rgba[(idx - w) * 4 + 3] === 0 || rgba[(idx + w) * 4 + 3] === 0)
-        if (hasTrans) {
-          const br = (rgba[idx * 4] + rgba[idx * 4 + 1] + rgba[idx * 4 + 2]) / 3
-          if (br > 220) {
-            rgba[idx * 4 + 3] = Math.max(0, Math.min(255, Math.round((255 - br) * 4)))
-          }
-        }
-      }
-    }
-  }
-
-  const outRowLen = 1 + w * 4
-  const filtered = Buffer.alloc(h * outRowLen)
-  for (let y = 0; y < h; y++) {
-    filtered[y * outRowLen] = 0
-    rgba.copy(filtered, y * outRowLen + 1, y * w * 4, (y + 1) * w * 4)
-  }
-  const deflated = zlib.deflateSync(filtered, { level: 9 })
-
-  function makeChunk(type, data) {
-    const len = data.length
-    const b = Buffer.alloc(8 + len + 4)
-    b.writeUInt32BE(len, 0)
-    b.write(type, 4, 4, 'ascii')
-    data.copy(b, 8)
-    let c = 0xffffffff
-    const table = []
-    for (let n = 0; n < 256; n++) {
-      let v = n
-      for (let k = 0; k < 8; k++) v = ((v & 1) ? (0xedb88320 ^ (v >>> 1)) : (v >>> 1))
-      table[n] = v
-    }
-    for (let i = 4; i < 8 + len; i++) c = table[(c ^ b[i]) & 0xff] ^ (c >>> 8)
-    b.writeInt32BE((c ^ 0xffffffff) | 0, 8 + len)
-    return b
-  }
-
-  const ihdr = Buffer.alloc(13)
-  ihdr.writeUInt32BE(w, 0)
-  ihdr.writeUInt32BE(h, 4)
-  ihdr[8] = 8
-  ihdr[9] = 6
-  ihdr[10] = 0
-  ihdr[11] = 0
-  ihdr[12] = 0
-
-  const outBuf = Buffer.concat([
-    Buffer.from('89504e470d0a1a0a', 'hex'),
-    makeChunk('IHDR', ihdr),
-    makeChunk('IDAT', deflated),
-    makeChunk('IEND', Buffer.alloc(0)),
-  ])
-  writeFileSync(dstFile, outBuf)
-}
 
 console.log('[build] 1. Syncing latest character files from 大肥鱼表情...')
 const expressionDirs = [
@@ -208,7 +50,6 @@ const think2B64 = readFileSync(join(srcAssetsDir, 'Think2.png')).toString('base6
 const think3B64 = readFileSync(join(srcAssetsDir, 'Think3.png')).toString('base64')
 const think4B64 = readFileSync(join(srcAssetsDir, 'Think4.png')).toString('base64')
 const think5B64 = readFileSync(join(srcAssetsDir, 'Think5.png')).toString('base64')
-const riceBowlB64 = readFileSync(join(srcAssetsDir, 'rice-bowl.svg')).toString('base64')
 
 const maidDataUri = `data:image/png;base64,${maidB64}`
 const chibiDataUri = `data:image/png;base64,${chibiB64}`
@@ -221,7 +62,6 @@ const think2DataUri = `data:image/png;base64,${think2B64}`
 const think3DataUri = `data:image/png;base64,${think3B64}`
 const think4DataUri = `data:image/png;base64,${think4B64}`
 const think5DataUri = `data:image/png;base64,${think5B64}`
-const riceBowlDataUri = `data:image/svg+xml;base64,${riceBowlB64}`
 
 const assetsDataTs = `/**
  * Embedded character image Data URIs for dsh-whale-pet.
@@ -241,7 +81,6 @@ export const THINK2_DATA_URI = ${JSON.stringify(think2DataUri)}
 export const THINK3_DATA_URI = ${JSON.stringify(think3DataUri)}
 export const THINK4_DATA_URI = ${JSON.stringify(think4DataUri)}
 export const THINK5_DATA_URI = ${JSON.stringify(think5DataUri)}
-export const RICE_BOWL_DATA_URI = ${JSON.stringify(riceBowlDataUri)}
 `
 writeFileSync(join(__dirname, 'src', 'client', 'assets-data.ts'), assetsDataTs, 'utf-8')
 
@@ -876,7 +715,6 @@ const clientBundleSource = `/**
       const THINK3_PATH = ${JSON.stringify(think3DataUri)};
       const THINK4_PATH = ${JSON.stringify(think4DataUri)};
       const THINK5_PATH = ${JSON.stringify(think5DataUri)};
-      const RICE_BOWL_PATH = ${JSON.stringify(riceBowlDataUri)};
 
       function LivingPuppet(props) {
         const rotY = props.gazeOffset.x * 5.0;
