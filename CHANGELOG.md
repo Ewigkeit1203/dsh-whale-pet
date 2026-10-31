@@ -9,6 +9,12 @@
 
 ### Unreleased
 
+- Second frontend pass by Claude Opus 5.5 (not released):
+  - Balance without opening settings: when DSH offers its account service, the companion calls the same `remote.account.getBalance` the built-in account card uses, under the `account/watch` access grant. It reads on start, every 60s, on returning to the window and after each answer, backs off on failure, and clears the balance when access is withdrawn or you sign out. No credentials or Platform requests on our side. The DOM reader is now only a fallback; it no longer pads missing values with ¥0.00 or guesses amounts across the page.
+  - 梁文峰 / 梁文谷 time: a chip above her head shows the current DeepSeek API pricing period and when it ends (in your local time). She announces “现在是梁文峰时间！” / “现在是梁文谷时间！” on load and at every switch. Rules follow the official pricing page: Beijing weekdays 09:00–12:00 and 14:00–18:00 are peak; weekends and Chinese public holidays are off-peak (2026 holiday table). Toggle: Settings › Companionship.
+  - Your chosen name is now used in her lines (several lines said “你” directly), including the theatre's idle line.
+  - Smoother drag: gaze now moves through CSS variables, status updates render at most once per frame and only when something visible changes, drag positions are applied once per frame, the settings panel is memoised during drags, and the panel slides instead of jumping when it switches sides. Measured render work: about 6× less while dragging, 16× less while moving the pointer and 4.5× less while streaming.
+  - Tests: 75 → 84.
 - Frontend rework by Claude Opus 5.5 (not released; version unchanged):
   - Settings and pet now lay out as one group: the panel stays beside the pet with a 16px gap, switches sides only when the current side runs out of room, and moves the pet to the nearest spot where both fit. Windows too small for the pair open settings as a labelled separate panel. Wandering pauses while settings are open.
   - Settings rebuilt with a fixed header, a scrolling body and a one-row footer (12px between note and button, 16px bottom margin). The chibi form switch is gone from the toolbar and settings; a stored `chibi` preference renders the maiden portrait while the feature is paused. All artwork is kept.
@@ -106,6 +112,12 @@
 
 ### 尚未发布
 
+- Claude Opus 5.5 第二轮前端更新（未发布）：
+  - 不用打开设置也能显示余额：DSH 提供账户服务时，大肥鱼调用 DSH 自带账户卡片使用的同一个 `remote.account.getBalance`，并遵循 `account/watch` 访问授权。启动时读取一次，之后每 60 秒、回到窗口时和每次回答结束后刷新，失败时逐步延长重试间隔；访问被撤销或退出登录时立即清空。插件不接触凭据，也不请求 DeepSeek 平台。读取页面只作后备，不再把缺失项补成 ¥0.00，也不再在整个页面里猜金额。
+  - 梁文峰 / 梁文谷时间：头顶小标签显示当前 DeepSeek API 计费时段和结束时间（本机时间）。启动和每次切换时，她会说“现在是梁文峰时间！”或“现在是梁文谷时间！”。规则按官方价格页：北京时间工作日 9:00–12:00、14:00–18:00 为高峰，周末和法定节假日为空闲（含 2026 年节假日表）。可在 设置 › 陪伴行为 中关闭。
+  - 台词会使用你设置的称呼（之前有几句直接写成了“你”），剧场里的待机台词也一样。
+  - 拖动更流畅：视线跟随改用 CSS 变量；状态更新每帧最多渲染一次，且只在可见内容变化时渲染；拖动位置每帧只更新一次；拖动时不重建设置面板；面板换侧时平滑滑过去，不再瞬移。实测渲染量：拖动时约降为 1/6，移动鼠标时约 1/16，流式输出时约 1/4.5。
+  - 测试由 75 项增至 84 项。
 - Claude Opus 5.5 前端重做（未发布，版本号不变）：
   - 设置面板与角色作为整体布局：面板贴在角色旁并保持 16px 间距，只在当前侧放不下时才换侧，必要时把角色移到两者都能放下的最近位置。窗口放不下这一组时，设置改为带标识的独立面板。设置打开期间暂停游荡。
   - 设置面板重做为固定标题、可滚动正文和单行底部区域（说明与按钮间距 12px，距底 16px）。工具栏与设置中移除 Q 版切换；旧的 `chibi` 偏好在暂停期间按普通立绘显示，全部素材保留。

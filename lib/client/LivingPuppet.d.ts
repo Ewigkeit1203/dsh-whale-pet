@@ -5,7 +5,8 @@ export interface LivingPuppetProps {
     isMaiden: boolean;
     isGalGameMode: boolean;
     mouthOpenRatio: number;
-    gazeOffset: GazeOffset;
+    /** Unused: gaze is applied through CSS variables. Kept optional for compatibility. */
+    gazeOffset?: GazeOffset;
     state: PetState;
     poseName?: string;
     opacity?: number;
@@ -24,5 +25,5 @@ export interface LivingPuppetProps {
  * breathing/talking. The image itself is sized, never transformed, so the
  * clip-path hit area always matches what is drawn.
  */
-export declare function LivingPuppet({ imgSrc, isMaiden, isGalGameMode, mouthOpenRatio, gazeOffset, state, onMouseDown, opacity, poseName, box, poseScale }: LivingPuppetProps): React.JSX.Element;
+export declare function LivingPuppet({ imgSrc, isMaiden, isGalGameMode, mouthOpenRatio, state, onMouseDown, opacity, poseName, box, poseScale }: LivingPuppetProps): React.JSX.Element;
 //# sourceMappingURL=LivingPuppet.d.ts.map

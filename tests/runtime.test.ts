@@ -343,3 +343,29 @@ test('browser bundle: shaking uses the new Dizzy asset and returns to the normal
  t.mock.timers.tick(2500);tree=runtime.render()
  assert.equal(walk(tree).find(node=>node.props.imgSrc).props.poseName,'Maid')
 })
+
+const texts = (node: any) => walk(node).flatMap((n: any) => n.children.filter((c: any) => typeof c === 'string')).join('')
+
+test('browser bundle: chatter uses the chosen name instead of 你 / 主人', t => {
+  const store = new Map([['dsh-whale-pet.preferences.v1', JSON.stringify({ onboardingDone: true, userName: '小明', peakNotice: false })]])
+  const runtime = loadBundle({ getItem: (key: string) => store.get(key) ?? null, setItem: (key: string, value: string) => store.set(key, value) })
+  const sm = runtime.mount(); t.after(() => sm.dispose())
+  runtime.render(); t.after(runtime.viewEffects.find(fn => String(fn).includes('stateMachine.subscribe'))())
+  sm.triggerInactivitySajiao()
+  const tree = runtime.render()
+  const bubble = walk(tree).find((n: any) => n.props.className === 'speechBubble')
+  assert.ok(bubble, 'lonely line shows a bubble')
+  assert.match(texts(bubble), /小明/)
+  assert.doesNotMatch(texts(bubble), /主人/)
+})
+
+test('browser bundle: announces 梁文峰 / 梁文谷 time and shows the period chip', t => {
+  const runtime = loadBundle(); const sm = runtime.mount(); t.after(() => sm.dispose())
+  runtime.render()
+  runtime.viewEffects.find(fn => String(fn).includes('previousTierRef.current = tierNow'))()
+  const tree = runtime.render()
+  const bubble = walk(tree).find((n: any) => n.props.className === 'speechBubble')
+  assert.match(texts(bubble), /现在是梁文(峰|谷)时间！/)
+  const chip = walk(tree).find((n: any) => n.props.className === 'petTierChip')
+  assert.ok(['peak', 'valley'].includes(chip.props['data-tier']))
+})

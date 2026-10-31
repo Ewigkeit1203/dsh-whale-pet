@@ -8,6 +8,7 @@ import { POSE_META, spriteGeometry } from './poses.js'
 import { LAYOUT, layoutGroup, clampPet, placeGroupX, groupFits, type PanelSide } from './layout.js'
 import { walletView } from './wallet.js'
 import { PetVoice, appendedSpeech, speakableText } from './voice.js'
+import { tariffAt, type Tier } from './peak.js'
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import type { PetStateMachine } from './state-machine.js'
 import type { PetStatusInfo } from './types.js'
@@ -44,6 +45,24 @@ function paginateDialogue(text: string, width: number, height: number, font: num
 
 const COMPOSER_SELECTOR = '[data-composer-card], [data-composer-seat]'
 const DOCK_PEEK = 0.52
+
+/** Browser frame scheduler with a synchronous fallback (tests, very old hosts). */
+const nextFrame = (callback: () => void): void => {
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => callback())
+  else callback()
+}
+
+/**
+ * Fields the views actually draw. Blink is not drawn, mouth only matters as
+ * "talking or not" and gaze is quantised, so animation ticks and every pointer
+ * move no longer re-render the whole overlay.
+ */
+function statusRenderKey(s: PetStatusInfo): string {
+  return [s.state, s.form, s.pose, s.speech, s.reasoningText.length, s.reasoningText.slice(-24), s.latestDialogue.length, s.latestDialogue.slice(-24),
+    s.isReasoning, s.isStreaming, s.isInputFocused, s.isGalGameMode, s.autoGalGameOnChat, s.mouthOpenRatio > 0.15,
+    s.balancesKnown, s.toppedUpBalance, s.grantedBalance,
+    s.hostBalance?.status, s.hostBalance?.updatedAt, s.hostBalance ? JSON.stringify([s.hostBalance.toppedUp, s.hostBalance.granted]) : ''].join('\u0001')
+}
 
 const dockIcon = (d: string) => <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>
 
@@ -92,8 +111,14 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const [inputValue, setInputValue] = useState('')
   const [currentPageIndex, setCurrentPageIndex] = useState(0)
   const [isThoughtBubbleVisible, setIsThoughtBubbleVisible] = useState(true)
+  const [tierAnnounce, setTierAnnounce] = useState<{ tier: Tier; until: number } | null>(null)
+  const [panelFlipping, setPanelFlipping] = useState(false)
 
   const sideRef = useRef<PanelSide | undefined>(undefined)
+  const statusKeyRef = useRef('')
+  const statusFrameRef = useRef<PetStatusInfo | null>(null)
+  const dragFrameRef = useRef<{ x: number; y: number } | null>(null)
+  const previousTierRef = useRef<Tier | null>(null)
   const isDraggingRef = useRef(false)
   const dragStartRef = useRef<{ startX: number; startY: number; petX: number; petY: number; startTime: number; maxDistance: number; distance: number; lastX: number; lastY: number; lastMove: number; vx: number; vy: number } | null>(null)
   const wanderTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -133,7 +158,10 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     return () => clearTimeout(timer)
   }, [preferences, status.form, status.autoGalGameOnChat, position])
 
-  const petName = preferences.petName === '大肥鱼' ? '大肥鱼' : preferences.petName
+  const petName = preferences.petName.trim() || '大肥鱼'
+  const userName = preferences.userName.trim() || '你'
+  /** Lines address the user as 主人 and call her 大肥鱼; both follow the names set in Settings. */
+  const address = (text: string) => text.replaceAll('主人', userName).replaceAll('大肥鱼', petName)
   const companionSpeech = preferences.language === 'zh' ? status.speech :
     status.pose === 'sajiao' ? 'Hey, stay with me a little longer!' :
     ({ IDLE: 'I’m right here with you.', PEEKING: 'I’m listening. What’s on your mind?', REASONING: 'Let me think this through…', ANSWERING: 'Putting the answer together for you…', EATING: 'Time for a little rice break!', WANDERING: 'Taking a little stroll…' }[status.state])
@@ -183,6 +211,13 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     return { x: placed.x, y: free.y }
   }
 
+  // A side switch slides the panel across instead of teleporting it.
+  const lastPanelSide = useRef<PanelSide | undefined>(undefined)
+  useEffect(() => {
+    if (!group) { lastPanelSide.current = undefined; return }
+    if (lastPanelSide.current && lastPanelSide.current !== group.side) { setPanelFlipping(true); later(() => setPanelFlipping(false), 260) }
+    lastPanelSide.current = group.side
+  }, [group?.side, isSettingsOpen])
   // Keep hysteresis and commit group adjustments so closing the panel does not jump.
   useEffect(() => {
     if (!group) return
@@ -250,7 +285,38 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', reset) }
   }, [stateMachine])
 
-  useEffect(() => stateMachine.subscribe(next => setStatus(next)), [stateMachine])
+  // At most one render per frame, and only when something drawn changed.
+  // Gaze is applied as CSS variables outside React (see LivingPuppet).
+  useEffect(() => {
+    let gaze = stateMachine.getStatus().gazeOffset
+    let gazeQueued = false
+    const writeGaze = () => {
+      gazeQueued = false
+      document.querySelectorAll?.('[data-whale-pet="widget"], [data-whale-pet="stage"]').forEach(node => {
+        const el = node as HTMLElement
+        el.style.setProperty('--gaze-x', gaze.x.toFixed(3))
+        el.style.setProperty('--gaze-y', gaze.y.toFixed(3))
+      })
+    }
+    const unsubscribe = stateMachine.subscribe(next => {
+      if (next.gazeOffset.x !== gaze.x || next.gazeOffset.y !== gaze.y) {
+        gaze = next.gazeOffset
+        if (!gazeQueued) { gazeQueued = true; nextFrame(writeGaze) }
+      }
+      const key = statusRenderKey(next)
+      if (key === statusKeyRef.current) return
+      statusKeyRef.current = key
+      const pending = statusFrameRef.current
+      statusFrameRef.current = next
+      if (pending) return
+      nextFrame(() => {
+        const latest = statusFrameRef.current
+        statusFrameRef.current = null
+        if (latest) setStatus(latest)
+      })
+    })
+    return unsubscribe
+  }, [stateMachine])
 
   useEffect(() => {
     if (!status.isGalGameMode) { setUiHidden(false); setLogOpen(false) }
@@ -299,8 +365,10 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   }, [status.isGalGameMode])
 
   // ---- Theatre reading ------------------------------------------------------
-  const dialoguePages = useMemo(() => paginateDialogue(status.latestDialogue || companionSpeech, pageBox.width, pageBox.height, preferences.fontSize),
-    [status.latestDialogue, companionSpeech, pageBox, preferences.fontSize])
+  // Without an answer yet the theatre shows her own line, with the user's chosen names.
+  const dialogueSource = status.latestDialogue && status.latestDialogue !== status.speech ? status.latestDialogue : preferences.language === 'zh' ? address(companionSpeech) : companionSpeech
+  const dialoguePages = useMemo(() => paginateDialogue(dialogueSource, pageBox.width, pageBox.height, preferences.fontSize),
+    [dialogueSource, pageBox, preferences.fontSize])
 
   useEffect(() => {
     const cur = status.latestDialogue || status.speech
@@ -371,6 +439,15 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     }
     previousPose.current = pose
   }, [status.pose, voiceAllowed])
+  // 梁文峰 / 梁文谷: announce once on load and at every switch.
+  const tierNow = tariffAt(clock).tier
+  useEffect(() => {
+    const previous = previousTierRef.current
+    previousTierRef.current = tierNow
+    if (previous === tierNow || !preferences.peakNotice || preferences.quiet) return
+    setTierAnnounce({ tier: tierNow, until: Date.now() + 9000 })
+    if (previous !== null && voiceAllowed) voiceRef.current?.cue('tap')
+  }, [tierNow, preferences.peakNotice, preferences.quiet])
   useEffect(() => {
     if (status.isReasoning || status.isStreaming) { if (!startedAt.current) startedAt.current = Date.now() }
     else startedAt.current = 0
@@ -397,7 +474,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (status.isInputFocused) return
+      if (status.isInputFocused || isDraggingRef.current) return
       stateMachine.setGazeOffset({ x: (e.clientX - window.innerWidth / 2) / (window.innerWidth / 2), y: (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2) })
     }
     window.addEventListener('mousemove', handleMouseMove, { passive: true })
@@ -451,9 +528,20 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       const dy = e.clientY - drag.startY
       drag.maxDistance = Math.max(drag.maxDistance, Math.hypot(dx, dy))
       if (preferences.docked) return
-      setPosition(constrainRef.current(drag.petX + dx, drag.petY + dy))
+      // Coalesce to one position update per frame; fast drags fire far more events than frames.
+      const pending = dragFrameRef.current
+      dragFrameRef.current = { x: drag.petX + dx, y: drag.petY + dy }
+      if (pending) return
+      nextFrame(() => {
+        const target = dragFrameRef.current
+        dragFrameRef.current = null
+        if (target && isDraggingRef.current) setPosition(constrainRef.current(target.x, target.y))
+      })
     }
     const handleMouseUp = (e: MouseEvent) => {
+      const drag0 = dragStartRef.current
+      if (drag0 && drag0.maxDistance >= 6 && !preferences.docked) setPosition(constrainRef.current(drag0.petX + e.clientX - drag0.startX, drag0.petY + e.clientY - drag0.startY))
+      dragFrameRef.current = null
       isDraggingRef.current = false
       setIsDragging(false)
       const drag = dragStartRef.current
@@ -541,7 +629,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     }, 80)
   }
 
-  const displayDialogue = preferences.reading === 'scroll' ? status.latestDialogue || companionSpeech : dialoguePages[currentPageIndex] || dialoguePages[0] || ''
+  const displayDialogue = preferences.reading === 'scroll' ? dialogueSource : dialoguePages[currentPageIndex] || dialoguePages[0] || ''
   const characters = useMemo(() => Array.from(displayDialogue), [displayDialogue])
   const canReveal = preferences.typewriter && preferences.speed !== 'instant' && !reduceMotion && status.latestDialogue.length <= 600 && !/```|\|.*\|/.test(displayDialogue)
   const isRevealing = canReveal && preferences.reading === 'pages' && revealed < characters.length
@@ -597,12 +685,29 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     return value && Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : null
   }, [clock])
   const elapsed = startedAt.current ? Math.max(0, (clock - startedAt.current) / 1000).toFixed(1) : null
-  const wallet = walletView({ known: status.balancesKnown, toppedUp: status.toppedUpBalance, granted: status.grantedBalance, checkedAt: stateMachine.getStatus().balancesCheckedAt ?? null, now: clock, ricePrice: preferences.ricePrice })
+  const tariff = tariffAt(clock)
+  const localeTag = preferences.language === 'en' ? 'en-GB' : 'zh-CN'
+  const clockLabel = (ms: number | null) => {
+    if (ms === null) return ''
+    const d = new Date(ms)
+    const time = d.toLocaleTimeString(localeTag, { hour: '2-digit', minute: '2-digit', hour12: false })
+    return d.toDateString() === new Date(clock).toDateString() ? time : d.toLocaleDateString(localeTag, { weekday: 'short' }) + ' ' + time
+  }
+  const tierShort = tariff.tier === 'peak' ? t('峰', 'Peak') : t('谷', 'Off-peak')
+  const tierName = tariff.tier === 'peak' ? t('梁文峰时间', 'Liang Wenfeng time') : t('梁文谷时间', 'Liang Wengu time')
+  const tierUntil = tariff.nextChange !== null ? t(`至 ${clockLabel(tariff.nextChange)}`, `until ${clockLabel(tariff.nextChange)}`) : ''
+  const tierRule = t('北京时间工作日 9:00–12:00、14:00–18:00 为高峰；其余时间及周末、法定节假日为空闲（半价）。', 'Peak: Beijing time, weekdays 09:00–12:00 and 14:00–18:00. Other hours, weekends and Chinese public holidays are off-peak at half price.')
+  const tierLine = (tier: Tier) => tier === 'peak'
+    ? t('现在是梁文峰时间！API 高峰价，省着点用哦～', 'It’s Liang Wenfeng time! Peak API pricing — go easy.')
+    : t('现在是梁文谷时间！空闲时段半价，放开用吧～', 'It’s Liang Wengu time! Off-peak, half price.')
+  const tierAnnouncing = preferences.peakNotice && !preferences.quiet && tierAnnounce !== null && tierAnnounce.until > clock
+  const wallet = walletView({ host: status.hostBalance ?? null, known: status.balancesKnown, toppedUp: status.toppedUpBalance, granted: status.grantedBalance, checkedAt: stateMachine.getStatus().balancesCheckedAt ?? null, now: clock, ricePrice: preferences.ricePrice })
   const hour = new Date(clock).getHours()
-  const contextualSpeech = affection === 'pat' ? t('嘿嘿……最喜欢你摸摸头啦～', 'Hehe… I love head pats!')
+  const contextualSpeech = affection === 'pat' ? t('嘿嘿……最喜欢主人摸摸头啦～', 'Hehe… I love head pats!')
     : affection === 'dizzy' ? t('头好晕……深海漩涡出现啦！', 'Whoa… a deep-sea whirlpool!')
-    : preferences.reminders && status.state === 'IDLE' && hour >= 1 && hour < 5 ? t('呼啊……夜深啦，记得休息，我陪着你。', 'It’s late… remember to rest. I’m right here.')
-    : preferences.reminders && status.state === 'EATING' && hour === 12 ? t('午饭时间到！你也要按时吃饭哦～', 'Lunch time! Remember to have something to eat.')
+    : tierAnnouncing ? tierLine(tierAnnounce!.tier)
+    : preferences.reminders && status.state === 'IDLE' && hour >= 1 && hour < 5 ? t('呼啊……夜深啦，主人记得休息，我陪着你。', 'It’s late… remember to rest. I’m right here.')
+    : preferences.reminders && status.state === 'EATING' && hour === 12 ? t('午饭时间到！主人也要按时吃饭哦～', 'Lunch time! Remember to have something to eat.')
     : wallet.low && status.state === 'IDLE' ? t('深海算力快见底啦，记得看看余额哦。', 'Credit is getting low. Check your balance.')
     : companionSpeech
 
@@ -629,11 +734,39 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const lang = preferences.language === 'zh' ? 'zh-CN' : 'en'
   const openTheatre = () => { setIsSettingsOpen(false); stateMachine.setGalGameMode(true) }
 
+  const settingsProps = () => ({
+    p: { ...preferences, autoGalGame: status.autoGalGameOnChat }, wallet, detached: group?.mode === 'detached',
+    tier: { tier: tariff.tier, name: tierName, until: tierUntil, rule: tierRule, holidayDataMissing: tariff.holidayDataMissing },
+    update: (patch: Partial<Preferences>) => { update(patch); if (patch.autoGalGame !== undefined) stateMachine.setAutoGalGameOnChat(patch.autoGalGame) },
+    toggleMute,
+    quiet: () => setPreferences(previous => quietPreset(previous)),
+    reset: () => {
+      setPreferences({ ...defaultPreferences(), onboardingDone: true })
+      stateMachine.setForm('maiden'); stateMachine.setAutoGalGameOnChat(true)
+      const fresh = spriteGeometry('Maid', viewport.height, 1)
+      setPosition(clampPet(viewport.width - fresh.stageWidth - 24, viewport.height - fresh.stageHeight - 30, fresh.stageWidth, fresh.stageHeight, viewport.width, viewport.height))
+    },
+    doctor: () => setDoctor(diagnosticReport()),
+    notify: async () => {
+      if (preferences.notifications) { update({ notifications: false }); return }
+      if (typeof Notification === 'undefined') { setToast(t('当前环境不支持系统通知', 'Notifications are not available')); return }
+      const permission = await Notification.requestPermission()
+      update({ notifications: permission === 'granted' })
+      if (permission !== 'granted') setToast(t('未获得通知权限，已保持关闭', 'Permission not granted; notifications remain off'))
+    },
+    close: () => setIsSettingsOpen(false),
+    openTheatre,
+  })
+  // The panel does not depend on the pet's position, so a drag never rebuilds it.
+  const settingsPanel = useMemo(() => isSettingsOpen ? SettingsPanel(settingsProps()) : null,
+    [isSettingsOpen, preferences, status.autoGalGameOnChat, JSON.stringify(wallet), tariff.tier, tierUntil, tariff.holidayDataMissing, group?.mode, viewport.width, viewport.height])
+
   // ---- Theatre ----------------------------------------------------------------
   if (status.isGalGameMode) {
     return TheatreView({
       t, p: preferences, status, lang, petName,
       puppet: { imgSrc: currentImgSrc, poseName: hitPose, poseScale: (POSE_META[hitPose] ?? POSE_META.Maid).scale, isMaiden },
+      tier: preferences.peakNotice ? { tier: tariff.tier, label: tierName, until: tierUntil } : null,
       phase: status.isStreaming || status.isReasoning ? phaseLabel + (elapsed !== null ? ' · ' + elapsed + 's' : '') + (nativeSpeed !== null ? ' · ' + nativeSpeed.toFixed(1) + ' tokens/s' : '') : null,
       uiHidden, expanded, logOpen, history,
       showThoughts: isThoughtBubbleVisible && (status.isReasoning || Boolean(status.reasoningText)),
@@ -674,32 +807,20 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const crownAlign = petPos.x + stageW / 2 < 200 ? 'start' : petPos.x + stageW / 2 > viewport.width - 200 ? 'end' : 'center'
   const bubbleSide = petPos.x + stageW / 2 < viewport.width / 2 ? 'right' : 'left'
   const showDock = isMenuOpen && !isSettingsOpen && !isDragging
-  const showWalletChip = !isSettingsOpen && !isDragging && (wallet.status !== 'unavailable' || showDock)
+  const walletHasValues = Boolean(wallet.toppedUp || wallet.granted)
+  const showWalletChip = !isSettingsOpen && !isDragging && (walletHasValues || showDock)
+  const showTierChip = preferences.peakNotice && !isSettingsOpen && !isDragging
+  const walletStatusText = ({
+    unavailable: t('余额 —', 'Balance —'), loading: t('余额读取中…', 'Reading balance…'), 'signed-out': t('未登录 DeepSeek', 'Not signed in'),
+    error: t('余额读取失败', 'Balance unavailable'), live: '', stale: '',
+  } as Record<string, string>)[wallet.status]
   const walletTitle = wallet.status === 'unavailable' ? t('余额未读取：打开 DSH 账户设置以读取', 'Balance not read: open DSH account settings')
-    : wallet.status === 'stale' ? t('余额不是实时数据，点击查看详情', 'Balance is not live. Click for details') : t('余额读取自 DSH 账户设置页', 'Balance read from DSH account settings')
+    : wallet.status === 'signed-out' ? t('登录 DeepSeek 账号后可显示余额', 'Sign in to DeepSeek to show the balance')
+    : wallet.status === 'loading' ? t('正在向 DSH 账户服务读取余额', 'Reading the balance from the DSH account service')
+    : wallet.status === 'error' ? t('暂时读不到余额，稍后会自动重试', 'The balance could not be read; retrying automatically')
+    : wallet.status === 'stale' ? t('余额不是实时数据，点击查看详情', 'Balance is not live. Click for details')
+    : wallet.source === 'host' ? t('余额来自 DSH 账户服务，每分钟更新', 'Balance from the DSH account service, updated every minute') : t('余额读取自 DSH 账户设置页', 'Balance read from DSH account settings')
   const puppetOpacity = ghost && !isSettingsOpen ? Math.min(0.25, preferences.opacity) : dimmed && !isSettingsOpen ? Math.min(0.4, preferences.opacity) : preferences.opacity
-  const settingsProps = {
-    p: { ...preferences, autoGalGame: status.autoGalGameOnChat }, wallet, detached: group?.mode === 'detached',
-    update: (patch: Partial<Preferences>) => { update(patch); if (patch.autoGalGame !== undefined) stateMachine.setAutoGalGameOnChat(patch.autoGalGame) },
-    toggleMute,
-    quiet: () => setPreferences(previous => quietPreset(previous)),
-    reset: () => {
-      setPreferences({ ...defaultPreferences(), onboardingDone: true })
-      stateMachine.setForm('maiden'); stateMachine.setAutoGalGameOnChat(true)
-      const fresh = spriteGeometry('Maid', viewport.height, 1)
-      setPosition(clampPet(viewport.width - fresh.stageWidth - 24, viewport.height - fresh.stageHeight - 30, fresh.stageWidth, fresh.stageHeight, viewport.width, viewport.height))
-    },
-    doctor: () => setDoctor(diagnosticReport()),
-    notify: async () => {
-      if (preferences.notifications) { update({ notifications: false }); return }
-      if (typeof Notification === 'undefined') { setToast(t('当前环境不支持系统通知', 'Notifications are not available')); return }
-      const permission = await Notification.requestPermission()
-      update({ notifications: permission === 'granted' })
-      if (permission !== 'granted') setToast(t('未获得通知权限，已保持关闭', 'Permission not granted; notifications remain off'))
-    },
-    close: () => setIsSettingsOpen(false),
-    openTheatre,
-  }
 
   return (
     <div
@@ -741,20 +862,26 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
             <button type="button" className="toolBtn toolIcon" aria-pressed={docked} onClick={() => update({ docked: !docked })} aria-label={t('贴边探头', 'Peek from the edge')} title={docked ? t('离开边缘', 'Leave the edge') : t('贴边探头', 'Peek from the edge')}>{dockIcon('M13.5 2.5v11M3 8h7M7 5l3 3-3 3')}</button>
             {codeText && <button type="button" className="toolBtn toolIcon" onClick={() => void copyCode(codeText)} aria-label={t('复制代码', 'Copy code')} title={t('复制最近回答中的代码', 'Copy code from the latest answer')}>{dockIcon('M5.5 5.5h8v8h-8zM10.5 5.5v-3h-8v8h3')}</button>}
           </div>
-          {showWalletChip && <button type="button" className="petWalletChip" data-status={wallet.status} data-low={wallet.low || undefined} title={walletTitle} onClick={() => setIsSettingsOpen(true)} aria-label={walletTitle}>
-            {wallet.status === 'unavailable' ? <span>{t('余额', 'Balance')} —</span> : <>
-              <span>{wallet.toppedUp ?? '—'}</span><span className="petWalletSep" aria-hidden="true">·</span><span>{t('赠', 'Bonus')} {wallet.granted ?? '—'}</span>
-              {wallet.status === 'stale' && <span className="petWalletStale">{t('非实时', 'not live')}</span>}
-            </>}
-          </button>}
+          {(showTierChip || showWalletChip) && <div className="petCrownRow">
+            {showTierChip && <button type="button" className="petTierChip" data-tier={tariff.tier} title={tierName + '\n' + tierRule} aria-label={`${tierName} ${tierUntil}`} onClick={() => setTierAnnounce({ tier: tariff.tier, until: Date.now() + 9000 })}>
+              <i aria-hidden="true" /><span>{tierShort}</span>{tierUntil && <span className="petTierUntil">{tierUntil}</span>}
+            </button>}
+            {showWalletChip && <button type="button" className="petWalletChip" data-status={wallet.status} data-low={wallet.low || undefined} title={walletTitle} onClick={() => setIsSettingsOpen(true)} aria-label={walletTitle}>
+              {!walletHasValues ? <span>{walletStatusText}</span> : <>
+                <span>{wallet.toppedUp ?? '—'}</span>
+                {!wallet.grantedNone && <><span className="petWalletSep" aria-hidden="true">·</span><span>{t('赠', 'Bonus')} {wallet.granted ?? '—'}</span></>}
+                {wallet.status === 'stale' && <span className="petWalletStale">{t('非实时', 'not live')}</span>}
+              </>}
+            </button>}
+          </div>}
         </div>
 
-        {!preferences.quiet && !bubbleHidden && status.speech && !isSettingsOpen && (
+        {!preferences.quiet && (!bubbleHidden || tierAnnouncing) && (status.speech || tierAnnouncing) && !isSettingsOpen && (
           <div style={{ fontSize: Math.max(12, preferences.fontSize - 3), top: `${imageTop + Math.round(geometry.imageHeight * 0.1)}px` }} className="speechBubble" data-side={bubbleSide}
             onClick={() => stateMachine.setGalGameMode(true)} role="button" tabIndex={0} title={t('点击进入剧场', 'Click to open the theatre')}
             onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); stateMachine.setGalGameMode(true) } }}>
             <button type="button" className="petBubbleClose" aria-label={t('隐藏闲聊气泡', 'Hide chatter bubble')} onClick={event => { event.stopPropagation(); setBubbleHidden(true) }}>×</button>
-            {contextualSpeech.replaceAll('主人', preferences.userName).replaceAll('大肥鱼', preferences.petName)}
+            {preferences.language === 'zh' ? address(contextualSpeech) : contextualSpeech}
           </div>
         )}
 
@@ -778,7 +905,6 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
             isMaiden={isMaiden}
             isGalGameMode={false}
             mouthOpenRatio={status.mouthOpenRatio}
-            gazeOffset={status.gazeOffset}
             state={status.state}
             box={{ width: geometry.imageWidth, height: geometry.imageHeight, left: geometry.imageLeft }}
             opacity={puppetOpacity}
@@ -793,13 +919,14 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
           className="settingsDrawer"
           data-mode={group.mode}
           data-side={group.side}
+          data-flipping={panelFlipping || undefined}
           role="dialog"
           aria-labelledby="pet-settings-title"
           style={{ position: 'fixed', left: group.panel.x, top: group.panel.y, width: group.panel.width, maxHeight: group.panel.maxHeight }}
           onClick={e => e.stopPropagation()}
           onMouseDown={e => e.stopPropagation()}
         >
-          {SettingsPanel(settingsProps)}
+          {settingsPanel}
         </div>
       )}
     </div>

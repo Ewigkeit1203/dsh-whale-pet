@@ -1,22 +1,23 @@
 /**
  * Balance presentation model (frontend F05).
  *
- * Today the only source is a DOM snapshot of the DSH account settings page
- * (see docs/handover/BALANCE_INTEGRATION.md). This module turns whatever the
- * state machine holds into an honest view model: unknown stays unknown (shown
- * as —), a snapshot that is no longer being refreshed is marked stale, and
- * the low-balance / bowls estimate only runs on fresh, comparable CNY data.
- *
- * When Codex lands the host `BalanceSnapshot` adapter, map its statuses onto
- * `WalletStatus` here; the views do not need to change.
+ * Sources, in order of preference:
+ *  1. host: DSH's account service via account-balance.ts (works without opening settings);
+ *  2. dom:  a snapshot of the DSH account settings card while it is mounted.
+ * Unknown stays unknown (rendered as —), old data is marked stale, and the
+ * bowls / low-balance estimate only runs on fresh, CNY-only data. Currencies
+ * are never added together.
  */
-export type WalletStatus = 'unavailable' | 'live' | 'stale'
+import type { BalanceSnapshot, WalletRead } from './types.js'
+
+export type WalletStatus = 'unavailable' | 'loading' | 'live' | 'stale' | 'signed-out' | 'error'
 
 export interface WalletInput {
+  host: BalanceSnapshot | null
+  /** DOM fallback fields from the state machine. */
   known: boolean
   toppedUp: string
   granted: string
-  /** Last time the source re-read the account page (ms), even if unchanged. */
   checkedAt: number | null
   now: number
   ricePrice: number
@@ -24,38 +25,98 @@ export interface WalletInput {
 
 export interface WalletView {
   status: WalletStatus
+  source: 'host' | 'dom' | 'none'
   /** Display strings; null means not read (render as —). */
   toppedUp: string | null
   granted: string | null
+  /** Granted balance was read and there is none (DSH hides the row in this case). */
+  grantedNone: boolean
   checkedAt: number | null
-  /** Whole bowls left; only for fresh, same-currency CNY data. */
+  /** Whole bowls left; only for fresh CNY data. */
   bowls: number | null
   low: boolean
 }
 
 /** The DOM source refreshes every 2s while the account page is mounted. */
 export const WALLET_FRESH_MS = 10_000
+export const HOST_FRESH_MS = 5 * 60_000
 export const WALLET_LOW_CNY = 2
+
+const SYMBOLS: Record<string, string> = { CNY: '¥', USD: '$' }
+
+/** Two decimals, rounded down, grouped; exact on decimal strings (matches DSH's formatter). */
+export function formatWalletAmount(amount: string, currency: string): string {
+  const symbol = SYMBOLS[currency] ?? currency + ' '
+  const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(amount.trim())
+  if (!match) return amount
+  const [, sign, whole, fraction = ''] = match
+  const cents = (fraction + '00').slice(0, 2)
+  const zero = /^0+$/.test(whole) && /^0*$/.test(fraction)
+  if (zero) return `${symbol}0.00`
+  if (/^0+$/.test(whole) && cents === '00') return sign ? `-${symbol}0.01` : `<${symbol}0.01`
+  const grouped = Number(whole).toLocaleString('en-US')
+  return `${sign}${symbol}${grouped}.${cents}`
+}
 
 export function walletAmount(value: string): { display: string; currency: string; amount: number } | null {
   const text = (value || '').replace(/\s+/g, ' ').trim()
   const match = text.replace(/,/g, '').match(/(-?\d+(?:\.\d+)?)/)
   if (!text || !match) return null
   const symbol = text.match(/[¥￥$€£]/)?.[0]?.replace('￥', '¥') ?? (/CNY|RMB|元/i.test(text) ? '¥' : /USD/i.test(text) ? '$' : '')
-  return { display: text.replace('￥', '¥'), currency: symbol, amount: Number(match[1]) }
+  return { display: text.replace('￥', '¥'), currency: symbol === '¥' ? 'CNY' : symbol === '$' ? 'USD' : symbol, amount: Number(match[1]) }
+}
+
+function readDisplay(read: WalletRead, positiveOnly: boolean): { text: string | null; none: boolean } {
+  if (read.status !== 'ready') return { text: null, none: false }
+  const wallets = positiveOnly ? read.wallets.filter(w => Number(w.amount) > 0) : read.wallets
+  if (wallets.length === 0) return { text: null, none: positiveOnly }
+  return { text: wallets.map(w => formatWalletAmount(w.amount, w.currency)).join(' + '), none: false }
+}
+
+function cnyTotal(reads: WalletRead[]): number | null {
+  let total = 0
+  for (const read of reads) {
+    if (read.status !== 'ready') return null
+    for (const w of read.wallets) {
+      if (w.currency !== 'CNY') return null
+      total += Number(w.amount)
+    }
+  }
+  return Number.isFinite(total) ? total : null
 }
 
 export function walletView(input: WalletInput): WalletView {
-  if (!input.known) return { status: 'unavailable', toppedUp: null, granted: null, checkedAt: null, bowls: null, low: false }
+  const host = input.host
+  // Host wins whenever it is present: signed-out must clear any old DOM snapshot.
+  // A host failure with no amounts yet still lets an open settings card supply them.
+  if (host && !(host.status === 'error' && input.known)) {
+    if (host.status === 'loading' || host.status === 'error' || host.status === 'signed-out') {
+      return { status: host.status, source: 'host', toppedUp: null, granted: null, grantedNone: false, checkedAt: null, bowls: null, low: false }
+    }
+    const fresh = host.status === 'ready' && host.updatedAt !== null && input.now - host.updatedAt <= HOST_FRESH_MS
+    const toppedUp = readDisplay(host.toppedUp, false)
+    // DSH lists only positive bonus wallets; none left means no granted balance.
+    const granted = readDisplay(host.granted, true)
+    const total = fresh && host.toppedUp.status === 'ready' && host.toppedUp.wallets.length > 0 ? cnyTotal([host.toppedUp, host.granted]) : null
+    return {
+      status: toppedUp.text || granted.text || granted.none ? (fresh ? 'live' : 'stale') : 'error',
+      source: 'host', toppedUp: toppedUp.text, granted: granted.text, grantedNone: granted.none, checkedAt: host.updatedAt,
+      bowls: total !== null && input.ricePrice > 0 ? Math.max(0, Math.floor(total / input.ricePrice)) : null,
+      low: total !== null && total < WALLET_LOW_CNY,
+    }
+  }
+  if (!input.known) return { status: 'unavailable', source: 'none', toppedUp: null, granted: null, grantedNone: false, checkedAt: null, bowls: null, low: false }
   const toppedUp = walletAmount(input.toppedUp)
   const granted = walletAmount(input.granted)
   const fresh = input.checkedAt !== null && input.now - input.checkedAt <= WALLET_FRESH_MS
-  const comparable = fresh && toppedUp && granted && toppedUp.currency === '¥' && granted.currency === '¥'
+  const comparable = fresh && toppedUp && granted && toppedUp.currency === 'CNY' && granted.currency === 'CNY'
   const total = comparable ? toppedUp.amount + granted.amount : null
   return {
     status: toppedUp || granted ? (fresh ? 'live' : 'stale') : 'unavailable',
+    source: toppedUp || granted ? 'dom' : 'none',
     toppedUp: toppedUp?.display ?? null,
     granted: granted?.display ?? null,
+    grantedNone: false,
     checkedAt: input.checkedAt,
     bowls: total !== null && input.ricePrice > 0 ? Math.max(0, Math.floor(total / input.ricePrice)) : null,
     low: total !== null && total < WALLET_LOW_CNY,

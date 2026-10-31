@@ -13,6 +13,7 @@ export interface TheatreViewProps {
   petName: string
   puppet: { imgSrc: string; poseName: string; poseScale: number; isMaiden: boolean }
   phase: string | null
+  tier: { tier: 'peak' | 'valley'; label: string; until: string } | null
   uiHidden: boolean
   expanded: boolean
   logOpen: boolean
@@ -77,13 +78,14 @@ export function TheatreView(v: TheatreViewProps) {
     </div>}
 
     <div {...common} data-whale-pet="stage" data-expanded={v.expanded} data-theatre-hidden={v.uiHidden} className={'galgameCharacterCentered ' + (v.puppet.isMaiden ? 'galgameCharacterMaiden' : 'galgameCharacterChibi')}>
-      <LivingPuppet poseName={v.puppet.poseName} poseScale={v.puppet.poseScale} imgSrc={v.puppet.imgSrc} isMaiden={v.puppet.isMaiden} isGalGameMode={true} mouthOpenRatio={status.mouthOpenRatio} gazeOffset={status.gazeOffset} state={status.state} />
+      <LivingPuppet poseName={v.puppet.poseName} poseScale={v.puppet.poseScale} imgSrc={v.puppet.imgSrc} isMaiden={v.puppet.isMaiden} isGalGameMode={true} mouthOpenRatio={status.mouthOpenRatio} state={status.state} />
     </div>
 
     {!v.uiHidden && <div {...common} data-whale-pet="dialogue" data-expanded={v.expanded} className="galgameTheatreBox" onPointerDownCapture={closeMenus} role="dialog" aria-label={t('剧场模式', 'Theatre')}>
       <div className="galgameHeaderBar">
         <div className="galgameIdentity">
           <span className="galgameNameTag">{v.petName}</span>
+          {v.tier && <span className="petTierTag" data-tier={v.tier.tier} title={v.tier.until}>{v.tier.label}</span>}
           {v.phase && <span className="petPhase" role="status">{v.phase}</span>}
         </div>
         <div className="galgameTopControls">

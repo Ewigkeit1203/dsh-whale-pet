@@ -96,6 +96,7 @@ body.dsh-galgame-mode [data-composer-seat] { opacity: 0 !important; transform: t
   font-size: 16px; font-weight: 700; letter-spacing: .04em; color: var(--wp-accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 [data-whale-pet] .galgameNameTag::after { content: ""; position: absolute; left: 0; bottom: 0; width: 22px; height: 2px; border-radius: 2px; background: currentColor; opacity: .7; }
+[data-whale-pet] .petTierTag { padding: 2px 9px; border-radius: 999px; background: var(--tier-soft); color: var(--tier); font-size: 11.5px; font-weight: 650; white-space: nowrap; }
 [data-whale-pet] .petPhase { padding: 2px 9px; border-radius: 999px; background: var(--wp-control); color: var(--wp-ink-2); font-size: 11.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 [data-whale-pet] .galgameTopControls { display: flex; align-items: center; gap: 2px; flex: none; }
 [data-whale-pet] .galgameCloseBtn,
@@ -215,7 +216,7 @@ body.dsh-galgame-mode [data-composer-seat] { opacity: 0 !important; transform: t
 @media (max-width: 760px) {
   [data-whale-pet].comicThoughtBubble { left: 16px; right: 16px; top: 12px; width: auto; height: min(26vh, 200px); border-radius: 18px; }
   [data-whale-pet] .galgameCloseBtn:not(.galgameExit) { width: 32px; padding: 0; justify-content: center; font-size: 0; }
-  [data-whale-pet] .petPhase { display: none; }
+  [data-whale-pet] :is(.petPhase, .petTierTag) { display: none; }
   [data-whale-pet] .galgameHeaderBar { padding-left: 16px; }
   [data-whale-pet] .galgameTextBody { padding: 4px 16px 4px 32px; }
   [data-whale-pet] .galgameQuotes:first-child { left: 10px; }

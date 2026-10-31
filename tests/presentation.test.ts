@@ -48,8 +48,8 @@ test('F04: chibi switching is paused but a stored chibi preference renders maide
 })
 
 test('F05: unknown is never shown as zero, stale is labelled, low balance needs fresh comparable CNY', () => {
-  const base = { known: true, toppedUp: '¥1.20', granted: '¥0.30', checkedAt: 1000, now: 2000, ricePrice: 0.5 }
-  assert.deepEqual(walletView({ ...base, known: false }), { status: 'unavailable', toppedUp: null, granted: null, checkedAt: null, bowls: null, low: false })
+  const base = { host: null, known: true, toppedUp: '¥1.20', granted: '¥0.30', checkedAt: 1000, now: 2000, ricePrice: 0.5 }
+  assert.deepEqual(walletView({ ...base, known: false }), { status: 'unavailable', source: 'none', toppedUp: null, granted: null, grantedNone: false, checkedAt: null, bowls: null, low: false })
   const live = walletView(base)
   assert.equal(live.status, 'live'); assert.equal(live.low, true); assert.equal(live.bowls, 3)
   const stale = walletView({ ...base, now: 1000 + 60_000 })

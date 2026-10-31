@@ -4,6 +4,19 @@
 
 状态：**已定位现有设计限制；正式宿主接入待实施。** 本文未新增可调用 API，也未修复启动余额读取。
 
+<a id="status"></a>
+## 进度 / Status（2026-10-31，Claude Opus 5.5，经产品负责人同意，未发布）
+
+已按 DSH 公开源码（deepseek-ai/deepseek-harness）实现了客户端接入，并参考了 MeteorNOX/DeepSeek-Balance-Whale-Widget 的思路。**尚未在实机 DSH 上验证（B01 的实机部分仍待完成）。**
+
+- **接入方式**：`src/client/index.ts` 用 `ctx.inject(['remote', 'remote.account', 'remoteAccess'], …)` 开一个不阻塞加载的子作用域。服务不存在时不运行，桌宠照常加载。在 `remoteAccess.whenAccess('account/watch', …)` 授权期间，调用 `remote.account.getBalance(client)`，返回 `{ ok, value: AccountDetails['balance'] | null }`。这和 DSH 自带的 `ui-settings-account` 客户端是同一个调用。
+- **客户端元数据**：`locale` 优先取 `locale` 服务的当前语言，`timezoneOffsetSeconds` 取本机时区。`version`：DSH 只把 `DSH_CLIENT_VERSION` 在构建时写进自己的包，没有运行时接口，第三方插件拿不到，所以填 `'unknown'`（`ACCOUNT_CLIENT_VERSION`），不冒充 DSH 版本，也不用插件自身版本。参考插件在宿主端同样回退为 `'unknown'`。如果实机发现平台拒绝该值，需要由宿主端提供真实版本。
+- **B02**：`types.ts` 新增 `BalanceSnapshot` / `WalletRead`，状态机新增 `setHostBalance()`，金额保留十进制字符串。赠金按 DSH 卡片的语义处理：没有正数赠金显示“无”。不同币种不相加；“还能吃几碗”和低余额提醒只在 5 分钟内的人民币数据上计算。
+- **B03**：`account-balance.ts` 的 `AccountBalancePoller`：授权后立即读取，成功后每 60 秒刷新，回到前台和每次回答结束时也刷新（两次至少间隔 15 秒，并发请求合并）；失败按 30 秒起指数退避，最长 5 分钟，并保留上次成功值、标为非实时。撤销授权时 `stop()`：递增请求代次、清除计时器、发布 `null`，迟到的回复会被丢弃。
+- **B04**：读取页面只作后备。限定在 `balanceCard` 内、排除 `[data-whale-pet]`、按行首标签区分充值和赠金；删除了全页金额猜测和 `¥0.00` 补位。宿主服务存在时优先用宿主数据；宿主报错且设置页正好打开时，才用页面值。
+- **没有做的**：API Key 路线（读取 `DEEPSEEK_API_KEY` 并直接请求 `api.deepseek.com/user/balance`）。这需要接触凭据并自行请求平台，违背本文约定，要做须由产品负责人决定、Codex 实现，并参考那个插件的信任边界处理。
+- **测试**：`tests/account-and-peak.test.ts` 覆盖回复解析、轮询、退避、撤销后丢弃迟到回复、切换为未登录时清空。实机验收清单仍按本文第 4 节执行。
+
 <a id="english"></a>
 ## English
 

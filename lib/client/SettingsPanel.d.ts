@@ -4,6 +4,13 @@ import type { WalletView } from './wallet.js';
 export interface SettingsPanelProps {
     p: Preferences;
     wallet: WalletView;
+    tier: {
+        tier: 'peak' | 'valley';
+        name: string;
+        until: string;
+        rule: string;
+        holidayDataMissing: boolean;
+    };
     detached: boolean;
     update: (p: Partial<Preferences>) => void;
     toggleMute: () => void;
@@ -15,5 +22,5 @@ export interface SettingsPanelProps {
     openTheatre: () => void;
 }
 /** Plain render function (no hooks): header, scrollable body, fixed footer. */
-export declare function SettingsPanel({ p, wallet, detached, update, toggleMute, quiet, reset, doctor, notify, close, openTheatre }: SettingsPanelProps): React.JSX.Element;
+export declare function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, quiet, reset, doctor, notify, close, openTheatre }: SettingsPanelProps): React.JSX.Element;
 //# sourceMappingURL=SettingsPanel.d.ts.map

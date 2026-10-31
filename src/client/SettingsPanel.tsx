@@ -5,6 +5,7 @@ import type { WalletView } from './wallet.js'
 export interface SettingsPanelProps {
   p: Preferences
   wallet: WalletView
+  tier: { tier: 'peak' | 'valley'; name: string; until: string; rule: string; holidayDataMissing: boolean }
   detached: boolean
   update: (p: Partial<Preferences>) => void
   toggleMute: () => void
@@ -20,17 +21,23 @@ const SIZE_STEPS = [0.5, 0.75, 1, 1.15, 1.3]
 const SIZE_NAMES = ['XS', 'S', 'M', 'L', 'XL']
 
 /** Plain render function (no hooks): header, scrollable body, fixed footer. */
-export function SettingsPanel({ p, wallet, detached, update, toggleMute, quiet, reset, doctor, notify, close, openTheatre }: SettingsPanelProps) {
+export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, quiet, reset, doctor, notify, close, openTheatre }: SettingsPanelProps) {
   const t = (zh: string, en: string) => p.language === 'en' ? en : zh
   const selected = SIZE_STEPS.reduce((best, v) => Math.abs(v - p.scale) < Math.abs(best - p.scale) ? v : best)
   const sizeIndex = SIZE_STEPS.indexOf(selected)
   const time = (ms: number | null) => ms === null ? '' : new Date(ms).toLocaleTimeString(p.language === 'en' ? 'en-GB' : 'zh-CN', { hour: '2-digit', minute: '2-digit' })
-  const walletBadge = wallet.status === 'live' ? t('同步中', 'Syncing') : wallet.status === 'stale' ? t('非实时', 'Not live') : t('未读取', 'Not read')
+  const walletBadge = ({
+    live: t('已更新', 'Up to date'), stale: t('非实时', 'Not live'), loading: t('读取中', 'Reading'),
+    'signed-out': t('未登录', 'Signed out'), error: t('读取失败', 'Failed'), unavailable: t('未读取', 'Not read'),
+  } as Record<string, string>)[wallet.status]
   const walletNote = wallet.status === 'unavailable'
-    ? t('打开 DSH 账户设置后即可读取；暂不支持启动时自动获取。', 'Open DSH account settings to read it. Reading at startup is not supported yet.')
-    : wallet.status === 'stale'
-      ? t(`上次读取 ${time(wallet.checkedAt)}，之后可能已变化。`, `Last read at ${time(wallet.checkedAt)}; it may have changed.`)
-      : t('读取自 DSH 账户设置页。', 'Read from the DSH account settings page.')
+    ? t('当前 DSH 没有提供账户服务；打开 DSH 账户设置后可从页面读取。', 'This DSH build offers no account service; open DSH account settings to read it from the page.')
+    : wallet.status === 'loading' ? t('正在通过 DSH 账户服务读取……', 'Reading through the DSH account service…')
+    : wallet.status === 'signed-out' ? t('登录 DeepSeek 账号后显示余额。仅使用 API Key 时 DSH 不提供余额。', 'Sign in to a DeepSeek account to see the balance. DSH provides none for API-key-only use.')
+    : wallet.status === 'error' ? t('暂时读不到余额，会自动重试。', 'The balance could not be read; retrying automatically.')
+    : wallet.status === 'stale' ? t(`上次读取 ${time(wallet.checkedAt)}，之后可能已变化。`, `Last read at ${time(wallet.checkedAt)}; it may have changed.`)
+    : wallet.source === 'host' ? t(`来自 DSH 账户服务 · ${time(wallet.checkedAt)} 更新`, `From the DSH account service · updated ${time(wallet.checkedAt)}`)
+    : t('读取自 DSH 账户设置页。', 'Read from the DSH account settings page.')
   const toggle = (checked: boolean, onChange: (checked: boolean) => void, label: string, options: { disabled?: boolean; hint?: string } = {}) =>
     <label className="petToggle" data-disabled={options.disabled || undefined}>
       <span className="petToggleText">{label}{options.hint && <small>{options.hint}</small>}</span>
@@ -50,9 +57,15 @@ export function SettingsPanel({ p, wallet, detached, update, toggleMute, quiet, 
         <div className="petWalletHead"><span>{t('账户余额', 'Account balance')}</span><span className="petWalletBadge">{walletBadge}</span></div>
         <dl className="petWalletFigures">
           <div><dt>{t('充值', 'Topped up')}</dt><dd>{wallet.toppedUp ?? '—'}</dd></div>
-          <div><dt>{t('赠金', 'Granted')}</dt><dd>{wallet.granted ?? '—'}</dd></div>
+          <div><dt>{t('赠金', 'Granted')}</dt><dd>{wallet.grantedNone ? t('无', 'None') : wallet.granted ?? '—'}</dd></div>
         </dl>
         <p className="petWalletNote">{walletNote}{wallet.bowls !== null && <> {t(`约可吃 ${wallet.bowls} 碗饭。`, `About ${wallet.bowls} bowls left.`)}</>}</p>
+      </section>
+
+      <section className="petTierCard" data-tier={tier.tier} aria-label={t('API 计费时段', 'API pricing period')}>
+        <div className="petTierHead"><i aria-hidden="true" /><strong>{tier.name}</strong><span>{tier.tier === 'peak' ? t('高峰价', 'Peak price') : t('半价', 'Half price')}</span></div>
+        <p>{tier.until && <>{tier.until}{t('（本机时间）。', ' (your local time). ')}</>}{tier.rule}</p>
+        {tier.holidayDataMissing && <p className="petTierWarn">{t('今年的法定节假日表尚未更新，节假日可能被误判为高峰。', 'This year’s public-holiday table is not updated yet; a holiday may show as peak.')}</p>}
       </section>
 
       <details className="petSettingsGroup" open>
@@ -99,6 +112,7 @@ export function SettingsPanel({ p, wallet, detached, update, toggleMute, quiet, 
           </button>
           {toggle(p.wandering, wandering => update({ wandering }), t('闲置时散步', 'Wander when idle'), { disabled: p.quiet })}
           {toggle(p.reminders, reminders => update({ reminders }), t('午饭和熬夜提醒', 'Lunch & late-night reminders'))}
+          {toggle(p.peakNotice, peakNotice => update({ peakNotice }), t('峰谷时段播报', 'Peak / off-peak announcements'), { hint: t('切换到梁文峰 / 梁文谷时间时告诉你', 'Tell you when API pricing switches') })}
           <div className="petField"><label className="petFieldLabel" htmlFor="pet-user">{t('怎么称呼你', 'Your name')}</label><input id="pet-user" value={p.userName} maxLength={24} onChange={e => update({ userName: e.target.value })} /></div>
           <div className="petField"><label className="petFieldLabel" htmlFor="pet-name">{t('她的昵称', 'Her nickname')}</label><input id="pet-name" value={p.petName} maxLength={24} onChange={e => update({ petName: e.target.value })} /></div>
           <div className="petField"><label className="petFieldLabel" htmlFor="pet-rice">{t('每碗饭额度', 'Credit per bowl')}</label><input id="pet-rice" type="number" min="0.01" max="100" step="0.1" value={p.ricePrice} onChange={e => { const n = Number(e.target.value); if (n >= .01 && n <= 100) update({ ricePrice: n }) }} /></div>

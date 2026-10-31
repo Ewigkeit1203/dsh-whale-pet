@@ -27,6 +27,10 @@
   --wp-accent-soft: rgba(31, 106, 173, 0.1);
   --wp-warn: #b4471c;
   --wp-warn-soft: rgba(212, 92, 40, 0.12);
+  --wp-peak: #b45309;
+  --wp-peak-soft: rgba(217, 119, 6, 0.12);
+  --wp-valley: #0f766e;
+  --wp-valley-soft: rgba(13, 148, 136, 0.11);
   --wp-shadow: 0 20px 50px -18px rgba(12, 34, 62, 0.38), 0 2px 8px rgba(12, 34, 62, 0.08);
   --wp-shadow-s: 0 6px 18px -6px rgba(12, 34, 62, 0.28);
   --wp-blur: blur(22px) saturate(160%);
@@ -57,6 +61,10 @@
   --wp-accent-soft: rgba(124, 194, 255, 0.14);
   --wp-warn: #ffb08a;
   --wp-warn-soft: rgba(255, 150, 100, 0.14);
+  --wp-peak: #fcc56b;
+  --wp-peak-soft: rgba(252, 197, 107, 0.14);
+  --wp-valley: #6ee0cf;
+  --wp-valley-soft: rgba(110, 224, 207, 0.12);
   --wp-shadow: 0 22px 54px -16px rgba(0, 0, 0, 0.65), 0 2px 8px rgba(0, 0, 0, 0.3);
   --wp-shadow-s: 0 6px 18px -6px rgba(0, 0, 0, 0.55);
   color-scheme: dark;
@@ -161,6 +169,20 @@
 [data-whale-pet] .toolIcon[aria-pressed="true"] { background: var(--wp-accent-soft); color: var(--wp-accent); }
 [data-whale-pet] .toolDivider { width: 1px; height: 16px; margin: 0 3px; background: var(--wp-line-strong); }
 
+[data-whale-pet] .petCrownRow { display: flex; align-items: center; gap: 6px; pointer-events: none; }
+[data-whale-pet] .petTierChip {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 24px; padding: 0 9px 0 8px;
+  border: 1px solid var(--wp-line); border-radius: 999px;
+  background: var(--wp-surface); color: var(--tier, var(--wp-ink));
+  -webkit-backdrop-filter: var(--wp-blur); backdrop-filter: var(--wp-blur);
+  box-shadow: var(--wp-shadow-s);
+  font-size: 11.5px; font-weight: 650; white-space: nowrap; cursor: pointer; pointer-events: auto;
+}
+[data-whale-pet] [data-tier="peak"] { --tier: var(--wp-peak); --tier-soft: var(--wp-peak-soft); }
+[data-whale-pet] [data-tier="valley"] { --tier: var(--wp-valley); --tier-soft: var(--wp-valley-soft); }
+[data-whale-pet] .petTierChip i, [data-whale-pet] .petTierHead i { width: 7px; height: 7px; border-radius: 50%; background: var(--tier); box-shadow: 0 0 0 3px var(--tier-soft); }
+[data-whale-pet] .petTierUntil { color: var(--wp-ink-3); font-weight: 500; font-variant-numeric: tabular-nums; }
 [data-whale-pet] .petWalletChip {
   display: inline-flex; align-items: center; gap: 6px;
   height: 24px; padding: 0 10px;
@@ -258,6 +280,9 @@
 [data-whale-pet] .settingsDrawer[data-side="left"][data-mode="tethered"] { transform-origin: 100% 10%; }
 [data-whale-pet] .settingsDrawer[data-side="right"][data-mode="tethered"] { transform-origin: 0 10%; }
 [data-whale-pet] .settingsDrawer[data-mode="detached"] { box-shadow: var(--wp-shadow), 0 0 0 100vmax rgba(8, 20, 36, .16); }
+/* Moving glass is expensive: drop the blur while dragging, and slide only on a side switch. */
+.petWidget[data-whale-pet][data-dragging] .settingsDrawer { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--wp-surface-solid); }
+[data-whale-pet] .settingsDrawer[data-flipping] { transition: left .24s cubic-bezier(.2, .8, .2, 1), top .24s cubic-bezier(.2, .8, .2, 1); }
 @keyframes wpPanelIn { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
 
 [data-whale-pet] .petPanelHeader { flex: none; display: flex; align-items: center; gap: 8px; padding: 12px 10px 10px 18px; border-bottom: 1px solid var(--wp-line); }
@@ -286,6 +311,12 @@
 [data-whale-pet] .petWalletCard[data-low] dd { color: var(--wp-warn); }
 [data-whale-pet] .petWalletNote { margin: 0; font-size: 11.5px; line-height: 1.5; color: var(--wp-ink-2); }
 
+[data-whale-pet] .petTierCard { margin-top: 10px; padding: 11px 14px; border-radius: var(--wp-radius-m); background: var(--tier-soft); }
+[data-whale-pet] .petTierHead { display: flex; align-items: center; gap: 8px; }
+[data-whale-pet] .petTierHead strong { font-size: 13.5px; color: var(--tier); }
+[data-whale-pet] .petTierHead span { margin-left: auto; padding: 1px 8px; border-radius: 999px; background: var(--wp-raised); color: var(--wp-ink-2); font-size: 11px; font-weight: 600; }
+[data-whale-pet] .petTierCard p { margin: 6px 0 0; font-size: 11.5px; line-height: 1.55; color: var(--wp-ink-2); }
+[data-whale-pet] .petTierCard .petTierWarn { color: var(--wp-warn); }
 [data-whale-pet] .petSettingsGroup { border-bottom: 1px solid var(--wp-line); }
 [data-whale-pet] .petSettingsGroup:last-child { border-bottom: 0; }
 [data-whale-pet] .petSettingsGroup > summary {

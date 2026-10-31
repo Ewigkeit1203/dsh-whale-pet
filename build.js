@@ -143,7 +143,7 @@ function moduleSource(file) {
     .replace(/^\/\/# sourceMappingURL=.*$/gm, '')
 }
 const preferencesSource = moduleSource('preferences.js')
-const pureModules = ['features.js', 'poses.js', 'layout.js', 'wallet.js', 'voice.js', 'experience.js', 'usability.js', 'hitareas.js']
+const pureModules = ['features.js', 'poses.js', 'layout.js', 'wallet.js', 'peak.js', 'account-balance.js', 'voice.js', 'experience.js', 'usability.js', 'hitareas.js']
   .map(moduleSource).join('\n')
 // Views are hook-free render functions or components; order matters only for readability.
 const views = [

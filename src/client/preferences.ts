@@ -16,6 +16,8 @@ export interface Preferences {
   volume: number
   typewriter: boolean
   reminders: boolean
+  /** Announce DeepSeek API peak / off-peak switches (梁文峰 / 梁文谷时间). */
+  peakNotice: boolean
   scale: number
   opacity: number
   reading: 'pages' | 'scroll'
@@ -27,7 +29,7 @@ export interface Preferences {
 }
 export const PREFERENCES_KEY = 'dsh-whale-pet.preferences.v1'
 export function defaultPreferences(): Preferences {
-  const defaults: Preferences = { userName: '你', petName: '大肥鱼', fontSize: 17, speed: 'medium', docked: false, onboardingDone: false, notifications: false, ricePrice: 1, language: 'zh', theme: 'light', wandering: true, quiet: false, muted: true, volume: 0.2, typewriter: true, reminders: true, scale: 1, opacity: 1, reading: 'pages', autoAdvance: false, form: 'maiden', autoGalGame: true }
+  const defaults: Preferences = { userName: '你', petName: '大肥鱼', fontSize: 17, speed: 'medium', docked: false, onboardingDone: false, notifications: false, ricePrice: 1, language: 'zh', theme: 'light', wandering: true, quiet: false, muted: true, volume: 0.2, typewriter: true, reminders: true, peakNotice: true, scale: 1, opacity: 1, reading: 'pages', autoAdvance: false, form: 'maiden', autoGalGame: true }
   return defaults
 }
 export function readPreferences(): Preferences {
@@ -35,7 +37,7 @@ export function readPreferences(): Preferences {
   try {
     const p = JSON.parse(localStorage.getItem(PREFERENCES_KEY) || '{}')
     if (!p || typeof p !== 'object') return defaults
-    for (const key of ['wandering', 'quiet', 'autoAdvance', 'autoGalGame', 'muted', 'typewriter', 'reminders', 'docked', 'onboardingDone', 'notifications'] as const) if (typeof p[key] === 'boolean') defaults[key] = p[key]
+    for (const key of ['wandering', 'quiet', 'autoAdvance', 'autoGalGame', 'muted', 'typewriter', 'reminders', 'peakNotice', 'docked', 'onboardingDone', 'notifications'] as const) if (typeof p[key] === 'boolean') defaults[key] = p[key]
     for (const key of ['userName', 'petName'] as const) if (typeof p[key] === 'string' && p[key].trim()) defaults[key] = p[key].trim().slice(0, 24)
     if (['slow', 'medium', 'fast', 'instant'].includes(p.speed)) defaults.speed = p.speed
     if (Number.isFinite(p.fontSize)) defaults.fontSize = Math.min(24, Math.max(14, p.fontSize))

@@ -7,7 +7,8 @@ export interface LivingPuppetProps {
   isMaiden: boolean
   isGalGameMode: boolean
   mouthOpenRatio: number
-  gazeOffset: GazeOffset
+  /** Unused: gaze is applied through CSS variables. Kept optional for compatibility. */
+  gazeOffset?: GazeOffset
   state: PetState
   poseName?: string
   opacity?: number
@@ -23,12 +24,11 @@ export interface LivingPuppetProps {
  * breathing/talking. The image itself is sized, never transformed, so the
  * clip-path hit area always matches what is drawn.
  */
-export function LivingPuppet({ imgSrc, isMaiden, isGalGameMode, mouthOpenRatio, gazeOffset, state, onMouseDown, opacity = 1, poseName = 'Maid', box, poseScale = 1 }: LivingPuppetProps) {
-  const strength = isGalGameMode ? 0.6 : 1
-  const rotY = gazeOffset.x * 4.5 * strength
-  const rotX = -gazeOffset.y * 3 * strength
-  const shiftX = gazeOffset.x * 5 * strength
-  const shiftY = gazeOffset.y * 3 * strength
+export function LivingPuppet({ imgSrc, isMaiden, isGalGameMode, mouthOpenRatio, state, onMouseDown, opacity = 1, poseName = 'Maid', box, poseScale = 1 }: LivingPuppetProps) {
+  // Gaze parallax reads --gaze-x / --gaze-y, written by the overlay once per frame
+  // outside React, so pointer moves never re-render the overlay.
+  const k = isGalGameMode ? 0.6 : 1
+  const transform = `perspective(${isGalGameMode ? 900 : 700}px) rotateY(calc(var(--gaze-x, 0) * ${4.5 * k}deg)) rotateX(calc(var(--gaze-y, 0) * ${-3 * k}deg)) translate(calc(var(--gaze-x, 0) * ${5 * k}px), calc(var(--gaze-y, 0) * ${3 * k}px))`
   const isTalking = mouthOpenRatio > 0.15 || state === 'ANSWERING'
   const imageStyle: React.CSSProperties = {
     clipPath: HIT_AREAS[poseName],
@@ -39,7 +39,7 @@ export function LivingPuppet({ imgSrc, isMaiden, isGalGameMode, mouthOpenRatio, 
     <div
       className={'puppetRoot' + (isGalGameMode ? ' puppetGalGame' : '')}
       onMouseDown={onMouseDown}
-      style={{ transform: `perspective(${isGalGameMode ? 900 : 700}px) rotateY(${rotY}deg) rotateX(${rotX}deg) translate(${shiftX}px, ${shiftY}px)`, opacity, '--pose-scale': poseScale } as React.CSSProperties}
+      style={{ transform, opacity, '--pose-scale': poseScale } as React.CSSProperties}
     >
       <div className={'puppetCanvas' + (isTalking ? ' canvasTalking' : '')} data-state={state}>
         <img

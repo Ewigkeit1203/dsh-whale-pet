@@ -1,38 +1,44 @@
 /**
  * Balance presentation model (frontend F05).
  *
- * Today the only source is a DOM snapshot of the DSH account settings page
- * (see docs/handover/BALANCE_INTEGRATION.md). This module turns whatever the
- * state machine holds into an honest view model: unknown stays unknown (shown
- * as —), a snapshot that is no longer being refreshed is marked stale, and
- * the low-balance / bowls estimate only runs on fresh, comparable CNY data.
- *
- * When Codex lands the host `BalanceSnapshot` adapter, map its statuses onto
- * `WalletStatus` here; the views do not need to change.
+ * Sources, in order of preference:
+ *  1. host: DSH's account service via account-balance.ts (works without opening settings);
+ *  2. dom:  a snapshot of the DSH account settings card while it is mounted.
+ * Unknown stays unknown (rendered as —), old data is marked stale, and the
+ * bowls / low-balance estimate only runs on fresh, CNY-only data. Currencies
+ * are never added together.
  */
-export type WalletStatus = 'unavailable' | 'live' | 'stale';
+import type { BalanceSnapshot } from './types.js';
+export type WalletStatus = 'unavailable' | 'loading' | 'live' | 'stale' | 'signed-out' | 'error';
 export interface WalletInput {
+    host: BalanceSnapshot | null;
+    /** DOM fallback fields from the state machine. */
     known: boolean;
     toppedUp: string;
     granted: string;
-    /** Last time the source re-read the account page (ms), even if unchanged. */
     checkedAt: number | null;
     now: number;
     ricePrice: number;
 }
 export interface WalletView {
     status: WalletStatus;
+    source: 'host' | 'dom' | 'none';
     /** Display strings; null means not read (render as —). */
     toppedUp: string | null;
     granted: string | null;
+    /** Granted balance was read and there is none (DSH hides the row in this case). */
+    grantedNone: boolean;
     checkedAt: number | null;
-    /** Whole bowls left; only for fresh, same-currency CNY data. */
+    /** Whole bowls left; only for fresh CNY data. */
     bowls: number | null;
     low: boolean;
 }
 /** The DOM source refreshes every 2s while the account page is mounted. */
 export declare const WALLET_FRESH_MS = 10000;
+export declare const HOST_FRESH_MS: number;
 export declare const WALLET_LOW_CNY = 2;
+/** Two decimals, rounded down, grouped; exact on decimal strings (matches DSH's formatter). */
+export declare function formatWalletAmount(amount: string, currency: string): string;
 export declare function walletAmount(value: string): {
     display: string;
     currency: string;

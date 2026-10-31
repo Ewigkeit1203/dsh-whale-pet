@@ -15,6 +15,11 @@ export interface TheatreViewProps {
         isMaiden: boolean;
     };
     phase: string | null;
+    tier: {
+        tier: 'peak' | 'valley';
+        label: string;
+        until: string;
+    } | null;
     uiHidden: boolean;
     expanded: boolean;
     logOpen: boolean;
