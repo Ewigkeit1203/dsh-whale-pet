@@ -1,4 +1,4 @@
-import type { PetForm, PetPose, PetStatusInfo, GazeOffset } from './types.js';
+import type { PetForm, PetPose, PetStatusInfo, GazeOffset, BalanceSnapshot } from './types.js';
 export interface StateMachineListener {
     (status: PetStatusInfo): void;
 }
@@ -25,6 +25,9 @@ export declare class PetStateMachine {
     private balancesKnown;
     private toppedUpBalance;
     private grantedBalance;
+    /** Last time a balance source reported, even when values were unchanged (UI freshness only). */
+    private balancesCheckedAt;
+    private hostBalance;
     private mouthOpenRatio;
     private blinkRatio;
     private gazeOffset;
@@ -51,6 +54,8 @@ export declare class PetStateMachine {
     private scheduleInactivityCheck;
     private triggerInactivitySajiao;
     setBalances(toppedUp: string, granted: string): void;
+    /** Host account balance (see account-balance.ts). null clears it, e.g. when account access is withdrawn. */
+    setHostBalance(snapshot: BalanceSnapshot | null): void;
     setInputFocus(focused: boolean): void;
     setReasoning(reasoning: boolean): void;
     private scheduleNextThinkingPose;

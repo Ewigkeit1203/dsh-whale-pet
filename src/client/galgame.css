@@ -1,813 +1,229 @@
-/* ========================================================
-   GalGame Mode Skin: DeepSeek Whale Maid Visual Novel Theatre
-   Zero intrusion to DSH core.
-   ======================================================== */
-
-body.dsh-galgame-mode {
-  overflow: hidden;
-}
-
-/* Dim & blur the default DSH conversation scroll flow when in GalGame mode */
-body.dsh-galgame-mode [data-slot="conversation.chat.flow"] {
-  opacity: 0.25 !important;
-  filter: blur(3px) !important;
-  pointer-events: none !important;
-  transition: opacity 0.3s ease, filter 0.3s ease;
-}
-
-body.dsh-galgame-mode [data-composer-seat] {
-  opacity: 0 !important;
-  transform: translateY(60px) !important;
-  pointer-events: none !important;
-}
-
-/* ========================================================
-   Full-screen Backdrop: Clicking blank area exits GalGame mode
-   ======================================================== */
-
-.galgameBackdrop {
-  position: fixed !important;
-  inset: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  z-index: 150 !important;
-  background: rgba(0, 0, 0, 0.28) !important;
-  backdrop-filter: blur(5px) !important;
-  -webkit-backdrop-filter: blur(5px) !important;
-  cursor: pointer !important;
-  transition: opacity 0.3s ease !important;
-}
-
-/* ========================================================
-   Character Staging in GalGame Mode (Strictly Centered & Scaled)
-   ======================================================== */
-
-.galgameCharacterCentered {
-  position: fixed !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  z-index: 200 !important;
-  pointer-events: none !important;
-  display: flex !important;
-  justify-content: center !important;
-  align-items: flex-end !important;
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
-  will-change: transform, bottom;
-}
-
-.galgameCharacterMaiden {
-  bottom: 0 !important;
-  filter: drop-shadow(0 0 35px rgba(0, 150, 255, 0.45)) !important;
-}
-
-.galgameCharacterChibi {
-  bottom: clamp(360px, calc(44vh + 15px), 560px) !important;
-  filter: drop-shadow(0 12px 30px rgba(2, 132, 199, 0.55)) !important;
-}
-
-/* ========================================================
-   Comic Thought Bubble: Placed beside character's head
-   Manga style cloud bubble with trailing circles
-   ======================================================== */
-
-.comicThoughtBubble {
-  position: fixed !important;
-  top: clamp(45px, 9vh, 110px) !important;
-  left: clamp(16px, calc(50% + 150px), calc(100vw - 560px)) !important;
-  width: clamp(360px, 32vw, 540px) !important;
-  height: clamp(280px, 36vh, 440px) !important;
-  z-index: 220 !important;
-  pointer-events: auto !important;
-  display: flex !important;
-  flex-direction: column !important;
-  background: rgba(255, 255, 255, 0.94) !important;
-  border: 2.5px solid rgba(56, 189, 248, 0.8) !important;
-  border-radius: 28px 28px 28px 10px !important;
-  box-shadow:
-    0 16px 40px rgba(2, 132, 199, 0.22),
-    0 0 20px rgba(56, 189, 248, 0.25) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  box-sizing: border-box !important;
-  animation: bubbleFloatIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-[data-pet-theme="dark"] .comicThoughtBubble,
-[data-pet-theme="dark"] .comicThoughtBubble {
-  background: rgba(15, 23, 42, 0.95) !important;
-  border-color: rgba(56, 189, 248, 0.8) !important;
-  box-shadow:
-    0 16px 40px rgba(0, 0, 0, 0.7),
-    0 0 25px rgba(56, 189, 248, 0.3) !important;
-}
-
-@keyframes bubbleFloatIn {
-  0% {
-    opacity: 0;
-    transform: scale(0.85) translateY(12px);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-.thoughtBubbleHeader {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  padding: 10px 16px 8px 16px !important;
-  border-bottom: 1px dashed rgba(56, 189, 248, 0.4) !important;
-  flex-shrink: 0 !important;
-}
-
-.thoughtBubbleTitleGroup {
-  display: flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  font-size: 13px !important;
-  font-weight: 700 !important;
-  color: #0369a1 !important;
-}
-
-[data-pet-theme="dark"] .thoughtBubbleTitleGroup,
-[data-pet-theme="dark"] .thoughtBubbleTitleGroup {
-  color: #38bdf8 !important;
-}
-
-.thoughtLivePill {
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  color: #0284c7 !important;
-  background: rgba(224, 242, 254, 0.9) !important;
-  padding: 2px 8px !important;
-  border-radius: 10px !important;
-  animation: livePulse 1.2s ease-in-out infinite alternate !important;
-}
-
-@keyframes livePulse {
-  0% { opacity: 0.6; }
-  100% { opacity: 1; }
-}
-
-.thoughtCloseBtn {
-  background: transparent !important;
-  border: none !important;
-  font-size: 14px !important;
-  color: #94a3b8 !important;
-  cursor: pointer !important;
-  padding: 2px 6px !important;
-  border-radius: 6px !important;
-  transition: all 0.18s ease !important;
-}
-
-.thoughtCloseBtn:hover {
-  color: #ef4444 !important;
-  background: rgba(239, 68, 68, 0.1) !important;
-}
-
-.thoughtBubbleContent {
-  flex: 1 !important;
-  overflow-y: auto !important;
-  padding: 10px 16px 14px 16px !important;
-  font-size: 13px !important;
-  line-height: 1.65 !important;
-  color: #334155 !important;
-  white-space: pre-wrap !important;
-  word-break: break-word !important;
-  scrollbar-width: thin !important;
-}
-
-[data-pet-theme="dark"] .thoughtBubbleContent,
-[data-pet-theme="dark"] .thoughtBubbleContent {
-  color: #cbd5e1 !important;
-}
-
-/* Comic trailing thought bubbles connecting to head */
-.comicTrailNode {
-  position: absolute !important;
-  border-radius: 50% !important;
-  background: rgba(255, 255, 255, 0.95) !important;
-  border: 2px solid rgba(56, 189, 248, 0.8) !important;
-  box-shadow: 0 4px 10px rgba(2, 132, 199, 0.25) !important;
-  pointer-events: none !important;
-}
-
-[data-pet-theme="dark"] .comicTrailNode,
-[data-pet-theme="dark"] .comicTrailNode {
-  background: rgba(15, 23, 42, 0.95) !important;
-  border-color: rgba(56, 189, 248, 0.8) !important;
-}
-
-.trail1 {
-  bottom: -16px !important;
-  left: 28px !important;
-  width: 18px !important;
-  height: 18px !important;
-}
-
-.trail2 {
-  bottom: -30px !important;
-  left: 12px !important;
-  width: 12px !important;
-  height: 12px !important;
-}
-
-.trail3 {
-  bottom: -40px !important;
-  left: -2px !important;
-  width: 7px !important;
-  height: 7px !important;
-}
-
-/* Responsive Thought Bubble position on narrower screens */
-@media (max-width: 1100px) {
-  .comicThoughtBubble {
-    left: auto !important;
-    right: 20px !important;
-    top: 60px !important;
-    width: min(400px, 46vw) !important;
-  }
-}
-
-/* ========================================================
-   GalGame Dialogue Box (Spacious & Immersive Theatre)
-   MUST BE TOP OF EVERYTHING: z-index 999999
-   ======================================================== */
-
-.galgameTheatreBox {
-  position: fixed !important;
-  bottom: 22px !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  width: min(1240px, 96vw) !important;
-  height: clamp(300px, 42vh, 480px) !important;
-  display: flex !important;
-  flex-direction: column !important;
-  z-index: 999999 !important;
-  pointer-events: auto !important;
-  background: rgba(255, 255, 255, 0.95) !important;
-  border: 2px solid rgba(2, 132, 199, 0.4) !important;
-  border-radius: 24px !important;
-  box-shadow:
-    0 18px 50px rgba(0, 0, 0, 0.22),
-    0 0 28px rgba(2, 132, 199, 0.25) !important;
-  backdrop-filter: blur(24px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
-  box-sizing: border-box !important;
-  overflow: hidden !important;
-}
-
-/* Dark theme support */
-[data-pet-theme="dark"] .galgameTheatreBox,
-[data-pet-theme="dark"] .galgameTheatreBox {
-  background: rgba(15, 23, 42, 0.96) !important;
-  border: 2px solid rgba(56, 189, 248, 0.6) !important;
-  box-shadow:
-    0 18px 50px rgba(0, 0, 0, 0.8),
-    0 0 30px rgba(56, 189, 248, 0.35) !important;
-}
-
-/* Dedicated Clean Header Bar: Only NameTag and Close/Exit controls */
-.galgameHeaderBar {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  padding: 12px 22px 8px 22px !important;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
-  background: rgba(248, 250, 252, 0.6) !important;
-  flex-shrink: 0 !important;
-}
-
-[data-pet-theme="dark"] .galgameHeaderBar,
-[data-pet-theme="dark"] .galgameHeaderBar {
-  border-bottom-color: rgba(51, 65, 85, 0.8) !important;
-  background: rgba(30, 41, 59, 0.6) !important;
-}
-
-/* Name Tag Plate */
-.galgameNameTag {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  padding: 5px 16px !important;
-  background: #ffffff !important;
-  border: 1.5px solid #0284c7 !important;
-  border-radius: 10px !important;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif !important;
-  font-size: 15px !important;
-  font-weight: 700 !important;
-  color: #0284c7 !important;
-  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.15) !important;
-  user-select: none !important;
-}
-
-[data-pet-theme="dark"] .galgameNameTag,
-[data-pet-theme="dark"] .galgameNameTag {
-  background: #0f172a !important;
-  border-color: #38bdf8 !important;
-  color: #38bdf8 !important;
-  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.25) !important;
-}
-
-/* Top Action Bar in Dialogue Box */
-.galgameTopControls {
-  display: flex !important;
-  align-items: center !important;
-  gap: 10px !important;
-}
-
-/* Page indicator badge in header */
-.galgamePageBadge {
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  color: #0284c7 !important;
-  background: rgba(224, 242, 254, 0.9) !important;
-  padding: 4px 12px !important;
-  border-radius: 8px !important;
-  user-select: none !important;
-}
-
-[data-pet-theme="dark"] .galgamePageBadge,
-[data-pet-theme="dark"] .galgamePageBadge {
-  background: rgba(14, 116, 144, 0.4) !important;
-  color: #38bdf8 !important;
-}
-
-.galgameCloseBtn {
-  background: rgba(239, 68, 68, 0.12) !important;
-  border: 1px solid rgba(239, 68, 68, 0.4) !important;
-  border-radius: 8px !important;
-  padding: 5px 14px !important;
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  color: #dc2626 !important;
-  cursor: pointer !important;
-  transition: all 0.2s ease !important;
-  user-select: none !important;
-}
-
-.galgameCloseBtn:hover {
-  background: #ef4444 !important;
-  border-color: #ef4444 !important;
-  color: #ffffff !important;
-  transform: translateY(-1px) !important;
-}
-
-[data-pet-theme="dark"] .galgameCloseBtn,
-[data-pet-theme="dark"] .galgameCloseBtn {
-  background: rgba(239, 68, 68, 0.25) !important;
-  border-color: rgba(248, 113, 113, 0.5) !important;
-  color: #fca5a5 !important;
-}
-
-[data-pet-theme="dark"] .galgameCloseBtn:hover,
-[data-pet-theme="dark"] .galgameCloseBtn:hover {
-  background: #ef4444 !important;
-  border-color: #ef4444 !important;
-  color: #ffffff !important;
-}
-
-/* Clickable & Spacious Dialogue Body */
-.galgameTextBody {
-  min-height: 0 !important;
-  flex: 1 !important;
-  overflow-y: auto !important;
-  padding: 16px 26px !important;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif !important;
-  font-size: 18px !important;
-  line-height: 1.75 !important;
-  color: #0f172a !important;
-  word-break: break-word !important;
-  white-space: pre-wrap !important;
-  scrollbar-width: thin !important;
-  position: relative !important;
-  cursor: pointer !important;
-}
-
-[data-pet-theme="dark"] .galgameTextBody,
-[data-pet-theme="dark"] .galgameTextBody {
-  color: #f1f5f9 !important;
-}
-
-.galgameQuotes {
-  font-size: 24px !important;
-  font-weight: 700 !important;
-  color: #0284c7 !important;
-  margin: 0 4px !important;
-}
-
-[data-pet-theme="dark"] .galgameQuotes,
-[data-pet-theme="dark"] .galgameQuotes {
-  color: #38bdf8 !important;
-}
-
-.galgameCursor {
-  display: inline-block !important;
-  width: 9px !important;
-  height: 20px !important;
-  background-color: #0284c7 !important;
-  margin-left: 4px !important;
-  vertical-align: middle !important;
-  animation: cursorBlink 0.9s infinite !important;
-}
-
-[data-pet-theme="dark"] .galgameCursor,
-[data-pet-theme="dark"] .galgameCursor {
-  background-color: #38bdf8 !important;
-}
-
-@keyframes cursorBlink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
-
-/* GalGame Click to Continue / Next Paragraph Indicator */
-.galgamePagePrompt {
-  position: absolute !important;
-  bottom: 74px !important;
-  right: 26px !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  color: #0284c7 !important;
-  background: rgba(224, 242, 254, 0.92) !important;
-  padding: 5px 14px !important;
-  border-radius: 14px !important;
-  cursor: pointer !important;
-  user-select: none !important;
-  animation: promptBounce 1.2s ease-in-out infinite !important;
-  border: 1px solid rgba(56, 189, 248, 0.5) !important;
-  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.18) !important;
-  transition: all 0.2s ease !important;
-}
-
-.galgamePagePrompt:hover {
-  background: #0284c7 !important;
-  color: #ffffff !important;
-  transform: translateY(-2px) scale(1.02) !important;
-}
-
-[data-pet-theme="dark"] .galgamePagePrompt,
-[data-pet-theme="dark"] .galgamePagePrompt {
-  background: rgba(15, 23, 42, 0.9) !important;
-  border-color: rgba(56, 189, 248, 0.6) !important;
-  color: #38bdf8 !important;
-}
-
-[data-pet-theme="dark"] .galgamePagePrompt:hover,
-[data-pet-theme="dark"] .galgamePagePrompt:hover {
-  background: #38bdf8 !important;
-  color: #0f172a !important;
-}
-
-@keyframes promptBounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
-}
-
-/* Integrated Composer Area inside the Theatre Box */
-.galgameComposerArea {
-  padding: 12px 24px 16px 24px !important;
-  border-top: 1px solid rgba(226, 232, 240, 0.8) !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 12px !important;
-  background: rgba(248, 250, 252, 0.6) !important;
-  border-bottom-left-radius: 22px !important;
-  border-bottom-right-radius: 22px !important;
-}
-
-[data-pet-theme="dark"] .galgameComposerArea,
-[data-pet-theme="dark"] .galgameComposerArea {
-  border-top-color: rgba(51, 65, 85, 0.8) !important;
-  background: rgba(15, 23, 42, 0.7) !important;
-}
-
-.galgameInput {
-  min-width: 0 !important;
-  flex: 1 !important;
-  background: #ffffff !important;
-  border: 1.5px solid #cbd5e1 !important;
-  border-radius: 12px !important;
-  padding: 11px 18px !important;
-  font-size: 15px !important;
-  color: #0f172a !important;
-  outline: none !important;
-  transition: border-color 0.2s, box-shadow 0.2s !important;
-}
-
-.galgameInput:focus {
-  border-color: #0284c7 !important;
-  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15) !important;
-}
-
-[data-pet-theme="dark"] .galgameInput,
-[data-pet-theme="dark"] .galgameInput {
-  background: #1e293b !important;
-  border-color: #475569 !important;
-  color: #f8fafc !important;
-}
-
-[data-pet-theme="dark"] .galgameInput:focus,
-[data-pet-theme="dark"] .galgameInput:focus {
-  border-color: #38bdf8 !important;
-  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2) !important;
-}
-
-.galgameSendBtn {
-  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
-  border: none !important;
-  border-radius: 12px !important;
-  color: #ffffff !important;
-  padding: 11px 24px !important;
-  font-size: 15px !important;
-  font-weight: 600 !important;
-  cursor: pointer !important;
-  transition: transform 0.15s, box-shadow 0.2s !important;
-  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3) !important;
-}
-
-.galgameSendBtn:hover {
-  transform: translateY(-1px) !important;
-  box-shadow: 0 6px 16px rgba(2, 132, 199, 0.45) !important;
-}
-
-.galgameSendBtn:active {
-  transform: translateY(1px) !important;
-}
-/* Keep the thought bubble and composer usable in narrow and short windows. */
-@media (max-width: 640px) {
-  .comicThoughtBubble {
-    left: 12px !important;
-    top: 12px !important;
-    width: calc(100vw - 24px) !important;
-    height: min(28vh, 220px) !important;
-  }
-  .galgameTheatreBox {
-    bottom: 10px !important;
-    height: min(46vh, 380px) !important;
-    border-radius: 18px !important;
-  }
-  .galgameTextBody { padding: 12px 16px !important; font-size: 16px !important; }
-  .galgameComposerArea { padding: 8px !important; gap: 6px !important; }
-  .galgameInput { padding: 10px !important; }
-  .galgameSendBtn { padding: 10px 14px !important; }
-  .comicTrailNode { display: none !important; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  [data-whale-pet], [data-whale-pet] *, [data-whale-pet]::after {
-    animation: none !important;
-    transition: none !important;
-    scroll-behavior: auto !important;
-  }
-}
-/* Plugin-only palettes: no attributes or theme styles are applied to the host. */
-[data-whale-pet][data-pet-theme] {
-  --pet-glass: rgba(247, 251, 255, .76);
-  --pet-ink: #18324c;
-  --pet-muted: #516b83;
-  --pet-line: rgba(140, 183, 215, .48);
-  --pet-control: rgba(232, 243, 253, .66);
-  --pet-accent: #126fbb;
-  color: var(--pet-ink);
-  color-scheme: light;
-}
-[data-whale-pet][data-pet-theme="dark"] {
-  --pet-glass: rgba(19, 32, 51, .8);
-  --pet-ink: #edf5ff;
-  --pet-muted: #aac0d6;
-  --pet-line: rgba(144, 190, 227, .26);
-  --pet-control: rgba(50, 74, 103, .62);
-  --pet-accent: #83cbff;
-  color-scheme: dark;
-}
-[data-whale-pet] :is(.toolbar, .settingsDrawer, .speechBubble, .balanceHeaderBar),
-[data-whale-pet].galgameTheatreBox, [data-whale-pet].comicThoughtBubble {
-  background: var(--pet-glass) !important;
-  color: var(--pet-ink) !important;
-  border: 1px solid var(--pet-line) !important;
-  backdrop-filter: blur(24px) saturate(145%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(145%) !important;
-  box-shadow: 0 18px 50px rgba(5, 25, 50, .18), inset 0 1px 0 rgba(255,255,255,.18) !important;
-  transition: background-color .3s ease, color .3s ease, border-color .3s ease !important;
-}
-[data-whale-pet] :is(.galgameTextBody, .thoughtBubbleContent, .drawerLabel, .balanceVal, .thoughtBubbleTitleGroup, .drawerHeader) {
-  color: var(--pet-ink) !important;
-}
-[data-whale-pet] :is(.galgameComposerArea, .galgameHeaderBar) { background: transparent !important; border-color: var(--pet-line) !important; }
-[data-whale-pet] :is(.toolBtn, .drawerBtn, .drawerFullBtn, .galgameCloseBtn, .galgameInput, .galgamePageBadge, .galgamePagePrompt) {
-  background: var(--pet-control) !important;
-  color: var(--pet-ink) !important;
-  border-color: var(--pet-line) !important;
-}
-[data-whale-pet] .drawerBtnActive { background: var(--pet-accent) !important; color: #fff !important; }
-[data-whale-pet] .speechBubble::after { border-left-color: var(--pet-line) !important; }
-[data-whale-pet] .settingsDrawer { width: 290px; max-height: min(620px, 72vh); overflow-y: auto; box-sizing: border-box; }
-[data-whale-pet] .petPreferenceGrid { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 12px 8px; font-size: 12px; padding: 4px 0 14px; border-bottom: 1px solid var(--pet-line); }
-[data-whale-pet] .petPreferenceGrid input[type="range"] { width: 100%; accent-color: var(--pet-accent); }
-[data-whale-pet] .petPreferenceGrid input[type="checkbox"] { accent-color: var(--pet-accent); }
-[data-whale-pet] .petThemeSwitch { display: flex; padding: 3px; gap: 3px; background: var(--pet-control); border: 1px solid var(--pet-line); border-radius: 12px; }
-[data-whale-pet] .petThemeSwitch button { flex: 1; border: 0; border-radius: 9px; background: transparent; color: var(--pet-muted); cursor: pointer; min-height: 32px; transition: background .25s, color .25s, transform .25s; }
-[data-whale-pet] .petThemeSwitch button.selected { color: var(--pet-ink); background: var(--pet-glass); box-shadow: 0 2px 7px #0002; transform: translateY(-1px); }
-[data-whale-pet] .petPhase { font-size: 12px; color: var(--pet-muted); }
-[data-whale-pet] button:disabled { opacity: .4; cursor: default !important; }
-[data-whale-pet] .galgameTopControls { flex-wrap: wrap; gap: 6px !important; }
-@supports not (backdrop-filter: blur(1px)) {
-  [data-whale-pet][data-pet-theme] { --pet-glass: #f5f9ff; }
-  [data-whale-pet][data-pet-theme="dark"] { --pet-glass: #15243a; }
-}
-@media (prefers-reduced-motion: reduce) {
-  [data-whale-pet][data-pet-theme] *, [data-whale-pet][data-pet-theme] {
-    animation: none !important;
-    transition: none !important;
-  }
-}
-
-/* Controls retain their physical size while only the character changes size. */
-[data-whale-pet] .petSizeSteps { display: flex; gap: 2px; }
-[data-whale-pet] .petSizeSteps button { display: flex; flex: 1; flex-direction: column; align-items: center; gap: 3px; padding: 6px 1px; min-width: 0; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--pet-muted); cursor: pointer; }
-[data-whale-pet] .petSizeSteps button small { font-size: 9px; }
-[data-whale-pet] .petSizeSteps button[aria-pressed="true"] { color: var(--pet-accent); border-color: var(--pet-line); background: var(--pet-control); }
-[data-whale-pet] .speechBubble { right: calc(100% - 26px); top: 22px; max-width: min(200px, calc(100vw - 32px)); }
-[data-whale-pet] .speechBubble[data-side="right"] { right: auto; left: calc(100% - 26px); }
-[data-whale-pet] .speechBubble[data-side="right"]::after { left: auto; right: 100%; border-width: 6px 8px 6px 0; border-color: transparent var(--pet-line) transparent transparent !important; }
-[data-whale-pet] .settingsDrawer { animation: none; }
-/* Discrete slider, visual-novel controls and companion feedback. */
-[data-whale-pet] .petSizeSlider { min-width: 0; }
-[data-whale-pet] .petSizeSlider input { width: 100%; accent-color: var(--pet-accent); cursor: ew-resize; }
-[data-whale-pet] .petSizeSlider > div { display: flex; justify-content: space-between; font-size: 9px; color: var(--pet-muted); }
-[data-whale-pet] .petCodeCard { display: block; white-space: normal; border: 1px solid var(--pet-line); background: var(--pet-control); border-radius: 12px; margin: 10px 0; overflow: hidden; font-size: 13px; }
-[data-whale-pet] .petCodeCard header { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--pet-line); }
-[data-whale-pet] .petCodeCard button, [data-whale-pet].petLog button { border: 1px solid var(--pet-line); background: var(--pet-glass); color: var(--pet-ink); border-radius: 8px; padding: 5px 10px; cursor: pointer; }
-[data-whale-pet] .petCodeCard pre { margin: 0; max-height: 260px; overflow: auto; padding: 12px; white-space: pre; user-select: text; }
-[data-whale-pet] .petListLine { display: inline-block; padding-left: 10px; }
-[data-whale-pet].petLog { position: fixed; inset: 7vh max(16px, calc((100vw - 850px) / 2)); z-index: 1000002; padding: 20px; overflow: auto; border-radius: 20px; border: 1px solid var(--pet-line); background: var(--pet-glass); color: var(--pet-ink); backdrop-filter: blur(28px); box-shadow: 0 20px 70px #0005; }
-[data-whale-pet].petLog > header { display: flex; justify-content: space-between; align-items: center; position: sticky; top: -20px; background: var(--pet-glass); padding: 12px 0; }
-[data-whale-pet].petLog > article { margin: 16px 0; padding: 14px; border: 1px solid var(--pet-line); border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
-[data-whale-pet].petLog > article > strong { display: block; color: var(--pet-accent); margin-bottom: 8px; }
-[data-whale-pet].petRestore { position: fixed; z-index: 1000001; bottom: 24px; left: 50%; transform: translateX(-50%); padding: 10px 20px; background: var(--pet-glass); color: var(--pet-ink); border: 1px solid var(--pet-line); border-radius: 24px; cursor: pointer; }
-.petToast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 1000005; padding: 12px 20px; color: white; background: #16334ce8; border-radius: 16px; pointer-events: none; }
-[data-whale-pet] .balanceHeaderBar[data-low="true"] { border-color: #f09898 !important; color: #d44 !important; }
-[data-whale-pet] .balanceHeaderBar[data-low="true"] .balanceVal { color: #df6969 !important; }
-[data-whale-pet] .petHearts { position: absolute; top: 5%; left: 40%; z-index: 4; pointer-events: none; color: #f38cbd; font-size: 24px; animation: petHearts 2s ease-out both; }
-@keyframes petHearts { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-45px); opacity: 0; } }
-[data-whale-pet] .petReaction-dizzy { animation: petDizzy .45s ease-in-out 5; transform-origin: center bottom; }
-@keyframes petDizzy { 0%,100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
-[data-whale-pet] .petReaction-float { animation: petFloat .8s ease-out; }
-@keyframes petFloat { 0% { transform: translateY(0); } 30% { transform: translateY(-10px); } 65% { transform: translateY(3px); } 100% { transform: translateY(0); } }
-@media (prefers-reduced-motion: reduce) { [data-whale-pet] .petHearts, [data-whale-pet] .petReaction-dizzy, [data-whale-pet] .petReaction-float { animation: none !important; } }
-[data-whale-pet].petSettling { transition: left .24s cubic-bezier(.15,.7,.2,1), top .24s cubic-bezier(.15,.7,.2,1) !important; }
-[data-whale-pet] .petSpriteSize[data-sleepy="true"] { filter: saturate(.85) brightness(.96); }
-@media (prefers-reduced-motion: reduce) { [data-whale-pet].petSettling { transition: none !important; } }
-/* The theatre header contains only the actions used while reading. */
-[data-whale-pet] .galgameTopControls { flex-wrap: nowrap; gap: 8px !important; }
-[data-whale-pet] .galgameHeaderBar { padding: 10px 18px !important; min-height: 48px; box-sizing: border-box; }
-[data-whale-pet] .galgameCloseBtn { font-size: 13px !important; padding: 7px 12px !important; white-space: nowrap; }
-[data-whale-pet] .galgameCloseBtn[aria-pressed="true"] { color: var(--pet-accent) !important; border-color: var(--pet-accent) !important; }
+/* ==========================================================================
+   大肥鱼 · theatre (visual-novel) mode
+   Host-facing rules are limited to body.dsh-galgame-mode and are removed on
+   exit. Everything else is scoped to plugin roots.
+   ========================================================================== */
+
+body.dsh-galgame-mode { overflow: hidden; }
+body.dsh-galgame-mode [data-slot="conversation.chat.flow"] { opacity: .25 !important; filter: blur(3px) !important; pointer-events: none !important; transition: opacity .3s ease, filter .3s ease; }
+body.dsh-galgame-mode [data-composer-seat] { opacity: 0 !important; transform: translateY(60px) !important; pointer-events: none !important; }
+
+/* Shared geometry for the stage, thought bubble and dialogue box */
+[data-whale-pet]:is(.galgameBackdrop, .galgameCharacterCentered, .galgameTheatreBox, .comicThoughtBubble) {
+  --box-bottom: 20px;
+  --box-h: clamp(240px, 38vh, 360px);
+  --head-room: max(26vh, 190px);
+}
+[data-whale-pet][data-expanded="true"]:is(.galgameCharacterCentered, .galgameTheatreBox, .comicThoughtBubble) {
+  --box-h: min(900px, calc(100vh - var(--head-room) - var(--box-bottom)));
+}
+
+[data-whale-pet].galgameBackdrop {
+  position: fixed; inset: 0; z-index: 150;
+  background: radial-gradient(120% 90% at 50% 100%, rgba(12, 40, 72, .38), rgba(6, 16, 30, .3));
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  cursor: pointer;
+}
+[data-whale-pet].galgameBackdrop[data-pet-theme="dark"] { background: radial-gradient(120% 90% at 50% 100%, rgba(10, 30, 56, .55), rgba(2, 8, 18, .5)); }
+
+/* Stage: feet at the bottom, head clear of the dialogue box. */
+[data-whale-pet].galgameCharacterCentered {
+  --stage-h: min(92vh, 1100px);
+  position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 200;
+  pointer-events: none; overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 82%, transparent 98%);
+  mask-image: linear-gradient(to bottom, #000 82%, transparent 98%);
+}
+[data-whale-pet].galgameCharacterCentered[data-expanded="true"] {
+  --stage-h: 92vh;
+  bottom: auto; height: calc(2vh + 92vh);
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(var(--head-room) - 2vh), transparent calc(var(--head-room) + 10vh));
+  mask-image: linear-gradient(to bottom, #000 calc(var(--head-room) - 2vh), transparent calc(var(--head-room) + 10vh));
+}
+[data-whale-pet].galgameCharacterCentered[data-theatre-hidden="true"] { --stage-h: 94vh; bottom: 0; height: auto; -webkit-mask-image: none; mask-image: none; }
+[data-whale-pet].galgameCharacterChibi { --stage-h: 60vh; }
+
+/* Thought bubble beside the head */
+[data-whale-pet].comicThoughtBubble {
+  position: fixed; z-index: 220;
+  top: max(24px, 6vh); left: min(calc(50% + 19vh), calc(100vw - 16px - min(460px, 34vw)));
+  width: min(460px, 34vw); max-width: calc(100vw - 32px);
+  height: min(380px, calc(100vh - var(--box-h) - var(--box-bottom) - max(24px, 6vh) - 20px));
+  min-height: 120px;
+  display: flex; flex-direction: column;
+  border-radius: 22px 22px 22px 8px;
+  background: var(--wp-surface-strong); border: 1px solid var(--wp-line);
+  box-shadow: var(--wp-shadow);
+  -webkit-backdrop-filter: var(--wp-blur); backdrop-filter: var(--wp-blur);
+  animation: wpThoughtIn .3s cubic-bezier(.2, .8, .2, 1);
+}
+[data-whale-pet].comicThoughtBubble[data-expanded="true"] { top: 12px; height: calc(var(--head-room) - 24px); }
+@keyframes wpThoughtIn { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+[data-whale-pet] .thoughtBubbleHeader { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 6px 16px; border-bottom: 1px dashed var(--wp-line-strong); }
+[data-whale-pet] .thoughtBubbleTitleGroup { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 650; color: var(--wp-ink-2); }
+[data-whale-pet] .thoughtDot { width: 7px; height: 7px; border-radius: 50%; background: var(--wp-accent); box-shadow: 0 0 0 3px var(--wp-accent-soft); }
+[data-whale-pet] .thoughtLivePill { padding: 1px 8px; border-radius: 999px; background: var(--wp-accent-soft); color: var(--wp-accent); font-size: 11px; animation: wpPulse 1.2s ease-in-out infinite alternate; }
+@keyframes wpPulse { from { opacity: .55; } to { opacity: 1; } }
+[data-whale-pet] .thoughtBubbleContent {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  padding: 10px 16px 14px;
+  font-size: calc(var(--pet-text-size, 17px) * .82); line-height: 1.7;
+  color: var(--wp-ink-2); white-space: pre-wrap; overflow-wrap: anywhere;
+  scrollbar-width: thin; scrollbar-color: var(--wp-line-strong) transparent;
+}
+
+/* Dialogue box */
+[data-whale-pet].galgameTheatreBox {
+  position: fixed; z-index: 999999;
+  left: 50%; bottom: var(--box-bottom); transform: translateX(-50%);
+  width: min(1100px, calc(100vw - 32px)); height: var(--box-h); min-height: 200px;
+  display: flex; flex-direction: column;
+  border-radius: 20px;
+  background: var(--wp-surface-strong); border: 1px solid var(--wp-line);
+  box-shadow: var(--wp-shadow);
+  -webkit-backdrop-filter: var(--wp-blur); backdrop-filter: var(--wp-blur);
+  font-family: var(--wp-font);
+  transition: height .3s cubic-bezier(.2, .8, .2, 1);
+}
+[data-whale-pet].galgameTheatreBox::before {
+  content: ""; position: absolute; left: 24px; right: 24px; top: -1px; height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--wp-accent), transparent); opacity: .55;
+}
+[data-whale-pet] .galgameHeaderBar { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 50px; padding: 8px 12px 6px 22px; }
+[data-whale-pet] .galgameIdentity { display: flex; align-items: center; gap: 10px; min-width: 0; }
+[data-whale-pet] .galgameNameTag {
+  position: relative; padding-bottom: 3px;
+  font-size: 16px; font-weight: 700; letter-spacing: .04em; color: var(--wp-accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+[data-whale-pet] .galgameNameTag::after { content: ""; position: absolute; left: 0; bottom: 0; width: 22px; height: 2px; border-radius: 2px; background: currentColor; opacity: .7; }
+[data-whale-pet] .petTierTag { padding: 2px 9px; border-radius: 999px; background: var(--tier-soft); color: var(--tier); font-size: 11.5px; font-weight: 650; white-space: nowrap; }
+[data-whale-pet] .petPhase { padding: 2px 9px; border-radius: 999px; background: var(--wp-control); color: var(--wp-ink-2); font-size: 11.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+[data-whale-pet] .galgameTopControls { display: flex; align-items: center; gap: 2px; flex: none; }
+[data-whale-pet] .galgameCloseBtn,
+[data-whale-pet] .petTheatreMore > summary {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 10px;
+  border: 0; border-radius: var(--wp-radius-s);
+  background: transparent; color: var(--wp-ink-2);
+  font-size: 12.5px; font-weight: 550; white-space: nowrap; cursor: pointer;
+  transition: background-color .15s ease, color .15s ease;
+}
+[data-whale-pet] .galgameCloseBtn:hover, [data-whale-pet] .petTheatreMore > summary:hover { background: var(--wp-control-hover); color: var(--wp-ink); }
+[data-whale-pet] .galgameCloseBtn[aria-pressed="true"] { background: var(--wp-accent-soft); color: var(--wp-accent); }
+[data-whale-pet] .galgameExit { margin-left: 6px; }
+[data-whale-pet] .galgameExit:hover { background: var(--wp-warn-soft); color: var(--wp-warn); }
 [data-whale-pet] .petTheatreMore { position: relative; }
-[data-whale-pet] .petTheatreMore > summary { list-style: none; cursor: pointer; padding: 8px 12px; border-radius: 9px; letter-spacing: 2px; color: var(--pet-muted); }
+[data-whale-pet] .petTheatreMore > summary { list-style: none; width: 32px; padding: 0; justify-content: center; }
 [data-whale-pet] .petTheatreMore > summary::-webkit-details-marker { display: none; }
-[data-whale-pet] .petTheatreMore[open] > summary { background: var(--pet-control); color: var(--pet-ink); }
-[data-whale-pet] .petMorePanel { position: absolute; top: calc(100% + 8px); right: 0; z-index: 10; width: 220px; display: flex; flex-direction: column; gap: 4px; padding: 8px; background: var(--pet-glass); border: 1px solid var(--pet-line); border-radius: 14px; backdrop-filter: blur(30px); box-shadow: 0 12px 36px #0003; }
-[data-whale-pet] .petMorePanel button { background: transparent; border: none; text-align: left; padding: 10px 12px; color: var(--pet-ink); border-radius: 8px; cursor: pointer; font-size: 13px; }
-[data-whale-pet] .petMorePanel button:hover { background: var(--pet-control); }
-[data-whale-pet] .petReadingNav { display: flex; gap: 12px; align-items: center; padding: 4px 24px 8px; color: var(--pet-muted); font-size: 12px; }
-[data-whale-pet] .petReadingNav button { color: var(--pet-muted); background: transparent; border: 0; cursor: pointer; }
-[data-whale-pet] .petSizeSlider { position: relative; padding-bottom: 10px; }
-[data-whale-pet] .petSizeSlider input { margin: 0; display: block; }
-[data-whale-pet] .petSizeDots { display: flex; align-items: center; justify-content: space-between; margin: 5px 7px 0; height: 7px; pointer-events: none; }
-[data-whale-pet] .petSizeDots i { width: 4px; height: 4px; background: var(--pet-muted); border-radius: 50%; opacity: .55; }
-[data-whale-pet] .petSizeDots i.default { width: 7px; height: 7px; opacity: 1; background: var(--pet-accent); }
-[data-whale-pet] .petPreferenceGrid > label:has(input[type="checkbox"]) { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; line-height: 1.5; }
-@media (max-width: 640px) {
-  [data-whale-pet] .petPhase { display: none; }
-  [data-whale-pet] .galgameHeaderBar { padding: 8px !important; }
-  [data-whale-pet] .galgameCloseBtn { padding: 7px 8px !important; }
+[data-whale-pet] .petTheatreMore[open] > summary { background: var(--wp-control-hover); color: var(--wp-ink); }
+[data-whale-pet] .petMorePanel {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 10;
+  width: 232px; max-height: min(60vh, 360px); overflow-y: auto;
+  display: flex; flex-direction: column; gap: 1px; padding: 6px;
+  border-radius: var(--wp-radius-m);
+  background: var(--wp-surface-solid); border: 1px solid var(--wp-line);
+  box-shadow: var(--wp-shadow);
 }
-[data-whale-pet][data-pet-theme="light"] { --pet-menu-surface: rgba(246, 250, 255, .97); }
-[data-whale-pet][data-pet-theme="dark"] { --pet-menu-surface: rgba(23, 36, 55, .97); }
-[data-whale-pet] .petMorePanel { background: var(--pet-menu-surface); }
-[data-whale-pet] summary:focus-visible { outline: 2px solid var(--pet-accent); outline-offset: 2px; }
-/* v0.4 usability: controls stay readable and interactive while artwork lets clicks through. */
-[data-whale-pet="widget"], [data-whale-pet="widget"] :is(.characterWrapper,.petSpriteSize,.puppetRoot,.puppetCanvas) { pointer-events: none; }
-[data-whale-pet="widget"] .characterBase { pointer-events: auto; }
-[data-whale-pet="widget"] :is(.settingsDrawer,.petOnboarding,.petLog) { pointer-events: auto; }
-[data-whale-pet][data-ghost="true"] .characterBase { pointer-events: none !important; }
-[data-whale-pet][data-paused="true"] *, [data-whale-pet][data-paused="true"] { animation-play-state: paused !important; }
-[data-whale-pet][data-docked="true"] { left: auto !important; right: 12px; top: auto !important; bottom: -150px; }
-[data-whale-pet][data-docked="true"] .settingsDrawer { bottom: auto; }
-[data-whale-pet] .settingsDrawer { padding-bottom: 20px; overscroll-behavior: contain; scrollbar-width: thin; }
-[data-whale-pet] .petSettingsGroup { border-bottom: 1px solid var(--pet-line); padding: 8px 0; }
-[data-whale-pet] .petSettingsGroup > summary { padding: 8px 0; font-size: 13px; font-weight: 650; cursor: pointer; }
-[data-whale-pet] .petSettingsGroup .petPreferenceGrid { padding: 12px 0; border: 0; grid-template-columns: 100px minmax(0,1fr); }
-[data-whale-pet] .petPreferenceGrid :is(input:not([type="checkbox"]),select) { width: 100%; min-width: 0; box-sizing: border-box; }
-[data-whale-pet] .petPreferenceGrid input[type="range"] { margin: 0; padding: 0; height: 24px; accent-color: #1677b8; }
-[data-whale-pet] .petSizeSlider { padding: 0 0 12px; }
-[data-whale-pet] .petWide { grid-column: 1/-1; padding: 10px; text-align: left; }
-[data-whale-pet] .petSettingsGroup :is(button,select,input:not([type="range"]):not([type="checkbox"])) { background: var(--pet-control); color: var(--pet-ink); border: 1px solid #6c859c; border-radius: 8px; min-height: 32px; }
-[data-whale-pet] input[type="checkbox"] { appearance: none; width: 16px; height: 16px; border: 2px solid #71869b; border-radius: 4px; flex-shrink: 0; display: inline-grid; place-content: center; }
-[data-whale-pet] input[type="checkbox"]:checked { background: #1677b8; border-color: #1677b8; }
-[data-whale-pet] input[type="checkbox"]:checked::after { content: '✓'; color: #fff; font-size: 12px; }
-[data-whale-pet] input:disabled { opacity: .4; cursor: not-allowed; }
-[data-whale-pet] .petThemeSwitch button.selected { background: #1677b8; color: #fff; }
-[data-whale-pet] .petUnofficial { font-size: 11px; opacity: .8; margin: 12px 0 0; }
-[data-whale-pet] .petOnboarding { position: fixed; left: 20px; top: 80px; max-width: 270px; padding: 16px; border: 1px solid var(--pet-line); background: var(--pet-glass); color: var(--pet-ink); border-radius: 14px; font-size: 13px; }
-[data-whale-pet="dialogue"].galgameTheatreBox { width: min(1100px,calc(100vw - 32px)) !important; height: clamp(210px,29vh,340px) !important; bottom: 20px !important; overflow: visible !important; background: var(--pet-menu-surface) !important; }
-[data-whale-pet] .galgameTextBody { font-size: var(--pet-text-size,17px) !important; line-height: 1.75 !important; width: min(100%,calc(var(--pet-text-size,17px) * 42 + 48px)); box-sizing: border-box; margin: 0 auto; padding: 10px 24px !important; cursor: pointer; }
-[data-whale-pet] .galgameTextBody[data-reading="pages"] { overflow: hidden !important; }
-[data-whale-pet] .galgameTextBody[data-reading="scroll"] { overflow-y: auto !important; }
-[data-whale-pet] .thoughtBubbleContent { font-size: var(--pet-text-size,17px) !important; }
-[data-whale-pet] .galgameNameTag { position: relative; margin-top: -24px; border: 0 !important; box-shadow: none !important; background: var(--pet-menu-surface) !important; border-radius: 10px 10px 0 0 !important; font-size: 15px !important; }
-[data-whale-pet] .galgameComposerArea { padding: 6px 14px !important; min-height: 44px; }
-[data-whale-pet] .galgameInput { padding: 6px 12px !important; font-size: 14px !important; }
-[data-whale-pet] .galgameSendBtn { padding: 7px 16px !important; }
-[data-whale-pet] .petReadingNav { padding: 0 16px 4px; min-height: 32px; }
-[data-whale-pet] .petReadingNav button { min-width: 32px; min-height: 32px; color: var(--pet-ink); }
-[data-whale-pet] .petSinglePage { margin-left: auto; padding-right: 10px; }
-[data-whale-pet] .petNextTriangle { position: absolute; right: 24px; bottom: 52px; font-size: 11px; color: var(--pet-accent); animation: petNext 1s ease-in-out infinite; pointer-events: none; }
-@keyframes petNext { 50% { opacity: .3; } }
-[data-whale-pet] .petSkipReveal { position: absolute; right: 20px; bottom: 52px; background: var(--pet-menu-surface); border: 1px solid var(--pet-line); border-radius: 8px; color: var(--pet-ink); }
-[data-whale-pet] .petHeading { display: block; font-size: 1.08em; }
-[data-whale-pet] .galgameTextBody strong { color: var(--pet-accent); font-weight: 700; }
-[data-whale-pet] .petCodeCard { max-height: 100%; margin: 0; }
-[data-whale-pet] .petCodeCard pre { max-height: 100px; }
-[data-whale-pet="stage"] .standingGalGame { height: 90vh !important; max-height: 92vh !important; }
-@media (prefers-reduced-motion: reduce) { [data-whale-pet] .petNextTriangle { animation: none; } }
-/* Gemini review: one scroll surface per panel, anchored menus and readable theatre. */
-[data-whale-pet][data-hidden="true"] { display: none !important; }
-[data-whale-pet] .toolbar[data-settings-open="true"] { display:none !important; }
-[data-whale-pet] .settingsDrawer { display: flex; flex-direction: column; overflow: hidden !important; padding: 0 !important; }
-[data-whale-pet] .settingsDrawer > .drawerHeader { flex:0 0 auto; margin:0; padding:14px 16px; }
-[data-whale-pet] .petSettingsBody { overflow-y:auto; min-height:0; padding:4px 16px 20px; overscroll-behavior:contain; }
-[data-whale-pet] .petSegments { display:flex; gap:3px; min-width:0; }
-[data-whale-pet] .petSegments button { flex:1; min-width:0; padding:5px 2px; font-size:11px; }
-[data-whale-pet] .petSegments button[aria-pressed="true"] { background: #1677b8; color:white; }
-[data-whale-pet] .petSizeDots { pointer-events:auto; margin:0 2px; }
-[data-whale-pet] .petSizeDots button { width:20px; min-height:20px; height:20px; padding:0; border:none; background:transparent; display:grid; place-items:center; cursor:pointer; }
-[data-whale-pet] .petSizeDots button i { width:4px; height:4px; border-radius:50%; background:var(--pet-muted); }
-[data-whale-pet] .petSizeDots button.default i { width:7px; height:7px; background:var(--pet-accent); }
-[data-whale-pet] .petSizeDots button[aria-pressed="true"] i { box-shadow:0 0 0 3px var(--pet-control); }
-[data-whale-pet="dialogue"].galgameTheatreBox { height: min(40vh,340px) !important; min-height:240px; border-radius:20px !important; }
-[data-whale-pet="dialogue"][data-expanded="true"].galgameTheatreBox { height: min(76vh,800px) !important; }
-[data-whale-pet] .galgameTextBody { width:100% !important; max-width:none !important; margin:0 !important; padding:14px 24px 12px 28px !important; line-height:1.65 !important; }
-[data-whale-pet] .galgameQuotes:first-child { position:absolute; left:10px; top:8px; font-size:24px !important; }
-[data-whale-pet] .galgameQuotes:last-child { margin-left:4px; font-size:20px !important; }
-[data-whale-pet] .petMorePanel { top:auto; bottom:calc(100% + 10px); max-height:min(60vh,360px); overflow-y:auto; padding:6px; }
-[data-whale-pet] .petMorePanel button { display:flex; align-items:center; gap:10px; padding:8px 12px; min-height:34px; border-left:2px solid transparent; }
-[data-whale-pet] .petMorePanel button > span { width:18px; text-align:center; flex-shrink:0; }
-[data-whale-pet] .petMorePanel button:hover { border-left-color:var(--pet-accent); }
-[data-whale-pet] .petMorePanel kbd { margin-left:auto; opacity:.65; font-size:11px; }
-[data-whale-pet] .petMorePanel hr { width:calc(100% - 12px); border:0; height:1px; background:var(--pet-line); margin:4px auto; }
-[data-whale-pet="stage"] { bottom:0 !important; clip-path:inset(0 0 45px 0); mask-image:linear-gradient(to bottom,#000 75%,transparent 98%); }
-[data-whale-pet="stage"][data-theatre-hidden="true"] { clip-path:none; mask-image:none; }
-[data-whale-pet] .galgameNameTag { clip-path:polygon(8% 0,100% 0,92% 100%,0 100%); padding:8px 24px !important; background:var(--pet-control) !important; }
-[data-whale-pet] .speechBubble { text-wrap:pretty; line-break:strict; width:max-content; max-width:min(230px,calc(100vw - 32px)); pointer-events:auto; cursor:pointer; padding-right:22px; }
-[data-whale-pet] .petBubbleClose { position:absolute; right:3px; top:2px; border:0; color:var(--pet-muted); background:transparent; cursor:pointer; opacity:0; }
-[data-whale-pet] .speechBubble:hover .petBubbleClose, [data-whale-pet] .speechBubble:focus-within .petBubbleClose { opacity:1; }
-[data-whale-pet] :is(.galgameTextBody,.petSettingsBody,.petLog,.thoughtBubbleContent,.petCodeCard pre,.petMorePanel) { scrollbar-width:thin; scrollbar-color:#629bd377 transparent; }
-[data-whale-pet] ::-webkit-scrollbar { width:5px; height:5px; }
-[data-whale-pet] ::-webkit-scrollbar-button { display:none; height:0; width:0; }
-[data-whale-pet] ::-webkit-scrollbar-track { background:transparent; margin:6px 0; }
-[data-whale-pet] ::-webkit-scrollbar-thumb { border-radius:999px; background:linear-gradient(180deg,#6ec1ff66,#4a90e299); }
-[data-whale-pet] ::-webkit-scrollbar-thumb:hover { background:#6ec1ffbd; }
-[data-whale-pet][data-pet-theme="light"] ::-webkit-scrollbar-thumb { background:linear-gradient(180deg,#3b82f659,#2563eb8c); }
-[data-whale-pet] .galgameTextBody[data-reading="scroll"], [data-whale-pet] .petSettingsBody { mask-image:linear-gradient(to bottom,transparent,#000 6px,#000 calc(100% - 8px),transparent); }
-[data-whale-pet] .petCodeCard :is(code,pre) { font-family:Consolas,monospace; }
-@media (max-height:600px) { [data-whale-pet="dialogue"].galgameTheatreBox { min-height:200px; height:48vh !important; } }
-[data-whale-pet] .petInlineCode { background:var(--pet-control); color:var(--pet-accent); padding:1px 5px; border-radius:5px; font-size:.92em; }
-[data-whale-pet] .galgameTextBody:has(.petCodeCard) .galgameQuotes { display:none; }
-[data-whale-pet] .galgameTextBody:has(.petCodeCard) { display:flex; }
-[data-whale-pet] .galgameTextBody .petCodeCard { display:flex; flex-direction:column; flex:1; min-height:0; }
-[data-whale-pet] .galgameTextBody .petCodeCard header { flex-shrink:0; }
-[data-whale-pet] .galgameTextBody .petCodeCard pre { flex:1; min-height:0; max-height:none !important; }
-[data-whale-pet="dialogue"][data-expanded="true"] .petMorePanel { bottom:auto; top:calc(100% + 8px); }
-/* v0.4 polish: airy controls; invisible hit targets retain the simple dot look. */
-[data-whale-pet] .petSettingsBody { padding:8px 20px 24px; }
-[data-whale-pet] .petSettingsGroup { padding:10px 0; }
-[data-whale-pet] .petSettingsGroup > summary { padding:10px 0; }
-[data-whale-pet] .petSettingsGroup .petPreferenceGrid { grid-template-columns:112px minmax(0,1fr); gap:18px 14px; padding:16px 0 20px; }
-[data-whale-pet] .settingsDrawer { width:340px; }
-[data-whale-pet] .petSettingsGroup .petSizeDots button { appearance:none; -webkit-appearance:none; background:transparent !important; border:0 !important; border-radius:0; box-shadow:none !important; min-height:24px !important; height:24px; width:24px; padding:0; }
-[data-whale-pet] .petSizeDots button[aria-pressed="true"] i { box-shadow:none; }
-[data-whale-pet] .petSizeDots button i { width:4px; height:4px; opacity:.85; background:var(--pet-ink); }
-[data-whale-pet] .petSizeDots button.default i { width:7px; height:7px; opacity:1; background:var(--pet-accent); }
-[data-whale-pet] .petSizeDots button:focus-visible { outline:2px solid var(--pet-accent); outline-offset:1px; border-radius:50%; }
-[data-whale-pet] .petThemeSwitch button { min-height:36px; padding:6px 10px; }
-[data-whale-pet][data-pet-theme="light"] .petThemeSwitch button[aria-pressed="true"],
-[data-whale-pet][data-pet-theme="light"] .petSegments button[aria-pressed="true"] { background:#216da8 !important; color:#fff !important; border-color:#165889 !important; box-shadow:0 2px 6px #164d7626; }
-[data-whale-pet][data-pet-theme="light"] .petMorePanel button:hover,
-[data-whale-pet][data-pet-theme="light"] .petMorePanel button:focus-visible { background:#d7e7f8; border-left-color:#216da8; color:#123d65; }
-/* A single unlit silhouette avoids a visible rectangle around the stage. */
-[data-whale-pet="stage"] { top:32px !important; bottom:40px !important; height:auto; align-items:flex-start !important; overflow:hidden; clip-path:none !important; filter:none !important; mask-image:linear-gradient(to bottom,#000 65%,transparent 98%); }
-[data-whale-pet="stage"] .puppetRoot { filter:none !important; }
-[data-whale-pet="stage"][data-expanded="true"] { top:28px !important; bottom:auto !important; height:max(100px,calc(24vh - 30px)); mask-image:linear-gradient(to bottom,#000 85%,transparent); }
-[data-whale-pet="stage"][data-expanded="true"] .standingGalGame { height:64vh !important; max-height:none !important; }
-[data-whale-pet="stage"][data-expanded="true"] .chibiGalGame { height:30vh !important; }
-[data-whale-pet="stage"][data-theatre-hidden="true"] { top:24px !important; bottom:0 !important; height:auto; overflow:visible; mask-image:none; }
-[data-whale-pet="stage"][data-theatre-hidden="true"] .standingGalGame { height:90vh !important; }
-@media (max-width:420px) { [data-whale-pet] .settingsDrawer { width:calc(100vw - 32px); } [data-whale-pet] .petSettingsGroup .petPreferenceGrid { grid-template-columns:100px minmax(0,1fr); gap:14px 10px; } }
+[data-whale-pet] .petMorePanel button {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 34px; padding: 0 10px;
+  border: 0; border-radius: var(--wp-radius-s); background: transparent; color: var(--wp-ink);
+  font-size: 13px; text-align: left; cursor: pointer;
+}
+[data-whale-pet] .petMorePanel button:hover, [data-whale-pet] .petMorePanel button:focus-visible { background: var(--wp-accent-soft); color: var(--wp-accent); }
+[data-whale-pet] .petMorePanel button > span { width: 16px; text-align: center; flex: none; color: var(--wp-ink-3); }
+[data-whale-pet] .petMorePanel kbd { margin-left: auto; padding: 0 5px; border: 1px solid var(--wp-line); border-radius: 4px; font: 11px var(--wp-mono); color: var(--wp-ink-3); }
+[data-whale-pet] .petMorePanel hr { width: calc(100% - 12px); height: 1px; margin: 4px auto; border: 0; background: var(--wp-line); }
+
+[data-whale-pet] .galgameTextBody {
+  position: relative; flex: 1 1 auto; min-height: 0;
+  padding: 4px 30px 4px 38px;
+  font-size: var(--pet-text-size, 17px); line-height: 1.75;
+  color: var(--wp-ink); white-space: pre-wrap; overflow-wrap: anywhere;
+  cursor: pointer; user-select: text;
+  scrollbar-width: thin; scrollbar-color: var(--wp-line-strong) transparent;
+}
+[data-whale-pet] .galgameTextBody:focus-visible { box-shadow: inset 0 0 0 2px var(--wp-accent); border-radius: 8px; }
+[data-whale-pet] .galgameTextBody[data-reading="pages"] { overflow: hidden; }
+[data-whale-pet] .galgameTextBody[data-reading="scroll"] { overflow-y: auto; overscroll-behavior: contain; }
+[data-whale-pet] .galgameQuotes { color: var(--wp-accent); font-weight: 700; opacity: .8; }
+[data-whale-pet] .galgameQuotes:first-child { position: absolute; left: 16px; top: 2px; font-size: 1.25em; }
+[data-whale-pet] .galgameQuotes:last-child { margin-left: 3px; }
+[data-whale-pet] .galgameCursor { display: inline-block; width: .5em; height: 1.05em; margin-left: 3px; vertical-align: -.15em; border-radius: 2px; background: var(--wp-accent); animation: wpBlink .9s steps(2) infinite; }
+@keyframes wpBlink { 50% { opacity: 0; } }
+[data-whale-pet] .galgameTextBody strong { color: var(--wp-accent); font-weight: 700; }
+[data-whale-pet] .petHeading { display: block; font-size: 1.06em; }
+[data-whale-pet] .petInlineCode { padding: 1px 5px; border-radius: 5px; background: var(--wp-control); color: var(--wp-accent); font: .9em var(--wp-mono); }
+
+/* Code cards: whole, horizontally scrollable, copyable */
+[data-whale-pet] .petCodeCard { display: flex; flex-direction: column; margin: 8px 0; border: 1px solid var(--wp-line); border-radius: var(--wp-radius-m); background: var(--wp-control); overflow: hidden; white-space: normal; font-size: 13px; cursor: auto; }
+[data-whale-pet] .petCodeCard header { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 5px 8px 5px 12px; border-bottom: 1px solid var(--wp-line); color: var(--wp-ink-3); font: 12px var(--wp-mono); }
+[data-whale-pet] .petCodeCard header button { height: 26px; padding: 0 10px; border: 1px solid var(--wp-line); border-radius: 6px; background: var(--wp-raised); color: var(--wp-ink); font-size: 12px; cursor: pointer; }
+[data-whale-pet] .petCodeCard pre { margin: 0; padding: 10px 12px; max-height: 260px; overflow: auto; white-space: pre; user-select: text; font: 13px/1.55 var(--wp-mono); color: var(--wp-ink); }
+[data-whale-pet] .galgameTextBody:has(.petCodeCard) { display: flex; flex-direction: column; }
+[data-whale-pet] .galgameTextBody:has(.petCodeCard) .galgameQuotes { display: none; }
+[data-whale-pet] .galgameTextBody .petCodeCard { flex: 1 1 auto; min-height: 0; margin: 2px 0 6px; }
+[data-whale-pet] .galgameTextBody .petCodeCard pre { flex: 1; min-height: 0; max-height: none; }
+
+[data-whale-pet] .petReadingNav { flex: none; display: flex; align-items: center; gap: 10px; min-height: 30px; padding: 0 16px 0 22px; color: var(--wp-ink-3); font-size: 12px; }
+[data-whale-pet] .petReadingNav button { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: var(--wp-ink-2); font-size: 12px; cursor: pointer; }
+[data-whale-pet] .petReadingNav button:not(:disabled):hover { background: var(--wp-control-hover); color: var(--wp-ink); }
+[data-whale-pet] .petSinglePage { font-variant-numeric: tabular-nums; }
+[data-whale-pet] .petNavSpacer { flex: 1; }
+[data-whale-pet] .petNextTriangle { color: var(--wp-accent); font-size: 10px; animation: wpNext 1.1s ease-in-out infinite; pointer-events: none; }
+@keyframes wpNext { 50% { opacity: .3; transform: translateY(2px); } }
+[data-whale-pet] .petSkipReveal { color: var(--wp-accent) !important; }
+
+[data-whale-pet] .galgameComposerArea { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 12px 12px; border-top: 1px solid var(--wp-line); }
+[data-whale-pet] .galgameInput {
+  flex: 1; min-width: 0; height: 38px; padding: 0 14px;
+  border: 1px solid var(--wp-line-strong); border-radius: 10px;
+  background: var(--wp-raised); color: var(--wp-ink); font: inherit; font-size: 14px; outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+[data-whale-pet] .galgameInput::placeholder { color: var(--wp-ink-3); }
+[data-whale-pet] .galgameInput:focus { border-color: var(--wp-accent); box-shadow: 0 0 0 3px var(--wp-accent-soft); }
+[data-whale-pet] .galgameSendBtn { height: 38px; padding: 0 18px; border: 0; border-radius: 10px; background: var(--wp-accent); color: var(--wp-accent-ink); font-size: 14px; font-weight: 600; cursor: pointer; transition: background-color .15s ease; }
+[data-whale-pet] .galgameSendBtn:not(:disabled):hover { background: var(--wp-accent-hover); }
+
+[data-whale-pet].petRestore {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 1000001;
+  padding: 9px 18px; border-radius: 999px;
+  background: var(--wp-surface); border: 1px solid var(--wp-line); color: var(--wp-ink-2);
+  -webkit-backdrop-filter: var(--wp-blur); backdrop-filter: var(--wp-blur);
+  box-shadow: var(--wp-shadow-s); font-size: 12.5px; cursor: pointer;
+}
+
+/* Log and Doctor dialogs */
+[data-whale-pet].petLog {
+  position: fixed; z-index: 1000002;
+  top: 6vh; bottom: 6vh; left: max(16px, calc((100vw - 820px) / 2)); right: max(16px, calc((100vw - 820px) / 2));
+  overflow: auto; overscroll-behavior: contain;
+  padding: 0 22px 22px; border-radius: 20px;
+  font-size: 14px; line-height: 1.7; pointer-events: auto; user-select: text;
+}
+[data-whale-pet].petLog > header { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; margin: 0 -22px; padding: 16px 22px 12px; background: var(--wp-surface-solid); border-bottom: 1px solid var(--wp-line); }
+[data-whale-pet].petLog > header strong { font-size: 15px; }
+[data-whale-pet].petLog button { height: 30px; padding: 0 12px; border: 1px solid var(--wp-line); border-radius: var(--wp-radius-s); background: var(--wp-raised); color: var(--wp-ink); font-size: 12.5px; cursor: pointer; }
+[data-whale-pet].petLog .petLogNote { margin: 12px 0; color: var(--wp-ink-3); font-size: 12px; }
+[data-whale-pet].petLog > article { margin: 12px 0; padding: 12px 14px; border: 1px solid var(--wp-line); border-radius: var(--wp-radius-m); white-space: pre-wrap; overflow-wrap: anywhere; }
+[data-whale-pet].petLog > article[data-role="assistant"] { background: var(--wp-accent-soft); border-color: transparent; }
+[data-whale-pet].petLog .petLogMeta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+[data-whale-pet].petLog .petLogMeta strong { color: var(--wp-accent); }
+[data-whale-pet].petLog > pre { padding: 12px; border-radius: var(--wp-radius-s); background: var(--wp-control); font: 12px/1.5 var(--wp-mono); overflow: auto; }
+
+/* Narrow and short windows */
+@media (max-width: 760px) {
+  [data-whale-pet].comicThoughtBubble { left: 16px; right: 16px; top: 12px; width: auto; height: min(26vh, 200px); border-radius: 18px; }
+  [data-whale-pet] .galgameCloseBtn:not(.galgameExit) { width: 32px; padding: 0; justify-content: center; font-size: 0; }
+  [data-whale-pet] :is(.petPhase, .petTierTag) { display: none; }
+  [data-whale-pet] .galgameHeaderBar { padding-left: 16px; }
+  [data-whale-pet] .galgameTextBody { padding: 4px 16px 4px 32px; }
+  [data-whale-pet] .galgameQuotes:first-child { left: 10px; }
+}
+@media (max-height: 600px) {
+  [data-whale-pet]:is(.galgameTheatreBox, .comicThoughtBubble, .galgameCharacterCentered) { --box-h: max(200px, 48vh); --box-bottom: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-whale-pet], [data-whale-pet] *, [data-whale-pet] *::before, [data-whale-pet] *::after { animation: none !important; transition: none !important; }
+}

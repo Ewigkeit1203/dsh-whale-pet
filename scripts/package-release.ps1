@@ -16,7 +16,7 @@ foreach ($file in $files) {
 }
 $docsDestination = Join-Path $stage 'docs'
 New-Item -ItemType Directory -Path $docsDestination -Force | Out-Null
-Get-ChildItem -LiteralPath (Join-Path $projectRoot 'docs') | Where-Object { $_.Name -ne 'handover' } | ForEach-Object {
+Get-ChildItem -LiteralPath (Join-Path $projectRoot 'docs') | Where-Object { $_.Name -ne 'handover' -and $_.Name -notlike '*_REVIEW_IMPLEMENTATION.md' } | ForEach-Object {
     Copy-Item -LiteralPath $_.FullName -Destination $docsDestination -Recurse
 }
 $zip = Join-Path $distRoot ('dsh-whale-pet-v' + $version + '.zip')

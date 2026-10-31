@@ -1,548 +1,417 @@
-/* DeepSeek Whale Pet Styles */
+/* ==========================================================================
+   大肥鱼 · design tokens + desktop widget + settings panel
+   Plugin roots only ([data-whale-pet]); nothing here styles the host page.
+   Bundled as plain class names (see build.js), so every class is prefixed or
+   scoped under [data-whale-pet] to avoid host collisions. Never use class
+   names containing "amount", or "balance" + "row": the DOM balance reader
+   matches those substrings.
+   ========================================================================== */
 
-.overlayContainer {
+[data-whale-pet][data-pet-theme] {
+  --wp-font: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --wp-mono: "Cascadia Code", Consolas, "SFMono-Regular", Menlo, monospace;
+  --wp-surface: rgba(248, 251, 255, 0.86);
+  --wp-surface-solid: #f6f9fd;
+  --wp-surface-strong: rgba(248, 251, 255, 0.95);
+  --wp-raised: rgba(255, 255, 255, 0.78);
+  --wp-control: rgba(20, 70, 120, 0.06);
+  --wp-control-hover: rgba(20, 70, 120, 0.11);
+  --wp-ink: #132a40;
+  --wp-ink-2: #4c6278;
+  --wp-ink-3: #74889c;
+  --wp-line: rgba(19, 52, 88, 0.11);
+  --wp-line-strong: rgba(19, 52, 88, 0.24);
+  --wp-accent: #1f6aad;
+  --wp-accent-hover: #185a95;
+  --wp-accent-ink: #ffffff;
+  --wp-accent-soft: rgba(31, 106, 173, 0.1);
+  --wp-warn: #b4471c;
+  --wp-warn-soft: rgba(212, 92, 40, 0.12);
+  --wp-peak: #b45309;
+  --wp-peak-soft: rgba(217, 119, 6, 0.12);
+  --wp-valley: #0f766e;
+  --wp-valley-soft: rgba(13, 148, 136, 0.11);
+  --wp-shadow: 0 20px 50px -18px rgba(12, 34, 62, 0.38), 0 2px 8px rgba(12, 34, 62, 0.08);
+  --wp-shadow-s: 0 6px 18px -6px rgba(12, 34, 62, 0.28);
+  --wp-blur: blur(22px) saturate(160%);
+  --wp-radius-l: 18px;
+  --wp-radius-m: 12px;
+  --wp-radius-s: 8px;
+  --wp-focus: 0 0 0 2px var(--wp-surface-solid), 0 0 0 4px var(--wp-accent);
+  color: var(--wp-ink);
+  font-family: var(--wp-font);
+  color-scheme: light;
+  -webkit-font-smoothing: antialiased;
+}
+[data-whale-pet][data-pet-theme="dark"] {
+  --wp-surface: rgba(19, 30, 46, 0.86);
+  --wp-surface-solid: #162335;
+  --wp-surface-strong: rgba(19, 30, 46, 0.95);
+  --wp-raised: rgba(255, 255, 255, 0.05);
+  --wp-control: rgba(160, 205, 255, 0.08);
+  --wp-control-hover: rgba(160, 205, 255, 0.15);
+  --wp-ink: #e9f1fb;
+  --wp-ink-2: #a5b8cc;
+  --wp-ink-3: #7c90a6;
+  --wp-line: rgba(160, 205, 255, 0.13);
+  --wp-line-strong: rgba(160, 205, 255, 0.26);
+  --wp-accent: #7cc2ff;
+  --wp-accent-hover: #9dd1ff;
+  --wp-accent-ink: #082139;
+  --wp-accent-soft: rgba(124, 194, 255, 0.14);
+  --wp-warn: #ffb08a;
+  --wp-warn-soft: rgba(255, 150, 100, 0.14);
+  --wp-peak: #fcc56b;
+  --wp-peak-soft: rgba(252, 197, 107, 0.14);
+  --wp-valley: #6ee0cf;
+  --wp-valley-soft: rgba(110, 224, 207, 0.12);
+  --wp-shadow: 0 22px 54px -16px rgba(0, 0, 0, 0.65), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --wp-shadow-s: 0 6px 18px -6px rgba(0, 0, 0, 0.55);
+  color-scheme: dark;
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  [data-whale-pet][data-pet-theme] { --wp-surface: var(--wp-surface-solid); --wp-surface-strong: var(--wp-surface-solid); }
+}
+
+[data-whale-pet] *, [data-whale-pet] *::before, [data-whale-pet] *::after { box-sizing: border-box; }
+[data-whale-pet] button { font: inherit; color: inherit; }
+[data-whale-pet] :is(button, [role="button"], summary, input, [tabindex]):focus-visible { outline: none; box-shadow: var(--wp-focus); }
+[data-whale-pet] button:disabled { opacity: 0.42; cursor: default; }
+
+/* Shared glass surface */
+[data-whale-pet] :is(.settingsDrawer, .toolbar, .speechBubble, .petOnboarding),
+[data-whale-pet].petLog {
+  background: var(--wp-surface);
+  border: 1px solid var(--wp-line);
+  box-shadow: var(--wp-shadow);
+  -webkit-backdrop-filter: var(--wp-blur);
+  backdrop-filter: var(--wp-blur);
+}
+
+[data-whale-pet] .petIconButton {
+  display: inline-grid; place-items: center;
+  width: 28px; height: 28px; padding: 0;
+  border: 0; border-radius: var(--wp-radius-s);
+  background: transparent; color: var(--wp-ink-2); cursor: pointer;
+  transition: background-color .15s ease, color .15s ease;
+}
+[data-whale-pet] .petIconButton:hover { background: var(--wp-control-hover); color: var(--wp-ink); }
+
+[data-whale-pet] .petPrimary {
+  min-height: 38px; padding: 0 16px;
+  border: 0; border-radius: 10px;
+  background: var(--wp-accent); color: var(--wp-accent-ink);
+  font-size: 13.5px; font-weight: 600; letter-spacing: .01em; cursor: pointer;
+  transition: background-color .15s ease, transform .15s ease;
+}
+[data-whale-pet] .petPrimary:hover { background: var(--wp-accent-hover); }
+[data-whale-pet] .petPrimary:active { transform: translateY(1px); }
+
+/* ==========================================================================
+   Widget: the root is exactly the character stage box.
+   ========================================================================== */
+.petWidget[data-whale-pet] {
   position: fixed;
   z-index: 99999;
   user-select: none;
-  pointer-events: auto;
-  will-change: left, top;
-}
-
-/* Smooth linear walking transition when wandering */
-.wandering {
-  transition: left 3.2s cubic-bezier(0.25, 0.1, 0.25, 1), top 3.2s cubic-bezier(0.25, 0.1, 0.25, 1) !important;
-}
-
-/* Instant 1:1 response when dragging */
-.dragging {
-  transition: none !important;
-  cursor: grabbing !important;
-}
-
-/* Character Box */
-.characterWrapper {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  cursor: grab;
-}
-
-.characterWrapper:active {
-  cursor: grabbing;
-}
-
-/* Image styles */
-.petImage {
-  display: block;
-  object-fit: contain;
-  filter: drop-shadow(0 6px 14px rgba(0, 20, 50, 0.25));
-  transition: filter 0.35s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.petImageChibi {
-  width: 170px;
-  height: auto;
-}
-
-.petImageMaiden {
-  width: 280px;
-  max-height: 520px;
-  height: auto;
-}
-
-/* Animations per State */
-.stateIdle .petImage {
-  animation: idleBreathe 3.5s ease-in-out infinite;
-}
-
-@keyframes idleBreathe {
-  0%, 100% {
-    transform: translateY(0) scale(1);
-  }
-  50% {
-    transform: translateY(-7px) scale(1.02);
-  }
-}
-
-/* Peeking: Leaning forward looking toward input */
-.statePeeking .petImage {
-  animation: peekingLean 1.2s ease-in-out infinite alternate;
-}
-
-@keyframes peekingLean {
-  0% {
-    transform: rotate(-4deg) translateX(-8px) translateY(2px) scale(1.02);
-  }
-  100% {
-    transform: rotate(-10deg) translateX(-18px) translateY(6px) scale(1.05);
-  }
-}
-
-/* Reasoning: Deep diving blue aura + thinking sway */
-.stateReasoning .petImage {
-  filter: drop-shadow(0 0 18px rgba(0, 162, 255, 0.95))
-          drop-shadow(0 0 35px rgba(24, 144, 255, 0.6))
-          drop-shadow(0 6px 14px rgba(0, 20, 50, 0.25));
-  animation: reasoningSway 2.2s ease-in-out infinite;
-}
-
-@keyframes reasoningSway {
-  0%, 100% {
-    transform: translateY(0) rotate(-3deg) scale(1.01);
-  }
-  50% {
-    transform: translateY(-9px) rotate(3deg) scale(1.03);
-  }
-}
-
-/* Answering: Delivering articulate answer with cheerful glow */
-.stateAnswering .petImage {
-  filter: drop-shadow(0 0 16px rgba(50, 180, 255, 0.8))
-          drop-shadow(0 6px 14px rgba(0, 20, 50, 0.25));
-  animation: answeringGlow 1.8s ease-in-out infinite;
-}
-
-@keyframes answeringGlow {
-  0%, 100% {
-    transform: translateY(0) scale(1.0);
-  }
-  50% {
-    transform: translateY(-5px) scale(1.02);
-  }
-}
-
-/* Eating: Happily munching white rice from the iron basin */
-.stateEating .petImage {
-  animation: eatingBounce 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) infinite;
-}
-
-@keyframes eatingBounce {
-  0%, 100% {
-    transform: translateY(0) scale(1);
-  }
-  50% {
-    transform: translateY(-8px) scale(1.04);
-  }
-}
-
-/* Wandering sway */
-.stateWandering .petImage {
-  animation: wanderWalk 0.8s ease-in-out infinite alternate;
-}
-
-@keyframes wanderWalk {
-  0% {
-    transform: rotate(-4deg) translateY(-4px);
-  }
-  100% {
-    transform: rotate(4deg) translateY(-10px);
-  }
-}
-
-/* Thinking Bubble Particles during Reasoning */
-.bubbleContainer {
-  position: absolute;
-  top: -20px;
-  left: 20px;
-  width: 120px;
-  height: 60px;
   pointer-events: none;
-  z-index: 15;
+  transition: left .28s cubic-bezier(.2, .8, .2, 1), top .28s cubic-bezier(.2, .8, .2, 1);
 }
+.petWidget[data-whale-pet][data-dragging] { transition: none; cursor: grabbing; }
+.petWidget[data-whale-pet][data-settling] { transition: left .24s cubic-bezier(.15, .7, .2, 1), top .24s cubic-bezier(.15, .7, .2, 1); }
+.petWidget[data-whale-pet][data-wandering] { transition: left 3.2s cubic-bezier(.25, .1, .25, 1), top 3.2s cubic-bezier(.25, .1, .25, 1); }
+[data-whale-pet][data-hidden="true"] { display: none !important; }
+[data-whale-pet][data-paused="true"], [data-whale-pet][data-paused="true"] * { animation-play-state: paused !important; }
 
-.bubble {
-  position: absolute;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.95), rgba(0, 162, 255, 0.75) 50%, rgba(0, 80, 200, 0.9) 100%);
-  box-shadow: 0 0 8px rgba(0, 195, 255, 0.8), inset -2px -2px 4px rgba(255, 255, 255, 0.6);
-  opacity: 0;
-}
+[data-whale-pet] .characterWrapper { position: absolute; inset: 0; pointer-events: none; }
+[data-whale-pet] .petSpriteSize { position: absolute; left: 0; bottom: 0; pointer-events: none; transform-origin: 50% 100%; border-radius: 24px; }
+[data-whale-pet] .petSpriteSize:focus-visible { box-shadow: none; outline: 2px dashed var(--wp-accent); outline-offset: -6px; }
+[data-whale-pet] .petSpriteSize[data-sleepy="true"] { filter: saturate(.85) brightness(.96); }
+[data-whale-pet="widget"] .characterBase { pointer-events: auto; cursor: grab; }
+[data-whale-pet="widget"][data-dragging] .characterBase { cursor: grabbing; }
+[data-whale-pet][data-ghost="true"] .characterBase { pointer-events: none !important; }
+[data-whale-pet="widget"] :is(.settingsDrawer, .petOnboarding, .petLog, .toolbar[data-visible="true"], .petWalletChip, .speechBubble) { pointer-events: auto; }
+[data-whale-pet][data-dimmed="true"] :is(.petCrown, .speechBubble) { opacity: .3; transition: opacity .3s ease; }
 
-.bubble1 {
-  width: 16px;
-  height: 16px;
-  left: 10px;
-  animation: bubbleRise 2s infinite ease-in;
-}
-
-.bubble2 {
-  width: 22px;
-  height: 22px;
-  left: 45px;
-  animation: bubbleRise 2.4s infinite ease-in 0.6s;
-}
-
-.bubble3 {
-  width: 14px;
-  height: 14px;
-  left: 80px;
-  animation: bubbleRise 1.8s infinite ease-in 1.1s;
-}
-
-@keyframes bubbleRise {
-  0% {
-    transform: translateY(30px) scale(0.4);
-    opacity: 0;
-  }
-  30% {
-    opacity: 0.9;
-  }
-  80% {
-    opacity: 0.8;
-  }
-  100% {
-    transform: translateY(-40px) scale(1.1);
-    opacity: 0;
-  }
-}
-
-/* Speech Dialogue Bubble: POSITIONED TO THE SIDE (NEVER OVERLAPS TOOLBAR) */
-.speechBubble {
-  position: absolute;
-  top: 15px;
-  right: calc(100% + 14px);
-  background: rgba(255, 255, 255, 0.96);
-  color: #1e293b;
-  font-size: 13px;
-  font-weight: 500;
-  padding: 8px 14px;
-  border-radius: 14px;
-  box-shadow: 0 6px 20px rgba(0, 20, 50, 0.22);
-  border: 1.5px solid rgba(2, 132, 199, 0.4);
+/* Crown: the hover dock and the wallet chip, stacked above the head. */
+[data-whale-pet] .petCrown {
+  position: absolute; z-index: 30;
+  display: flex; flex-direction: column; gap: 6px;
   pointer-events: none;
-  animation: speechPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  width: max-content;
-  max-width: 200px;
-  line-height: 1.45;
-  text-align: left;
-  z-index: 50; /* Lower than toolbar */
 }
+[data-whale-pet] .petCrown[data-align="center"] { left: 50%; transform: translateX(-50%); align-items: center; }
+[data-whale-pet] .petCrown[data-align="start"] { left: 0; align-items: flex-start; }
+[data-whale-pet] .petCrown[data-align="end"] { right: 0; align-items: flex-end; }
 
-[data-pet-theme="dark"] .speechBubble,
-[data-pet-theme="dark"] .speechBubble {
-  background: rgba(15, 23, 42, 0.95);
-  color: #f1f5f9;
-  border-color: rgba(56, 189, 248, 0.5);
-  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.6);
-}
-
-.speechBubble::after {
-  content: '';
-  position: absolute;
-  top: 14px;
-  left: 100%;
-  border-width: 6px 0 6px 8px;
-  border-style: solid;
-  border-color: transparent transparent transparent rgba(255, 255, 255, 0.96);
-}
-
-[data-pet-theme="dark"] .speechBubble::after,
-[data-pet-theme="dark"] .speechBubble::after {
-  border-color: transparent transparent transparent rgba(15, 23, 42, 0.95);
-}
-
-@keyframes speechPop {
-  0% {
-    transform: scale(0.6) translateX(10px);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(1) translateX(0);
-    opacity: 1;
-  }
-}
-
-/* Action Floating Toolbar: POSITIONED AT TOP (NEVER OVERLAPPED BY SPEECH BUBBLE) */
-.toolbar {
-  position: absolute;
-  bottom: calc(100% + 14px);
-  left: 50%;
-  transform: translateX(-50%) translateY(4px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  background: rgba(15, 23, 42, 0.94);
-  border: 1.5px solid rgba(56, 189, 248, 0.5);
-  backdrop-filter: blur(14px);
-  padding: 5px 10px;
-  border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  opacity: 0;
-  transition: opacity 0.25s ease, transform 0.25s ease;
-  pointer-events: none;
-  z-index: 1000; /* ALWAYS ON TOP */
+[data-whale-pet] .toolbar {
+  display: flex; align-items: center; gap: 2px;
+  padding: 4px; border-radius: 999px;
   white-space: nowrap;
+  opacity: 0; transform: translateY(6px) scale(.98);
+  transition: opacity .18s ease, transform .22s cubic-bezier(.2, .8, .2, 1);
+}
+[data-whale-pet] .toolbar[data-visible="true"], [data-whale-pet] .petCrown:focus-within .toolbar { opacity: 1; transform: none; pointer-events: auto; }
+[data-whale-pet] .toolbar[data-settings-open="true"] { display: none; }
+[data-whale-pet] .toolbar::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 40px; }
+[data-whale-pet] .toolBtn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 30px; padding: 0 11px;
+  border: 0; border-radius: 999px;
+  background: transparent; color: var(--wp-ink);
+  font-size: 12.5px; font-weight: 550; cursor: pointer;
+  transition: background-color .15s ease, color .15s ease;
+}
+[data-whale-pet] .toolBtn:hover { background: var(--wp-control-hover); }
+[data-whale-pet] .toolBtn svg { flex: none; opacity: .85; }
+[data-whale-pet] .toolBtnPrimary { background: var(--wp-accent-soft); color: var(--wp-accent); }
+[data-whale-pet] .toolBtnPrimary:hover { background: var(--wp-accent); color: var(--wp-accent-ink); }
+[data-whale-pet] .toolIcon { width: 30px; padding: 0; justify-content: center; color: var(--wp-ink-2); }
+[data-whale-pet] .toolIcon[aria-pressed="true"] { background: var(--wp-accent-soft); color: var(--wp-accent); }
+[data-whale-pet] .toolDivider { width: 1px; height: 16px; margin: 0 3px; background: var(--wp-line-strong); }
+
+[data-whale-pet] .petCrownRow { display: flex; align-items: center; gap: 6px; pointer-events: none; }
+[data-whale-pet] .petTierChip {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 24px; padding: 0 9px 0 8px;
+  border: 1px solid var(--wp-line); border-radius: 999px;
+  background: var(--wp-surface); color: var(--tier, var(--wp-ink));
+  -webkit-backdrop-filter: var(--wp-blur); backdrop-filter: var(--wp-blur);
+  box-shadow: var(--wp-shadow-s);
+  font-size: 11.5px; font-weight: 650; white-space: nowrap; cursor: pointer; pointer-events: auto;
+}
+[data-whale-pet] [data-tier="peak"] { --tier: var(--wp-peak); --tier-soft: var(--wp-peak-soft); }
+[data-whale-pet] [data-tier="valley"] { --tier: var(--wp-valley); --tier-soft: var(--wp-valley-soft); }
+[data-whale-pet] .petTierChip i, [data-whale-pet] .petTierHead i { width: 7px; height: 7px; border-radius: 50%; background: var(--tier); box-shadow: 0 0 0 3px var(--tier-soft); }
+[data-whale-pet] .petTierUntil { color: var(--wp-ink-3); font-weight: 500; font-variant-numeric: tabular-nums; }
+[data-whale-pet] .petWalletChip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 24px; padding: 0 10px;
+  border: 1px solid var(--wp-line); border-radius: 999px;
+  background: var(--wp-surface); color: var(--wp-ink-2);
+  -webkit-backdrop-filter: var(--wp-blur); backdrop-filter: var(--wp-blur);
+  box-shadow: var(--wp-shadow-s);
+  font-size: 11.5px; font-variant-numeric: tabular-nums; white-space: nowrap; cursor: pointer;
+}
+[data-whale-pet] .petWalletChip:hover { color: var(--wp-ink); border-color: var(--wp-line-strong); }
+[data-whale-pet] .petWalletChip[data-status="live"] { color: var(--wp-ink); }
+[data-whale-pet] .petWalletChip[data-low] { color: var(--wp-warn); border-color: currentColor; background: var(--wp-warn-soft); }
+[data-whale-pet] .petWalletSep { opacity: .45; }
+[data-whale-pet] .petWalletStale { padding: 0 5px; border-radius: 999px; background: var(--wp-control); color: var(--wp-ink-3); font-size: 10.5px; }
+
+/* Chatter bubble beside the head */
+[data-whale-pet] .speechBubble {
+  position: absolute; z-index: 20;
+  width: max-content; max-width: min(220px, calc(100vw - 48px));
+  padding: 8px 26px 9px 12px;
+  border-radius: 14px;
+  color: var(--wp-ink); line-height: 1.5; font-weight: 500;
+  text-wrap: pretty; line-break: strict;
+  cursor: pointer;
+  animation: wpPop .28s cubic-bezier(.34, 1.4, .64, 1);
+}
+[data-whale-pet] .speechBubble[data-side="left"] { right: calc(100% - 22px); transform-origin: 100% 20%; }
+[data-whale-pet] .speechBubble[data-side="right"] { left: calc(100% - 22px); transform-origin: 0 20%; }
+[data-whale-pet] .speechBubble::after {
+  content: ""; position: absolute; top: 14px; width: 10px; height: 10px;
+  background: inherit; border: inherit; border-width: 0 1px 1px 0;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+[data-whale-pet] .speechBubble[data-side="left"]::after { right: -6px; transform: rotate(-45deg); }
+[data-whale-pet] .speechBubble[data-side="right"]::after { left: -6px; transform: rotate(135deg); }
+[data-whale-pet] .petBubbleClose {
+  position: absolute; right: 4px; top: 4px; width: 18px; height: 18px; padding: 0;
+  border: 0; border-radius: 50%; background: transparent; color: var(--wp-ink-3);
+  font-size: 14px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .15s ease;
+}
+[data-whale-pet] .speechBubble:hover .petBubbleClose, [data-whale-pet] .speechBubble:focus-within .petBubbleClose { opacity: 1; }
+@keyframes wpPop { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
+
+/* Thinking particles */
+[data-whale-pet] .bubbleContainer { position: absolute; left: 22%; width: 56%; height: 60px; margin-top: -40px; pointer-events: none; z-index: 15; }
+[data-whale-pet] .bubble {
+  position: absolute; bottom: 0; border-radius: 50%; opacity: 0;
+  background: radial-gradient(circle at 35% 35%, #fff, rgba(110, 185, 255, .75) 55%, rgba(40, 120, 210, .85));
+  animation: wpRise 2.2s ease-in infinite;
+}
+[data-whale-pet] .bubble1 { left: 10%; width: 12px; height: 12px; }
+[data-whale-pet] .bubble2 { left: 45%; width: 17px; height: 17px; animation-delay: .6s; }
+[data-whale-pet] .bubble3 { left: 80%; width: 10px; height: 10px; animation-delay: 1.1s; animation-duration: 1.8s; }
+@keyframes wpRise { 0% { transform: translateY(24px) scale(.4); opacity: 0; } 30% { opacity: .9; } 100% { transform: translateY(-36px) scale(1.05); opacity: 0; } }
+
+[data-whale-pet] .petHearts { position: absolute; left: 0; right: 0; text-align: center; z-index: 25; pointer-events: none; color: #f08cba; font-size: 22px; letter-spacing: 6px; animation: wpHearts 2s ease-out both; }
+@keyframes wpHearts { from { transform: translateY(10px); opacity: 1; } to { transform: translateY(-40px); opacity: 0; } }
+
+/* Reactions on the sprite layer (separate from gaze and breathing layers) */
+[data-whale-pet] .qBounce { animation: wpBounce .48s cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes wpBounce { 0% { transform: none; } 25% { transform: scale(1.06, .94); } 55% { transform: scale(.97, 1.04) translateY(-8px); } 80% { transform: scale(1.02, .99); } 100% { transform: none; } }
+[data-whale-pet] .petReaction-dizzy { animation: wpDizzy .45s ease-in-out 5; }
+@keyframes wpDizzy { 0%, 100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
+[data-whale-pet] .petReaction-float { animation: wpFloat .8s ease-out; }
+@keyframes wpFloat { 30% { transform: translateY(-10px); } 65% { transform: translateY(3px); } }
+
+/* Toast + onboarding */
+.petToast {
+  position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 1000005;
+  padding: 10px 18px; border-radius: 12px;
+  background: rgba(16, 36, 58, .92); color: #fff;
+  font: 500 13px/1.4 system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, .5);
+  pointer-events: none;
+}
+[data-whale-pet] .petOnboarding { position: fixed; left: 20px; top: 84px; z-index: 100000; width: min(300px, calc(100vw - 40px)); padding: 16px 16px 14px; border-radius: var(--wp-radius-l); font-size: 13px; line-height: 1.55; }
+[data-whale-pet] .petOnboarding strong { display: block; font-size: 14px; margin-bottom: 6px; }
+[data-whale-pet] .petOnboarding ul { margin: 0 0 14px; padding-left: 18px; color: var(--wp-ink-2); }
+[data-whale-pet] .petOnboarding li + li { margin-top: 4px; }
+[data-whale-pet] .petOnboarding .petPrimary { min-height: 32px; width: 100%; }
+
+/* ==========================================================================
+   Settings panel: fixed header, scrolling body, fixed footer.
+   Position and size come from layout.ts; only the body scrolls.
+   ========================================================================== */
+[data-whale-pet] .settingsDrawer {
+  z-index: 100001;
+  display: flex; flex-direction: column;
+  min-height: 0; overflow: hidden;
+  border-radius: var(--wp-radius-l);
+  font-size: 13px; line-height: 1.45;
+  user-select: none;
+  animation: wpPanelIn .22s cubic-bezier(.2, .8, .2, 1);
+}
+[data-whale-pet] .settingsDrawer[data-side="left"][data-mode="tethered"] { transform-origin: 100% 10%; }
+[data-whale-pet] .settingsDrawer[data-side="right"][data-mode="tethered"] { transform-origin: 0 10%; }
+[data-whale-pet] .settingsDrawer[data-mode="detached"] { box-shadow: var(--wp-shadow), 0 0 0 100vmax rgba(8, 20, 36, .16); }
+/* Moving glass is expensive: drop the blur while dragging, and slide only on a side switch. */
+.petWidget[data-whale-pet][data-dragging] .settingsDrawer { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--wp-surface-solid); }
+[data-whale-pet] .settingsDrawer[data-flipping] { transition: left .24s cubic-bezier(.2, .8, .2, 1), top .24s cubic-bezier(.2, .8, .2, 1); }
+@keyframes wpPanelIn { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+
+[data-whale-pet] .petPanelHeader { flex: none; display: flex; align-items: center; gap: 8px; padding: 12px 10px 10px 18px; border-bottom: 1px solid var(--wp-line); }
+[data-whale-pet] .petPanelHeader h2 { margin: 0; flex: 1; font-size: 15px; font-weight: 650; letter-spacing: .01em; color: var(--wp-ink); }
+[data-whale-pet] .petPanelMode { padding: 2px 8px; border-radius: 999px; background: var(--wp-accent-soft); color: var(--wp-accent); font-size: 11px; font-weight: 600; white-space: nowrap; }
+
+[data-whale-pet] .petSettingsBody {
+  flex: 1 1 auto; min-height: 0;
+  overflow-y: auto; overscroll-behavior: contain;
+  padding: 14px 16px 6px;
+  scrollbar-width: thin; scrollbar-color: var(--wp-line-strong) transparent;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
 }
 
-/* Balance Header Bar directly on top of the toolbar */
-.balanceHeaderBar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: #94a3b8;
-  padding: 2px 8px;
-  background: rgba(30, 41, 59, 0.75);
-  border-radius: 8px;
-  border: 1px solid rgba(56, 189, 248, 0.25);
+[data-whale-pet] .petWalletCard { padding: 12px 14px; border-radius: var(--wp-radius-m); background: var(--wp-accent-soft); }
+[data-whale-pet] .petWalletCard[data-low] { background: var(--wp-warn-soft); }
+[data-whale-pet] .petWalletHead { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; font-weight: 600; color: var(--wp-ink-2); }
+[data-whale-pet] .petWalletBadge { padding: 1px 8px; border-radius: 999px; background: var(--wp-raised); color: var(--wp-ink-3); font-size: 11px; font-weight: 600; }
+[data-whale-pet] .petWalletCard[data-status="live"] .petWalletBadge { color: var(--wp-accent); }
+[data-whale-pet] .petWalletCard[data-status="stale"] .petWalletBadge { color: var(--wp-warn); }
+[data-whale-pet] .petWalletFigures { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 8px 0 6px; }
+[data-whale-pet] .petWalletFigures dt { font-size: 11.5px; color: var(--wp-ink-3); }
+[data-whale-pet] .petWalletFigures dd { margin: 2px 0 0; font-size: 17px; font-weight: 650; font-variant-numeric: tabular-nums; color: var(--wp-ink); overflow-wrap: anywhere; }
+[data-whale-pet] .petWalletCard[data-status="unavailable"] dd { color: var(--wp-ink-3); }
+[data-whale-pet] .petWalletCard[data-low] dd { color: var(--wp-warn); }
+[data-whale-pet] .petWalletNote { margin: 0; font-size: 11.5px; line-height: 1.5; color: var(--wp-ink-2); }
+
+[data-whale-pet] .petTierCard { margin-top: 10px; padding: 11px 14px; border-radius: var(--wp-radius-m); background: var(--tier-soft); }
+[data-whale-pet] .petTierHead { display: flex; align-items: center; gap: 8px; }
+[data-whale-pet] .petTierHead strong { font-size: 13.5px; color: var(--tier); }
+[data-whale-pet] .petTierHead span { margin-left: auto; padding: 1px 8px; border-radius: 999px; background: var(--wp-raised); color: var(--wp-ink-2); font-size: 11px; font-weight: 600; }
+[data-whale-pet] .petTierCard p { margin: 6px 0 0; font-size: 11.5px; line-height: 1.55; color: var(--wp-ink-2); }
+[data-whale-pet] .petTierCard .petTierWarn { color: var(--wp-warn); }
+[data-whale-pet] .petSettingsGroup { border-bottom: 1px solid var(--wp-line); }
+[data-whale-pet] .petSettingsGroup:last-child { border-bottom: 0; }
+[data-whale-pet] .petSettingsGroup > summary {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 0 -6px; padding: 13px 6px; border-radius: var(--wp-radius-s);
+  list-style: none; cursor: pointer;
+  font-size: 13px; font-weight: 650; color: var(--wp-ink);
+}
+[data-whale-pet] .petSettingsGroup > summary::-webkit-details-marker { display: none; }
+[data-whale-pet] .petSettingsGroup > summary::after {
+  content: ""; width: 7px; height: 7px; margin-right: 4px;
+  border: solid var(--wp-ink-3); border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg) translateY(-2px); transition: transform .2s ease;
+}
+[data-whale-pet] .petSettingsGroup[open] > summary::after { transform: rotate(-135deg) translateY(-1px); }
+[data-whale-pet] .petSettingsGroup > summary:hover { background: var(--wp-control); }
+[data-whale-pet] .petSettingsBody > .petWalletCard + .petSettingsGroup { margin-top: 6px; }
+[data-whale-pet] .petGroupBody { display: grid; gap: 14px; padding: 2px 0 16px; }
+
+[data-whale-pet] .petField { display: grid; grid-template-columns: minmax(84px, 38%) minmax(0, 1fr); align-items: center; gap: 10px; }
+[data-whale-pet] .petFieldStack { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+[data-whale-pet] .petFieldLabel { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--wp-ink-2); font-size: 12.5px; }
+[data-whale-pet] .petValue { color: var(--wp-ink); font-weight: 600; font-variant-numeric: tabular-nums; font-size: 12px; }
+
+[data-whale-pet] .petSegmented { display: flex; gap: 2px; padding: 3px; min-width: 0; border-radius: 10px; background: var(--wp-control); }
+[data-whale-pet] .petSegmented button {
+  flex: 1 1 0; min-width: 0; min-height: 30px; padding: 0 6px;
+  border: 0; border-radius: 7px; background: transparent; color: var(--wp-ink-2);
+  font-size: 12.5px; font-weight: 550; white-space: nowrap; cursor: pointer;
+  transition: background-color .15s ease, color .15s ease;
+}
+[data-whale-pet] .petSegmented button:hover { color: var(--wp-ink); }
+[data-whale-pet] .petSegmented button[aria-pressed="true"] { background: var(--wp-accent); color: var(--wp-accent-ink); box-shadow: 0 1px 3px rgba(12, 40, 70, .2); }
+
+[data-whale-pet] .settingsDrawer input[type="range"] { width: 100%; height: 20px; margin: 0; accent-color: var(--wp-accent); cursor: pointer; background: transparent; }
+[data-whale-pet] .settingsDrawer input[type="range"]:disabled { cursor: not-allowed; opacity: .45; }
+[data-whale-pet] .settingsDrawer :is(input[type="text"], input:not([type]), input[type="number"]) {
+  width: 100%; min-width: 0; height: 32px; padding: 0 10px;
+  border: 1px solid var(--wp-line-strong); border-radius: var(--wp-radius-s);
+  background: var(--wp-raised); color: var(--wp-ink); font: inherit; font-size: 13px;
   user-select: text;
 }
+[data-whale-pet] .settingsDrawer :is(input[type="text"], input:not([type]), input[type="number"]):focus { outline: none; border-color: var(--wp-accent); box-shadow: 0 0 0 3px var(--wp-accent-soft); }
 
-.balanceTag {
-  font-weight: 600;
-  color: #38bdf8;
-}
+/* Five snapped sizes: the native range plus borderless dots (centre dot marks the default). */
+[data-whale-pet] .petSizeSlider { position: relative; }
+[data-whale-pet] .petSizeDots { display: flex; justify-content: space-between; margin: 2px 0 0; padding: 0 1px; }
+[data-whale-pet] .petSizeDots button { display: grid; place-items: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
+[data-whale-pet] .petSizeDots button i { width: 4px; height: 4px; border-radius: 50%; background: var(--wp-ink-3); opacity: .7; transition: transform .15s ease; }
+[data-whale-pet] .petSizeDots button.default i { width: 7px; height: 7px; background: var(--wp-accent); opacity: 1; }
+[data-whale-pet] .petSizeDots button:hover i { transform: scale(1.4); }
+[data-whale-pet] .petSizeDots button[aria-pressed="true"] i { opacity: 1; background: var(--wp-ink); }
+[data-whale-pet] .petSizeDots button.default[aria-pressed="true"] i { background: var(--wp-accent); }
 
-.balanceVal {
-  font-weight: 700;
-  color: #f8fafc;
-  letter-spacing: 0.3px;
+/* Switch rows */
+[data-whale-pet] .petToggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
+[data-whale-pet] .petToggle[data-disabled] { cursor: not-allowed; }
+[data-whale-pet] .petToggleText { display: flex; flex-direction: column; gap: 1px; color: var(--wp-ink); font-size: 13px; }
+[data-whale-pet] .petToggleText small { color: var(--wp-ink-3); font-size: 11.5px; }
+[data-whale-pet] .petToggle input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none; flex: none;
+  position: relative; width: 34px; height: 20px; margin: 0;
+  border-radius: 999px; background: var(--wp-line-strong); cursor: inherit;
+  transition: background-color .18s ease;
 }
+[data-whale-pet] .petToggle input[type="checkbox"]::before {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); transition: transform .18s cubic-bezier(.2, .8, .2, 1);
+}
+[data-whale-pet] .petToggle input[type="checkbox"]:checked { background: var(--wp-accent); }
+[data-whale-pet] .petToggle input[type="checkbox"]:checked::before { transform: translateX(14px); }
+[data-whale-pet] .petToggle input[type="checkbox"]:disabled { opacity: .45; }
 
-.balanceDivider {
-  color: #475569;
+[data-whale-pet] .petWide {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  width: 100%; padding: 9px 12px;
+  border: 1px solid var(--wp-line); border-radius: 10px;
+  background: var(--wp-raised); color: var(--wp-ink); text-align: left; cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease;
 }
+[data-whale-pet] .petWide:hover { border-color: var(--wp-line-strong); background: var(--wp-control); }
+[data-whale-pet] .petWide strong { font-size: 13px; font-weight: 600; }
+[data-whale-pet] .petWide small { font-size: 11.5px; color: var(--wp-ink-3); }
+[data-whale-pet] .petWide[aria-pressed="true"] { border-color: var(--wp-accent); background: var(--wp-accent-soft); }
 
-.toolbarButtons {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+/* Footer: note and primary action share one row, 12px apart, 16px from the bottom edge. */
+[data-whale-pet] .petSettingsFooter {
+  flex: none;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--wp-line);
 }
+[data-whale-pet] .petUnofficial { flex: 1 1 96px; margin: 0; font-size: 11.5px; line-height: 1.4; color: var(--wp-ink-3); }
+[data-whale-pet] .petSettingsFooter .petPrimary { flex: 0 1 auto; min-height: 36px; }
 
-/* Invisible Bridge preventing mouseleave when moving towards toolbar */
-.toolbar::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 0;
-  width: 100%;
-  height: 22px;
-  pointer-events: auto;
-}
-
-/* When hover state or programmatically visible */
-.toolbarVisible,
-.overlayContainer:hover .toolbar {
-  opacity: 1 !important;
-  transform: translateX(-50%) translateY(0) !important;
-  pointer-events: auto !important;
-}
-
-.toolBtn {
-  background: rgba(30, 41, 59, 0.85);
-  border: 1px solid rgba(71, 85, 105, 0.8);
-  color: #e2e8f0;
-  border-radius: 12px;
-  padding: 3px 9px;
-  font-size: 11px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.toolBtn:hover {
-  background: #0284c7;
-  color: #ffffff;
-  border-color: #38bdf8;
-  transform: translateY(-1px);
-}
-
-/* Q-Bounce Animation on Click */
-.qBounce {
-  animation: qBounceAnim 0.48s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
-}
-
-@keyframes qBounceAnim {
-  0% { transform: scale(1) translateY(0); }
-  25% { transform: scale(1.18, 0.82) translateY(8px); }
-  50% { transform: scale(0.85, 1.2) translateY(-14px); }
-  75% { transform: scale(1.08, 0.94) translateY(2px); }
-  100% { transform: scale(1) translateY(0); }
-}
-
-/* Side Settings Drawer (Slides out from pet on click) */
-.settingsDrawer {
-  position: absolute;
-  top: 0;
-  width: 250px;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1.5px solid rgba(2, 132, 199, 0.4);
-  border-radius: 16px;
-  box-shadow:
-    0 16px 40px rgba(0, 0, 0, 0.22),
-    0 0 20px rgba(2, 132, 199, 0.2);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  padding: 14px 16px;
-  z-index: 10000;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
-  pointer-events: auto;
-  user-select: none;
-}
-
-.settingsDrawerRight {
-  left: calc(100% + 14px);
-  animation: drawerSlideRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.settingsDrawerLeft {
-  right: calc(100% + 14px);
-  left: auto;
-  animation: drawerSlideLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes drawerSlideRight {
-  0% { transform: translateX(-16px); opacity: 0; }
-  100% { transform: translateX(0); opacity: 1; }
-}
-
-@keyframes drawerSlideLeft {
-  0% { transform: translateX(16px); opacity: 0; }
-  100% { transform: translateX(0); opacity: 1; }
-}
-
-[data-pet-theme="dark"] .settingsDrawer,
-[data-pet-theme="dark"] .settingsDrawer {
-  background: rgba(15, 23, 42, 0.96);
-  border-color: rgba(56, 189, 248, 0.5);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
-}
-
-.drawerHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-  padding-bottom: 8px;
-  font-size: 14px;
-  font-weight: 700;
-  color: #0284c7;
-}
-
-[data-pet-theme="dark"] .drawerHeader,
-[data-pet-theme="dark"] .drawerHeader {
-  border-bottom-color: rgba(51, 65, 85, 0.8);
-  color: #38bdf8;
-}
-
-.drawerCloseBtn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  color: #94a3b8;
-  padding: 2px 6px;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-}
-
-.drawerCloseBtn:hover {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
-}
-
-.drawerItem {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.drawerLabel {
-  font-size: 12px;
-  font-weight: 600;
-  color: #475569;
-}
-
-[data-pet-theme="dark"] .drawerLabel,
-[data-pet-theme="dark"] .drawerLabel {
-  color: #94a3b8;
-}
-
-.drawerBtnGroup {
-  display: flex;
-  gap: 6px;
-}
-
-.drawerBtn {
-  flex: 1;
-  background: rgba(241, 245, 249, 0.9);
-  border: 1px solid rgba(203, 213, 225, 0.8);
-  border-radius: 8px;
-  padding: 5px 8px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #1e293b;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  text-align: center;
-}
-
-[data-pet-theme="dark"] .drawerBtn,
-[data-pet-theme="dark"] .drawerBtn {
-  background: rgba(30, 41, 59, 0.9);
-  border-color: rgba(71, 85, 105, 0.8);
-  color: #e2e8f0;
-}
-
-.drawerBtn:hover {
-  border-color: #0284c7;
-  color: #0284c7;
-}
-
-.drawerBtnActive {
-  background: #0284c7 !important;
-  border-color: #0284c7 !important;
-  color: #ffffff !important;
-  font-weight: 600 !important;
-}
-
-[data-pet-theme="dark"] .drawerBtnActive,
-[data-pet-theme="dark"] .drawerBtnActive {
-  background: #0284c7 !important;
-  border-color: #38bdf8 !important;
-  color: #ffffff !important;
-}
-
-.drawerFullBtn {
-  width: 100%;
-  background: rgba(241, 245, 249, 0.9);
-  border: 1px solid rgba(203, 213, 225, 0.8);
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #1e293b;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  text-align: center;
-}
-
-[data-pet-theme="dark"] .drawerFullBtn,
-[data-pet-theme="dark"] .drawerFullBtn {
-  background: rgba(30, 41, 59, 0.9);
-  border-color: rgba(71, 85, 105, 0.8);
-  color: #e2e8f0;
-}
-
-.drawerFullBtn:hover {
-  background: #0284c7;
-  border-color: #0284c7;
-  color: #ffffff;
-}
-
-.toolbar:focus-within, .overlayContainer:focus-within .toolbar {
-  opacity: 1;
-  pointer-events: auto;
-}
-[data-whale-pet] button:focus-visible, [data-whale-pet] [role="button"]:focus-visible {
-  outline: 2px solid #38bdf8;
-  outline-offset: 3px;
+@media (prefers-reduced-motion: reduce) {
+  [data-whale-pet], [data-whale-pet] *, [data-whale-pet] *::before, [data-whale-pet] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }

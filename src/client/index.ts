@@ -3,6 +3,7 @@ import React from 'react'
 import type { Context } from '@deepseek-ai/cordis'
 import { PetStateMachine } from './state-machine.js'
 import { PetOverlay } from './PetOverlay.js'
+import { AccountBalancePoller, ACCOUNT_CLIENT_VERSION } from './account-balance.js'
 import './galgame.css'
 
 export const name = 'dsh-whale-pet-client'
@@ -60,46 +61,24 @@ function extractReasoningText(container: Element | null): string {
 }
 
 /**
- * Query account balances (Topped-up and Granted) from DSH DOM elements
+ * Fallback: read the DSH account settings card while it is mounted.
+ * Only used when the host account service is unavailable. Missing fields stay
+ * empty (never padded with ¥0.00), there is no page-wide amount guessing, and
+ * the plugin's own DOM is excluded.
  */
 function queryAccountBalances(): { toppedUp: string; granted: string } | null {
   let toppedUp = ''
   let granted = ''
-
-  const rows = Array.from(
-    document.querySelectorAll('[class*="balanceCard"] [class*="row"], [class*="balance"] [class*="row"]')
-  )
+  const rows = Array.from(document.querySelectorAll('[class*="balanceCard"] [class*="row"]'))
+    .filter(row => !row.closest('[data-whale-pet]'))
   for (const row of rows) {
-    const text = row.textContent || ''
-    const amountEl = row.querySelector('[class*="amount"]')
-    const amount = amountEl?.textContent?.trim() || ''
-    if (amount) {
-      if (/充值|topped-up|balance/i.test(text) && !/赠金|granted|bonus/i.test(text)) {
-        toppedUp = amount
-      } else if (/赠金|granted|bonus/i.test(text)) {
-        granted = amount
-      }
-    }
+    const label = row.firstElementChild?.textContent || row.textContent || ''
+    const amount = row.querySelector('[class*="amount"]')?.textContent?.trim() || ''
+    if (!amount) continue
+    if (/赠金|granted|bonus/i.test(label)) granted = amount
+    else if (/余额|充值|balance|topped/i.test(label)) toppedUp = amount
   }
-
-  if (!toppedUp && !granted) {
-    const amountEls = Array.from(document.querySelectorAll('[class*="amount"]'))
-    if (amountEls.length >= 2) {
-      toppedUp = amountEls[0].textContent?.trim() || ''
-      granted = amountEls[1].textContent?.trim() || ''
-    } else if (amountEls.length === 1) {
-      toppedUp = amountEls[0].textContent?.trim() || ''
-    }
-  }
-
-  if (toppedUp || granted) {
-    return {
-      toppedUp: toppedUp || '¥0.00',
-      granted: granted || '¥0.00',
-    }
-  }
-
-  return null
+  return toppedUp || granted ? { toppedUp, granted } : null
 }
 
 /**
@@ -147,6 +126,48 @@ export function apply(ctx: Context): void {
       () => React.createElement(PetOverlay, { stateMachine })
     )
   })
+
+  // 1b. Balance through DSH's own account service, in a sub-scope that waits
+  // for the services without delaying the companion. Older hosts without them
+  // simply never run this block and keep the DOM fallback.
+  if (typeof (ctx as any).inject === 'function') {
+    (ctx as any).inject(['remote', 'remote.account', 'remoteAccess'], (scoped: any) => {
+      const remote = scoped.remote
+      const access = scoped.remoteAccess
+      if (typeof remote?.account?.getBalance !== 'function' || typeof access?.whenAccess !== 'function') return
+      const locale = (): string => {
+        try { const active = scoped.get?.('locale')?.getSnapshot?.()?.active; if (typeof active === 'string' && active) return active } catch { /* optional */ }
+        return document.documentElement.lang || navigator.language || 'zh'
+      }
+      const client = () => ({ version: ACCOUNT_CLIENT_VERSION, locale: locale(), timezoneOffsetSeconds: -new Date().getTimezoneOffset() * 60 })
+      try {
+        access.whenAccess('account/watch', () => {
+          const poller = new AccountBalancePoller({
+            getBalance: () => remote.account.getBalance(client()),
+            publish: snapshot => stateMachine.setHostBalance(snapshot),
+            isHidden: () => document.hidden,
+          })
+          poller.start()
+          const visible = () => { if (!document.hidden) void poller.refresh() }
+          let streaming = stateMachine.getStatus().isStreaming
+          const unsubscribe = stateMachine.subscribe(status => {
+            if (streaming && !status.isStreaming) void poller.refresh()
+            streaming = status.isStreaming
+          })
+          document.addEventListener('visibilitychange', visible)
+          window.addEventListener('focus', visible)
+          return () => {
+            document.removeEventListener('visibilitychange', visible)
+            window.removeEventListener('focus', visible)
+            unsubscribe()
+            poller.stop()
+          }
+        })
+      } catch (error) {
+        console.warn('[dsh-whale-pet] account balance unavailable:', error instanceof Error ? error.message : 'unknown')
+      }
+    })
+  }
 
   // 2. User Input & Composer Interaction Listener
   ctx.effect(() => {

@@ -1,13 +1,4 @@
-/** Native synthesis only. No context or sound is created until a user gesture. */
-export declare class PetAudio {
-    private context;
-    private lastBlip;
-    private active;
-    unlock(): void;
-    play(kind: 'blip' | 'ding' | 'jelly' | 'rice', volume?: number): void;
-    silence(): void;
-    dispose(): void;
-}
+/** Text helpers shared by the views. Audio lives in voice.ts. */
 export interface DialogueBlock {
     kind: 'text' | 'code';
     text: string;

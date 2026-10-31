@@ -19,6 +19,8 @@ export interface Preferences {
     volume: number;
     typewriter: boolean;
     reminders: boolean;
+    /** Announce DeepSeek API peak / off-peak switches (梁文峰 / 梁文谷时间). */
+    peakNotice: boolean;
     scale: number;
     opacity: number;
     reading: 'pages' | 'scroll';

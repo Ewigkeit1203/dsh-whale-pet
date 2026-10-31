@@ -1,4 +1,4 @@
-import type { PetState, PetForm, PetPose, PetStatusInfo, GazeOffset } from './types.js'
+import type { PetState, PetForm, PetPose, PetStatusInfo, GazeOffset, BalanceSnapshot } from './types.js'
 
 export interface StateMachineListener {
   (status: PetStatusInfo): void
@@ -42,16 +42,16 @@ const DIALOGUES: Record<PetState, string[]> = {
 }
 
 const SAJIAO_CLICK_DIALOGUES = [
-  '嘿嘿，被你发现啦，摸摸头也可以哦～',
+  '嘿嘿，被主人发现啦，摸摸头也可以哦～',
   '（鼓起腮帮子）主人坏心眼，就知道逗我玩~',
-  '撒娇中……能陪你待一会儿就很开心啦～',
-  '收到你的戳戳啦，我会在这里陪着你。',
+  '撒娇中……能陪主人待一会儿就很开心啦～',
+  '收到主人的戳戳啦，我会一直在这里陪着你。',
 ]
 
 const SAJIAO_LONELY_DIALOGUES = [
   '主人……好久没理大肥鱼了，陪陪我嘛~',
   '（扯衣角）大肥鱼一个人待机好无聊，主人来跟我说说话呀~',
-  '戳戳主人！大肥鱼在这里等你好久啦，快来看看我~',
+  '戳戳主人！大肥鱼在这里等主人好久啦，快来看看我~',
   '呼呼……主人是不是把我忘了？大肥鱼在旁边画圈圈中……',
 ]
 
@@ -78,6 +78,9 @@ export class PetStateMachine {
   private balancesKnown = false
   private toppedUpBalance = '¥0.00'
   private grantedBalance = '¥0.00'
+  /** Last time a balance source reported, even when values were unchanged (UI freshness only). */
+  private balancesCheckedAt: number | null = null
+  private hostBalance: BalanceSnapshot | null = null
   private mouthOpenRatio = 0
   private blinkRatio = 0
   private gazeOffset: GazeOffset = { x: 0, y: 0 }
@@ -112,6 +115,8 @@ export class PetStateMachine {
       balancesKnown: this.balancesKnown,
       toppedUpBalance: this.toppedUpBalance,
       grantedBalance: this.grantedBalance,
+      balancesCheckedAt: this.balancesCheckedAt,
+      hostBalance: this.hostBalance,
       isReasoning: this.isReasoning,
       isStreaming: this.isStreaming,
       isInputFocused: this.isInputFocused,
@@ -262,9 +267,17 @@ export class PetStateMachine {
   public setBalances(toppedUp: string, granted: string): void {
     const known = this.balancesKnown
     this.balancesKnown = true
+    this.balancesCheckedAt = Date.now()
     if (known && this.toppedUpBalance === toppedUp && this.grantedBalance === granted) return
     this.toppedUpBalance = toppedUp
     this.grantedBalance = granted
+    this.notify()
+  }
+
+  /** Host account balance (see account-balance.ts). null clears it, e.g. when account access is withdrawn. */
+  public setHostBalance(snapshot: BalanceSnapshot | null): void {
+    if (this.hostBalance === snapshot) return
+    this.hostBalance = snapshot
     this.notify()
   }
 

@@ -1,121 +1,27 @@
-.puppetRoot {
-  position: relative;
-  display: inline-block;
-  user-select: none;
-  -webkit-user-select: none;
-  filter: drop-shadow(0 6px 18px rgba(0, 30, 80, 0.28));
-  transition: filter 0.35s ease;
-}
+/* ==========================================================================
+   Character puppet. Layers: .puppetRoot (gaze parallax, inline transform)
+   → .puppetCanvas (breathing / talking / state motion) → img (sized only).
+   ========================================================================== */
+[data-whale-pet] .puppetRoot { position: absolute; inset: 0; user-select: none; -webkit-user-select: none; }
+[data-whale-pet="widget"] .puppetRoot { filter: drop-shadow(0 8px 14px rgba(8, 30, 60, .22)); }
+[data-whale-pet] .puppetCanvas { position: absolute; inset: 0; transform-origin: 50% 100%; animation: wpBreathe 3.6s ease-in-out infinite; }
+[data-whale-pet] .characterBase { position: absolute; bottom: 0; display: block; max-width: none; user-select: none; -webkit-user-drag: none; }
 
-.puppetCanvas {
-  position: relative;
-  display: inline-block;
-  transform-origin: center bottom;
-  transition: transform 0.15s ease-out;
-  animation: bioBreathing 3.6s ease-in-out infinite;
-}
+[data-whale-pet] .puppetCanvas.canvasTalking { animation: wpTalk .36s ease-in-out infinite alternate; }
+[data-whale-pet] .puppetCanvas[data-state="REASONING"]:not(.canvasTalking) { animation: wpSway 2.6s ease-in-out infinite; }
+[data-whale-pet] .puppetCanvas[data-state="EATING"] { animation: wpMunch .5s cubic-bezier(.36, .07, .19, .97) infinite; }
+[data-whale-pet] .puppetCanvas[data-state="WANDERING"] { animation: wpWalk .8s ease-in-out infinite alternate; }
+[data-whale-pet="widget"] .puppetCanvas[data-state="REASONING"] .characterBase { filter: drop-shadow(0 0 14px rgba(70, 165, 255, .55)); }
 
-@keyframes bioBreathing {
-  0%, 100% {
-    transform: scale(1) translateY(0);
-  }
-  50% {
-    transform: scale(1.012, 1.018) translateY(-4px);
-  }
-}
+@keyframes wpBreathe { 0%, 100% { transform: none; } 50% { transform: scale(1.008, 1.014) translateY(-3px); } }
+@keyframes wpTalk { from { transform: none; } to { transform: translateY(-2px) scale(1.008); } }
+@keyframes wpSway { 0%, 100% { transform: rotate(-1.2deg); } 50% { transform: rotate(1.2deg) translateY(-4px); } }
+@keyframes wpMunch { 0%, 100% { transform: none; } 50% { transform: translateY(-5px) scale(1.015); } }
+@keyframes wpWalk { from { transform: rotate(-2deg) translateY(-2px); } to { transform: rotate(2deg) translateY(-6px); } }
 
-.canvasTalking {
-  animation: talkingBounce 0.35s ease-in-out infinite alternate !important;
-}
-
-@keyframes talkingBounce {
-  0% {
-    transform: translateY(0) scale(1);
-  }
-  100% {
-    transform: translateY(-3px) scale(1.015);
-  }
-}
-
-.characterBase {
-  display: block;
-  user-select: none;
-  pointer-events: auto;
-  cursor: grab;
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), filter 0.3s ease;
-}
-
-.characterBase:active {
-  cursor: grabbing;
-}
-
-/* Widget Mode Sizes */
-.chibiBase {
-  height: 220px;
-  width: auto;
-}
-
-.standingBase {
-  height: 480px;
-  max-height: 60vh;
-  width: auto;
-}
-
-/* GalGame Mode Sizes */
-.puppetGalGame {
-  display: block !important;
-  margin: 0 auto !important;
-  pointer-events: none;
-}
-
-/* Maiden Standing Size in GalGame Mode (Natural full / 3/4 view, elegant presentation) */
-.standingGalGame {
-  height: clamp(520px, 80vh, 880px) !important;
-  max-height: 86vh !important;
-  width: auto !important;
-  object-fit: contain !important;
-  transform: translateY(0) !important;
-  transform-origin: center bottom !important;
-}
-
-/* Q-Version Stage Size in GalGame Mode */
-.chibiGalGame {
-  height: clamp(260px, 36vh, 420px) !important;
-  width: auto !important;
-  object-fit: contain !important;
-  transform: translateY(0) !important;
-  transform-origin: center bottom !important;
-}
-
-/* Talking Wave Indicator (Clean SVG / CSS, No Emoji) */
-.talkingIndicator {
-  position: absolute;
-  top: 18%;
-  right: 12%;
-  pointer-events: none;
-}
-
-.talkingWave {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2px solid rgba(0, 162, 255, 0.85);
-  animation: wavePulse 1.1s cubic-bezier(0.24, 0, 0.38, 1) infinite;
-}
-
-@keyframes wavePulse {
-  0% {
-    transform: scale(0.6);
-    opacity: 0.9;
-  }
-  100% {
-    transform: scale(2.2);
-    opacity: 0;
-  }
-}
-
-/* Respect the viewport even when a pose has a wider aspect ratio. */
-.standingBase, .chibiBase {
-  max-width: min(280px, calc(100vw - 32px));
-  object-fit: contain;
-}
+/* Theatre: one shared --stage-h; each pose applies its calibrated --pose-scale. */
+[data-whale-pet="stage"] .puppetRoot { inset: auto; left: 50%; bottom: 0; width: 0; height: 100%; }
+[data-whale-pet="stage"] .puppetCanvas { inset: auto; left: 0; bottom: 0; width: 0; height: 100%; }
+[data-whale-pet="stage"] .characterBase { left: 0; transform: translateX(-50%); width: auto; pointer-events: none; }
+[data-whale-pet="stage"] .standingGalGame { height: calc(var(--stage-h) * var(--pose-scale, 1)); }
+[data-whale-pet="stage"] .chibiGalGame { height: calc(var(--stage-h) * 0.42); }

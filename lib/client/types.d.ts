@@ -13,6 +13,30 @@ export interface GazeOffset {
     x: number;
     y: number;
 }
+/** One balance field. Amounts are decimal strings exactly as the host returned them. */
+export type WalletRead = {
+    status: 'unknown';
+} | {
+    status: 'ready';
+    wallets: readonly {
+        currency: string;
+        amount: string;
+    }[];
+} | {
+    status: 'failed';
+};
+/**
+ * Balance read through DSH's own account service (`remote.account.getBalance`).
+ * Account identity and credentials never leave the host; this carries amounts only.
+ */
+export interface BalanceSnapshot {
+    status: 'loading' | 'ready' | 'stale' | 'signed-out' | 'error';
+    source: 'host';
+    toppedUp: WalletRead;
+    granted: WalletRead;
+    /** Last successful read (epoch ms), not the render time. */
+    updatedAt: number | null;
+}
 export interface PetStatusInfo {
     state: PetState;
     form: PetForm;
@@ -22,6 +46,8 @@ export interface PetStatusInfo {
     balancesKnown: boolean;
     toppedUpBalance: string;
     grantedBalance: string;
+    balancesCheckedAt: number | null;
+    hostBalance: BalanceSnapshot | null;
     isReasoning: boolean;
     isStreaming: boolean;
     isInputFocused: boolean;

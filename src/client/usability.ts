@@ -1,8 +1,3 @@
-export function viewportPanel(viewportWidth: number, viewportHeight: number, x: number, y: number, composerTop?: number) {
-  const bottom = Math.max(120, Math.min(viewportHeight - 16, composerTop === undefined ? viewportHeight - 16 : composerTop - 16))
-  const height = Math.max(96, Math.min(560, bottom - 16))
-  return { x: Math.max(16, Math.min(viewportWidth - 356, x > viewportWidth / 2 ? x - 356 : x + 170)), y: Math.max(16, Math.min(y, bottom - height)), height }
-}
 export function pageCapacity(width: number, height: number, fontSize: number): number {
   return Math.max(24, Math.floor(Math.min(width, fontSize * 40) / fontSize) * Math.max(1, Math.floor(height / (fontSize * 1.75))) - 14)
 }

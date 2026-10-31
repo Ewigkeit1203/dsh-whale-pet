@@ -9,8 +9,21 @@
 
 ### Unreleased
 
-- Standardized the project name as 大肥鱼, placed the creator first in both contributor lists, and clarified the current balance-reading limitation.
-- Added the Opus 5.5 frontend handoff and Codex balance integration plan, with ownership, priorities and acceptance criteria. These documents describe pending work; no UI fix, chibi disablement or startup balance integration is included in this entry.
+_Nothing yet._
+
+### [v0.5.0] - 2026-10-31
+
+- **Balance without opening settings.** When DSH provides its account service, 大肥鱼 reads the balance the same way DSH's own account card does: on start, every minute, when you return to the window and after each answer. It clears at once when you sign out. The plugin never touches credentials. Unread amounts show as —, never ¥0.00, and older values are marked “not live”.
+- **梁文峰 / 梁文谷 time.** A chip above her head shows the current DeepSeek API pricing period and when it ends, in your local time. She tells you “现在是梁文峰时间！” or “现在是梁文谷时间！” when DSH opens and at every switch. Peak: Beijing time, weekdays 09:00–12:00 and 14:00–18:00; weekends and Chinese public holidays are off-peak at half price. You can turn this off in Settings › Companionship.
+- **Settings never cover her.** The panel stays beside the character with a fixed gap, switches sides smoothly at screen edges, and opens as a separate panel in very narrow windows. Wandering pauses while it is open.
+- **Rebuilt settings.** A fixed header and scrolling body, a balance card, a pricing-period card and a roomy footer. The footer note no longer crowds the buttons.
+- **Consistent portraits.** Every pose is calibrated to the same head size and foot line, so 撒娇 no longer looks smaller and changing pose no longer moves her.
+- **Your name, everywhere.** Her lines now use the name you set instead of “你”.
+- **Smoother.** Dragging, hovering and streaming do far less work, so fast drags with settings open no longer stutter.
+- **New character voice.** Soft speech blips follow the text as it appears, with pauses at punctuation. It stops promptly when output stops, never replays missed text and skips code. Still muted by default.
+- **Theatre.** The header is regrouped, expanded reading keeps her face visible, reading surfaces are clearer, and full reading only scrolls with new text while you are at the bottom.
+- **Fresh look.** Light and dark themes were rebuilt. Keyboard access to the character and visible focus states were added.
+- Chibi form switching is paused for now; its artwork is kept. If you were using the chibi form, the portrait is shown instead.
 
 ### [v0.4.0] - 2026-10-31
 
@@ -24,7 +37,7 @@
 - Grouped settings, reversible quiet mode, text/size labels, names, optional completion notifications and local Doctor diagnostics.
 - Compact theatre, single page count, keyboard controls, adaptive page capacity, emphasis, reveal speed and punctuation pauses.
 - Approximate alpha hit regions, reading fade, docked peek and reduced-motion/visibility handling.
-- Added unofficial declaration, artwork-permission clarification and contribution templates. See docs/PM_REVIEW_IMPLEMENTATION.md for partial items and remaining roadmap.
+- Added unofficial declaration, artwork-permission clarification and contribution templates.
 
 ### [v0.3.0] - 2026-10-30
 
@@ -97,8 +110,21 @@
 
 ### 尚未发布
 
-- 产品名统一为“大肥鱼”，中英文贡献者均将发起人列在首位，并说明当前余额读取限制。
-- 新增 Opus 5.5 前端交接及 Codex 余额接入计划，明确分工、优先级和验收条件。文档内容为待办，本条不包含 UI 修复、Q 版禁用或启动余额接入。
+_暂无。_
+
+### [v0.5.0] - 2026-10-31
+
+- **不用打开设置也能看到余额。** DSH 提供账户服务时，大肥鱼按 DSH 自带账户卡片的方式读取余额：启动时一次，之后每分钟、回到窗口时和每次回答结束后各刷新一次；退出登录后立即清空。插件不接触任何凭据。未读取显示 —，不会显示成 ¥0.00；旧数据会标注“非实时”。
+- **梁文峰 / 梁文谷时间。** 头顶小标签显示当前 DeepSeek API 计费时段和结束时间（按本机时间）。打开 DSH 时和每次时段切换时，她会告诉你“现在是梁文峰时间！”或“现在是梁文谷时间！”。高峰：北京时间工作日 9:00–12:00、14:00–18:00；周末和法定节假日为空闲时段，价格减半。可在 设置 › 陪伴行为 中关闭。
+- **设置面板不再挡住她。** 面板始终贴在角色旁边并保持间距；到屏幕边缘会平滑换到另一侧；窗口太窄时改为独立面板。设置打开期间暂停游荡。
+- **设置面板重做。** 固定标题和可滚动正文，新增余额卡片和计费时段卡片；底部说明与按钮不再挤在一起。
+- **立绘大小一致。** 每个姿态都按同样的头部大小和脚底位置校准，撒娇不再显小，切换姿态时她也不会移位。
+- **处处使用你的称呼。** 台词里原本直接写“你”的地方，现在都用你设置的称呼。
+- **更流畅。** 拖动、移动鼠标和流式输出时的计算量大幅减少，打开设置时快速拖动不再卡顿。
+- **新的人物音效。** 随文字出现发出轻柔的说话音，遇到标点会停顿；输出停止后很快安静，不补播漏掉的内容，代码不发声。仍默认静音。
+- **剧场。** 顶部按钮重新分组，大屏阅读时能看到她的脸，阅读区域更清晰；完整阅读模式只在你停留在底部时才跟随新文字滚动。
+- **全新外观。** 明暗主题重新设计；角色支持键盘操作，并有清晰的焦点提示。
+- Q 版切换暂时关闭，素材保留；之前使用 Q 版的用户会显示普通立绘。
 
 ### [v0.4.0] - 2026-10-31
 
@@ -112,7 +138,7 @@
 - 设置分组、安静模式恢复、字号、称呼、完成通知和本地 Doctor。
 - 缩矮剧场、单页码、快捷键、按容量分页、粗体、速度与标点停顿。
 - 近似透明轮廓、阅读淡化、贴边探头与减少动画。
-- 非官方声明、授权说明与投稿模板；剩余事项参见 docs/PM_REVIEW_IMPLEMENTATION.md。
+- 非官方声明、授权说明与投稿模板。
 
 ### [v0.3.0] - 2026-10-30
 

@@ -1,79 +1,56 @@
 import { HIT_AREAS } from './hitareas.js'
 import React from 'react'
 import type { PetState, GazeOffset } from './types.js'
-import styles from './LivingPuppet.module.css'
 
 export interface LivingPuppetProps {
   imgSrc: string
   isMaiden: boolean
   isGalGameMode: boolean
   mouthOpenRatio: number
-  gazeOffset: GazeOffset
+  /** Unused: gaze is applied through CSS variables. Kept optional for compatibility. */
+  gazeOffset?: GazeOffset
   state: PetState
   poseName?: string
   opacity?: number
+  /** Explicit image box from poses.ts (desktop widget). The theatre sizes via CSS variables instead. */
+  box?: { width: number; height: number; left: number }
+  /** Calibrated head-size factor, consumed by theatre CSS as --pose-scale. */
+  poseScale?: number
   onMouseDown?: (e: React.MouseEvent) => void
 }
 
-export function LivingPuppet({
-  imgSrc,
-  isMaiden,
-  isGalGameMode,
-  mouthOpenRatio,
-  gazeOffset,
-  state,
-  onMouseDown,
-  opacity = 1,
-  poseName = 'Maid',
-}: LivingPuppetProps) {
-  // 3D Parallax Tilt based on Gaze: Smooth head tracking with perspective
-  const rotY = gazeOffset.x * 5.0
-  const rotX = -gazeOffset.y * 3.5
-  const transX = gazeOffset.x * 6.0
-  const transY = gazeOffset.y * 4.0
-
-  const puppetStyle: React.CSSProperties = isGalGameMode
-    ? {
-        transform: `perspective(900px) rotateY(${rotY * 0.7}deg) rotateX(${rotX * 0.5}deg) translate(${transX * 0.6}px, ${transY * 0.5}px)`,
-      }
-    : {
-        transform: `perspective(700px) rotateY(${rotY}deg) rotateX(${rotX}deg) translate(${transX}px, ${transY}px)`,
-      }
-
-  const isTalking = mouthOpenRatio > 0.15 || state === 'EATING' || state === 'ANSWERING'
-
+/**
+ * Two transform layers: the root carries gaze parallax, the canvas carries
+ * breathing/talking. The image itself is sized, never transformed, so the
+ * clip-path hit area always matches what is drawn.
+ */
+export function LivingPuppet({ imgSrc, isMaiden, isGalGameMode, mouthOpenRatio, state, onMouseDown, opacity = 1, poseName = 'Maid', box, poseScale = 1 }: LivingPuppetProps) {
+  // Gaze parallax reads --gaze-x / --gaze-y, written by the overlay once per frame
+  // outside React, so pointer moves never re-render the overlay.
+  const k = isGalGameMode ? 0.6 : 1
+  const transform = `perspective(${isGalGameMode ? 900 : 700}px) rotateY(calc(var(--gaze-x, 0) * ${4.5 * k}deg)) rotateX(calc(var(--gaze-y, 0) * ${-3 * k}deg)) translate(calc(var(--gaze-x, 0) * ${5 * k}px), calc(var(--gaze-y, 0) * ${3 * k}px))`
+  const isTalking = mouthOpenRatio > 0.15 || state === 'ANSWERING'
+  const imageStyle: React.CSSProperties = {
+    clipPath: HIT_AREAS[poseName],
+    pointerEvents: isGalGameMode ? 'none' : undefined,
+    ...(box ? { width: box.width + 'px', height: box.height + 'px', left: box.left + 'px' } : {}),
+  }
   return (
     <div
-      className={`${styles.puppetRoot} ${isGalGameMode ? styles.puppetGalGame : ''}`}
+      className={'puppetRoot' + (isGalGameMode ? ' puppetGalGame' : '')}
       onMouseDown={onMouseDown}
-      style={{ ...puppetStyle, opacity }}
+      style={{ transform, opacity, '--pose-scale': poseScale } as React.CSSProperties}
     >
-      <div
-        className={`${styles.puppetCanvas} ${isTalking ? styles.canvasTalking : ''}`}
-      >
-        {/* Base Character Illustration with High Precision 2.5D Shading */}
+      <div className={'puppetCanvas' + (isTalking ? ' canvasTalking' : '')} data-state={state}>
         <img
           src={imgSrc}
-          style={{ clipPath: HIT_AREAS[poseName], pointerEvents: isGalGameMode ? 'none' : undefined }}
-          alt="DeepSeek Whale Maid"
-          className={`${styles.characterBase} ${
-            isMaiden
-              ? isGalGameMode
-                ? styles.standingGalGame
-                : styles.standingBase
-              : isGalGameMode
-              ? styles.chibiGalGame
-              : styles.chibiBase
-          }`}
+          style={imageStyle}
+          alt=""
+          aria-hidden="true"
+          data-pose={poseName}
+          className={'characterBase ' + (isMaiden ? (isGalGameMode ? 'standingGalGame' : 'standingBase') : (isGalGameMode ? 'chibiGalGame' : 'chibiBase'))}
           draggable={false}
         />
-
-        {/* Dynamic Subtle Speech Sparkle when speaking (No Emoji) */}
-        {isTalking && (
-          <div className={styles.talkingIndicator}>
-            <div className={styles.talkingWave} />
-          </div>
-        )}
       </div>
     </div>
   )

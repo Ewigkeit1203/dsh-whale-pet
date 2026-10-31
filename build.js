@@ -135,14 +135,24 @@ function compileView(file, component) {
   const code = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, jsx: ts.JsxEmit.React } }).outputText.replace(/^export /gm, '')
   return 'const ' + component + ' = (() => { const styles = new Proxy({}, { get: (_, key) => key });\n' + code + '\nreturn ' + component + '; })();'
 }
-const hitAreaSource = readFileSync(join(__dirname, 'lib/client/hitareas.js'), 'utf-8').replace(/^export /gm, '')
-const usabilitySource = readFileSync(join(__dirname, 'lib/client/usability.js'), 'utf-8').replace(/^export /gm, '')
-const experienceSource = readFileSync(join(__dirname, 'lib/client/experience.js'), 'utf-8').replace(/^export /gm, '')
-const dialogueView = compileView('DialogueContent.tsx', 'DialogueContent')
-const settingsView = compileView('SettingsPanel.tsx', 'SettingsPanel')
-const puppetView = compileView('LivingPuppet.tsx', 'LivingPuppet')
-const overlayView = compileView('PetOverlay.tsx', 'PetOverlay')
-const preferencesSource = readFileSync(join(__dirname, 'lib/client/preferences.js'), 'utf-8').replace(/^export /gm, '')
+// Pure modules: compiler output with imports/exports removed. They share one
+// factory scope, so top-level names must be unique across modules.
+function moduleSource(file) {
+  return readFileSync(join(__dirname, 'lib/client', file), 'utf-8')
+    .replace(/^import .*$/gm, '').replace(/^export /gm, '')
+    .replace(/^\/\/# sourceMappingURL=.*$/gm, '')
+}
+const preferencesSource = moduleSource('preferences.js')
+const pureModules = ['features.js', 'poses.js', 'layout.js', 'wallet.js', 'peak.js', 'account-balance.js', 'voice.js', 'experience.js', 'usability.js', 'hitareas.js']
+  .map(moduleSource).join('\n')
+// Views are hook-free render functions or components; order matters only for readability.
+const views = [
+  ['DialogueContent.tsx', 'DialogueContent'],
+  ['LivingPuppet.tsx', 'LivingPuppet'],
+  ['SettingsPanel.tsx', 'SettingsPanel'],
+  ['TheatreView.tsx', 'TheatreView'],
+  ['PetOverlay.tsx', 'PetOverlay'],
+].map(([file, component]) => compileView(file, component)).join('\n')
 
 const clientBundleSource = `/**
  * dsh-whale-pet browser client bundle.
@@ -200,13 +210,8 @@ const THINK3_DATA_URI = THINK3_PATH;
 const THINK4_DATA_URI = THINK4_PATH;
 const THINK5_DATA_URI = THINK5_PATH;
       ${preferencesSource}
-      ${experienceSource}
-      ${usabilitySource}
-      ${hitAreaSource}
-      ${dialogueView}
-      ${settingsView}
-      ${puppetView}
-      ${overlayView}
+      ${pureModules}
+      ${views}
       ${clientAdapterSource}
       return {
         inject,
