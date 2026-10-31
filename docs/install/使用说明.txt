@@ -1,4 +1,4 @@
-DeepSeek Little Whale Maid / 大肥鱼 — v0.4.0
+大肥鱼 — dsh-whale-pet v0.4.0
 
 English / 中文
 README: https://github.com/Ewigkeit1203/dsh-whale-pet#readme

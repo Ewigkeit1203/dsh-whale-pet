@@ -7,6 +7,11 @@
 <a name="english"></a>
 ## English
 
+### Unreleased
+
+- Standardized the project name as 大肥鱼, placed the creator first in both contributor lists, and clarified the current balance-reading limitation.
+- Added the Opus 5.5 frontend handoff and Codex balance integration plan, with ownership, priorities and acceptance criteria. These documents describe pending work; no UI fix, chibi disablement or startup balance integration is included in this entry.
+
 ### [v0.4.0] - 2026-10-31
 
 - Restored borderless size dots, added a live-value continuous text-size slider, roomier settings and clearer light-theme selections.
@@ -89,6 +94,11 @@
 
 <a name="chinese"></a>
 ## 中文版本
+
+### 尚未发布
+
+- 产品名统一为“大肥鱼”，中英文贡献者均将发起人列在首位，并说明当前余额读取限制。
+- 新增 Opus 5.5 前端交接及 Codex 余额接入计划，明确分工、优先级和验收条件。文档内容为待办，本条不包含 UI 修复、Q 版禁用或启动余额接入。
 
 ### [v0.4.0] - 2026-10-31
 

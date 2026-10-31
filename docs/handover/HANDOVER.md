@@ -1,5 +1,13 @@
 # Engineering handover / 工程交接 — v0.4.0
 
+## Current assignment / 当前分工（2026-10-31）
+
+Ewigkeit1203 owns feature decisions. Claude Opus 5.5 owns frontend design and implementation, including interaction geometry, pose calibration and character sound. Codex owns backend/host integration, data contracts, state reliability and build tooling. No separate backend server is currently implemented.
+
+请先读 [Opus 前端交接需求](OPUS_FRONTEND_HANDOFF.md)及[余额数据接入计划](BALANCE_INTEGRATION.md)。它们记录当前待办，不是已完成清单。用户已明确授权暂时禁用 Q 版切换并保留素材；旧 chibi 偏好迁移和入口隐藏尚待实施。产品名称统一为“大肥鱼”，保留包名 `dsh-whale-pet`；不再使用 Little Whale 作为品牌，界面中的旧称呼由 Opus 一并替换。
+
+Known regression: settings and pet clamp independently at edges, allowing overlap. Follow frontend F02 rather than assuming the existing drag-follow test covers edge behavior. Startup balance acquisition still depends on opening DSH account settings; no verified host account adapter exists yet.
+
 ## Core rules / 核心约定
 
 - Unofficial DSH community plugin. Runtime uses host React/Cordis and __ModuleLoader__.
@@ -7,7 +15,7 @@
 - During streaming use the answering pose, never rice or dizzy. Rice follows output or wandering. Short interactions must not reset reasoning/output state.
 - Source views, state, helpers and CSS compile directly into the browser template through build.js. Edit source, then run the build; do not edit generated lib/client.js manually.
 - Preferences stay local, audio defaults muted, history is not persisted and no extra service receives chat content.
-- 普通淡化不可禁用点击；只有 data-ghost（按住 Alt）允许临时穿透。设置跟随拖拽与松手惯性，单纯改变大小不重新定位。菜单控件不随角色缩放。
+- 普通淡化不可禁用点击；只有 data-ghost（按住 Alt）允许临时穿透。设置与角色需要整体边界约束，空间不足时使用独立面板并暂停游荡，详见前端 F02。菜单控件不随角色缩放；缩放后仍须检查碰撞。
 - Package metadata and release notes must match the version. Docs live in docs/releases and docs/install; handover is excluded from install archives. Root entry points: install.bat / uninstall.bat.
 
 ## Validation / 验证

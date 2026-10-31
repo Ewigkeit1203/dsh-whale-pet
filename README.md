@@ -1,5 +1,5 @@
 <a id="top"></a>
-# 大肥鱼 / Little Whale — dsh-whale-pet
+# 大肥鱼 — dsh-whale-pet
 
 [English](#english) | [中文说明](#chinese) | [Releases / 下载](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) | [Changelog / 更新日志](CHANGELOG.md) | [v0.4.0 notes / 发布说明](docs/releases/v0.4.0.md) | [Docs / 文档](docs/README.md)
 
@@ -8,7 +8,9 @@
 
 **Unofficial community plugin. Not affiliated with or endorsed by DeepSeek.**
 
-An interactive desktop/web companion and visual-novel (GalGame) conversation theatre for the official [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness). Little Whale lives inside DSH, reacts to reasoning and answers, and keeps you company while you work.
+An interactive desktop/web companion and visual-novel (GalGame) conversation theatre for the official [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness). 大肥鱼 lives inside DSH, reacts to reasoning and answers, and keeps you company while you work.
+
+The product name is **大肥鱼** in both languages; `dsh-whale-pet` remains the repository and package identifier.
 
 ### New in v0.4.0
 
@@ -53,7 +55,7 @@ Run `uninstall.bat` and refresh DSH to remove the plugin from the profile. Saved
 
 Preferences use local storage. Optional completion notifications are disabled by default and request OS permission only when explicitly enabled. Doctor reads selector counts locally and does not copy message content. This plugin does not persist conversation history or send chat content to an extra service. Log reads currently loaded messages. Changing interface language does not translate questions, answers or reasoning.
 
-Balances and response detection depend on DSH's markup. Low-balance hints require an observed balance. Elapsed time starts when generation is detected; token speed appears only when DSH explicitly exposes it. Character counts are never presented as tokens/s.
+Balances and response detection depend on DSH's markup. The current balance reader needs DSH's account settings to be opened first; it does not fetch startup balances independently, and retained values are not guaranteed to be live. Low-balance hints require an observed balance. Elapsed time starts when generation is detected; token speed appears only when DSH explicitly exposes it. Character counts are never presented as tokens/s.
 
 Code blocks and lists have dedicated presentation, but this is not a complete Markdown renderer. The 12 illustrations animate through transforms and pose changes rather than rigged facial lip-sync. Subjective sound tuning and broader end-to-end streaming compatibility welcome feedback.
 
@@ -70,15 +72,17 @@ node --check lib/client.js
 
 The build compiles the views, state, host adapter, CSS and all 12 PNGs into `lib/client.js` for DSH's `__ModuleLoader__`. Edit source and rebuild; no second manual UI implementation is needed. Current development automated suite: **39 tests**. See [PM review implementation](docs/PM_REVIEW_IMPLEMENTATION.md) and [Gemini follow-up](docs/GEMINI_REVIEW_IMPLEMENTATION.md) for the v0.4 usability work and its remaining checks.
 
+The next iteration assigns frontend work to Claude Opus 5.5 and host/data integration to Codex. The [frontend handoff](docs/handover/OPUS_FRONTEND_HANDOFF.md) and [balance integration plan](docs/handover/BALANCE_INTEGRATION.md) describe pending work, including temporarily disabling chibi switching while retaining its artwork. These plans are not shipped fixes.
+
 ### Contributors and acknowledgements
-
-- **Gemini 4 Argon (Google)** — AI-assisted product review, theatre layout and visual interaction proposals; advisory contribution.
-
-- **Claude (Anthropic, Sonnet 5.5)** — AI-assisted product review and UI/UX recommendations; advisory only, no code contributed.
 
 - **[Ewigkeit1203](https://github.com/Ewigkeit1203)** — creator, character concept, product direction and acceptance testing.
 - **Antigravity (Google DeepMind)** — AI-assisted architecture and initial implementation.
 - **GPT 6.1Sol / Codex (OpenAI)** — AI-assisted v0.4.0 engineering, interaction design, stability work, tests and release documentation.
+- **Claude Sonnet 5.5 (Anthropic)** — AI-assisted product review and UI/UX recommendations; advisory contribution.
+- **Gemini 4 Argon (Google)** — AI-assisted product review, theatre layout and visual interaction proposals; advisory contribution.
+
+Claude Opus 5.5 is assigned the upcoming frontend iteration; implementation credit will be added for completed work.
 
 Contributions and reports are welcome through [Issues](https://github.com/Ewigkeit1203/dsh-whale-pet/issues) and pull requests. Include your DSH version and reproduction steps; omit private conversations and credentials.
 
@@ -96,6 +100,8 @@ Contributions and reports are welcome through [Issues](https://github.com/Ewigke
 **非官方社区插件，与 DeepSeek 官方无隶属或背书关系。**
 
 大肥鱼是专为官方 [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) 开发的桌宠与 GalGame 对话剧场。她生活在 DSH 界面内，会随着思考与回答切换动作，陪你一起工作。
+
+中英文统一使用产品名 **大肥鱼**；仓库与包标识继续使用 `dsh-whale-pet`。
 
 ### v0.4.0 新体验
 
@@ -140,7 +146,7 @@ React 与 Cordis 由 DSH 提供，普通用户无需 Node.js、npm 或额外素�
 
 偏好保存在本地。后台完成通知默认关闭，仅在主动开启时申请系统权限；Doctor 在本地读取选择器数量，不复制消息内容。插件不持久化聊天历史，也不会把聊天内容发送给额外服务；回顾只读取当前页面已加载消息。界面语言不会翻译问题、回答或推理原文。
 
-余额读取和输出识别依赖 DSH 页面结构。低余额提醒只在读取到账户余额后启用。耗时从检测到生成开始计算；仅在 DSH 明确提供时显示 token 速度，不会用字符数冒充 tokens/s。
+余额读取和输出识别依赖 DSH 页面结构。当前需要先打开 DSH 账户设置才能读取余额，尚未支持独立的启动查询；保留的金额不保证实时。低余额提醒只在读取到账户余额后启用。耗时从检测到生成开始计算；仅在 DSH 明确提供时显示 token 速度，不会用字符数冒充 tokens/s。
 
 代码块和列表有专用排版，但并非完整 Markdown 渲染器。动画由 12 张插画、姿态切换与变换实现，没有骨骼绑定的真实口型。欢迎反馈音色和更广泛的完整流式兼容性。
 
@@ -157,15 +163,17 @@ node --check lib/client.js
 
 构建会把界面、状态机、宿主适配器、CSS 和 12 张 PNG 编入 DSH `__ModuleLoader__` 使用的 `lib/client.js`。修改源码后重新构建即可，无需再手工维护第二份界面。当前开发版本共有 **39 项自动测试**。v0.4 改进与待验收内容见 [PM 评审落地记录](docs/PM_REVIEW_IMPLEMENTATION.md)和[Gemini 跟进](docs/GEMINI_REVIEW_IMPLEMENTATION.md)。
 
+下一轮由 Claude Opus 5.5 负责前端，Codex 负责宿主与数据集成。[前端交接需求](docs/handover/OPUS_FRONTEND_HANDOFF.md)与[余额接入计划](docs/handover/BALANCE_INTEGRATION.md)列出了待办，包括保留素材并暂时禁用 Q 版切换；这些计划不代表功能已完成或发布。
+
 ### 贡献者与致谢
-
-- **Gemini 4 Argon（Google）**：AI 辅助产品评审、剧场布局与视觉交互方案；提供产品建议。
-
-- **Claude（Anthropic，Sonnet 5.5）**：AI 辅助产品评审、界面审查及路线图建议；仅提供建议，未编写代码。
 
 - **[Ewigkeit1203](https://github.com/Ewigkeit1203)**：项目发起人、人设原案、产品方向与体验验收。
 - **Antigravity (Google DeepMind)**：AI 辅助架构设计与初期实现。
 - **GPT 6.1Sol / Codex (OpenAI)**：AI 辅助 v0.4.0 工程、交互设计、稳定性修复、测试与发布文档。
+- **Claude Sonnet 5.5（Anthropic）**：AI 辅助产品评审、界面审查及路线图建议；提供产品建议。
+- **Gemini 4 Argon（Google）**：AI 辅助产品评审、剧场布局与视觉交互方案；提供产品建议。
+
+Claude Opus 5.5 将负责下一轮前端，完成后按实际工作补充贡献记录。
 
 欢迎通过 [Issues](https://github.com/Ewigkeit1203/dsh-whale-pet/issues) 和 Pull Request 反馈问题或贡献代码。请提供 DSH 版本和复现步骤，避免上传私人对话与账户凭据。
 
