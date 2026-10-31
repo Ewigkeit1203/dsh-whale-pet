@@ -1,12 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { viewportPanel, pageCapacity, revealDelay } from '../lib/client/usability.js'
+import { pageCapacity, revealDelay } from '../lib/client/usability.js'
 import { defaultPreferences, quietPreset } from '../lib/client/preferences.js'
-test('settings remain above the composer and inside a 720px viewport', () => {
- const p=viewportPanel(1280,720,1100,600,590)
- assert.ok(p.x>=16 && p.x+340<=1280-16)
- assert.ok(p.y>=16 && p.y+p.height<=590-16)
-})
 test('quiet mode restores exact previous audio and wandering choices', () => {
  const before={...defaultPreferences(),muted:false,wandering:false}
  const quiet=quietPreset(before)

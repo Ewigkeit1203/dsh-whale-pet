@@ -25,6 +25,8 @@ export declare class PetStateMachine {
     private balancesKnown;
     private toppedUpBalance;
     private grantedBalance;
+    /** Last time a balance source reported, even when values were unchanged (UI freshness only). */
+    private balancesCheckedAt;
     private mouthOpenRatio;
     private blinkRatio;
     private gazeOffset;

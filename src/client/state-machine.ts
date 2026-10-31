@@ -78,6 +78,8 @@ export class PetStateMachine {
   private balancesKnown = false
   private toppedUpBalance = '¥0.00'
   private grantedBalance = '¥0.00'
+  /** Last time a balance source reported, even when values were unchanged (UI freshness only). */
+  private balancesCheckedAt: number | null = null
   private mouthOpenRatio = 0
   private blinkRatio = 0
   private gazeOffset: GazeOffset = { x: 0, y: 0 }
@@ -112,6 +114,7 @@ export class PetStateMachine {
       balancesKnown: this.balancesKnown,
       toppedUpBalance: this.toppedUpBalance,
       grantedBalance: this.grantedBalance,
+      balancesCheckedAt: this.balancesCheckedAt,
       isReasoning: this.isReasoning,
       isStreaming: this.isStreaming,
       isInputFocused: this.isInputFocused,
@@ -262,6 +265,7 @@ export class PetStateMachine {
   public setBalances(toppedUp: string, granted: string): void {
     const known = this.balancesKnown
     this.balancesKnown = true
+    this.balancesCheckedAt = Date.now()
     if (known && this.toppedUpBalance === toppedUp && this.grantedBalance === granted) return
     this.toppedUpBalance = toppedUp
     this.grantedBalance = granted

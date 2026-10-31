@@ -39,6 +39,7 @@ export interface PetStatusInfo {
   balancesKnown: boolean
   toppedUpBalance: string // Topped-up balance (充值余额)
   grantedBalance: string  // Granted balance (赠金余额)
+  balancesCheckedAt: number | null // Last source read, for stale labelling; not a render time
   isReasoning: boolean
   isStreaming: boolean
   isInputFocused: boolean

@@ -1,8 +1,3 @@
-export declare function viewportPanel(viewportWidth: number, viewportHeight: number, x: number, y: number, composerTop?: number): {
-    x: number;
-    y: number;
-    height: number;
-};
 export declare function pageCapacity(width: number, height: number, fontSize: number): number;
 export declare function revealDelay(character: string, speed: 'slow' | 'medium' | 'fast' | 'instant'): number;
 export declare function diagnosticReport(): string;

@@ -22,6 +22,7 @@ export interface PetStatusInfo {
     balancesKnown: boolean;
     toppedUpBalance: string;
     grantedBalance: string;
+    balancesCheckedAt: number | null;
     isReasoning: boolean;
     isStreaming: boolean;
     isInputFocused: boolean;

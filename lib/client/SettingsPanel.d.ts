@@ -1,12 +1,19 @@
 import React from 'react';
 import type { Preferences } from './preferences.js';
-export declare function SettingsPanel({ p, update, toggleMute, quiet, reset, doctor, notify }: {
+import type { WalletView } from './wallet.js';
+export interface SettingsPanelProps {
     p: Preferences;
+    wallet: WalletView;
+    detached: boolean;
     update: (p: Partial<Preferences>) => void;
     toggleMute: () => void;
     quiet: () => void;
     reset: () => void;
     doctor: () => void;
     notify: () => void;
-}): React.JSX.Element;
+    close: () => void;
+    openTheatre: () => void;
+}
+/** Plain render function (no hooks): header, scrollable body, fixed footer. */
+export declare function SettingsPanel({ p, wallet, detached, update, toggleMute, quiet, reset, doctor, notify, close, openTheatre }: SettingsPanelProps): React.JSX.Element;
 //# sourceMappingURL=SettingsPanel.d.ts.map

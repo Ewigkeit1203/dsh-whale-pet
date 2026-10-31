@@ -1,44 +1,4 @@
-/** Native synthesis only. No context or sound is created until a user gesture. */
-export class PetAudio {
-  private context: AudioContext | null = null
-  private lastBlip = 0
-  private active = 0
-  public unlock(): void {
-    try {
-      if (!this.context || this.context.state === 'closed') this.context = new AudioContext()
-      if (this.context.state === 'suspended') void this.context.resume().catch(() => {})
-    } catch { /* Audio may be unavailable in the host. */ }
-  }
-  public play(kind: 'blip' | 'ding' | 'jelly' | 'rice', volume = 0.2): void {
-    const ctx = this.context
-    if (!ctx || ctx.state !== 'running' || this.active > 6) return
-    if (kind === 'blip' && ctx.currentTime - this.lastBlip < 0.065) return
-    if (kind === 'blip') this.lastBlip = ctx.currentTime
-    const notes = kind === 'ding' ? [1047, 1568] : kind === 'rice' ? [523, 659, 784] : kind === 'jelly' ? [520] : [240 + Math.random() * 65]
-    notes.forEach((frequency, i) => {
-      const oscillator = ctx.createOscillator()
-      const gain = ctx.createGain()
-      const start = ctx.currentTime + i * 0.065
-      const duration = kind === 'blip' ? 0.07 : kind === 'jelly' ? 0.2 : 0.3
-      oscillator.type = kind === 'blip' ? 'triangle' : 'sine'
-      oscillator.frequency.setValueAtTime(frequency, start)
-      if (kind === 'jelly') oscillator.frequency.exponentialRampToValueAtTime(180, start + duration)
-      gain.gain.setValueAtTime(0.0001, start)
-      gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, Math.min(1, Math.max(0, volume)) * (kind === 'blip' ? 0.12 : 0.22)), start + 0.008)
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration)
-      const filter = ctx.createBiquadFilter()
-      filter.type = 'lowpass'
-      filter.frequency.setValueAtTime(kind === 'blip' ? 1100 : 3000, start)
-      filter.Q.setValueAtTime(0.5, start)
-      oscillator.connect(filter); filter.connect(gain); gain.connect(ctx.destination)
-      this.active++
-      oscillator.onended = () => { this.active = Math.max(0, this.active - 1); oscillator.disconnect(); filter.disconnect(); gain.disconnect() }
-      oscillator.start(start); oscillator.stop(start + duration + 0.01)
-    })
-  }
-  public silence(): void { if (this.context?.state === 'running') void this.context.suspend().catch(() => {}) }
-  public dispose(): void { if (this.context && this.context.state !== 'closed') void this.context.close().catch(() => {}); this.context = null }
-}
+/** Text helpers shared by the views. Audio lives in voice.ts. */
 export interface DialogueBlock { kind: 'text' | 'code'; text: string; language?: string }
 export function dialogueBlocks(text: string): DialogueBlock[] {
   const blocks: DialogueBlock[] = []

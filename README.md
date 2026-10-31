@@ -70,9 +70,9 @@ npm test
 node --check lib/client.js
 ```
 
-The build compiles the views, state, host adapter, CSS and all 12 PNGs into `lib/client.js` for DSH's `__ModuleLoader__`. Edit source and rebuild; no second manual UI implementation is needed. Current development automated suite: **39 tests**. See [PM review implementation](docs/PM_REVIEW_IMPLEMENTATION.md) and [Gemini follow-up](docs/GEMINI_REVIEW_IMPLEMENTATION.md) for the v0.4 usability work and its remaining checks.
+The build compiles the views, state, host adapter, CSS and all 12 PNGs into `lib/client.js` for DSH's `__ModuleLoader__`. Edit source and rebuild; no second manual UI implementation is needed. Current development automated suite: **75 tests**. See [PM review implementation](docs/PM_REVIEW_IMPLEMENTATION.md) and [Gemini follow-up](docs/GEMINI_REVIEW_IMPLEMENTATION.md) for the v0.4 usability work and its remaining checks.
 
-The next iteration assigns frontend work to Claude Opus 5.5 and host/data integration to Codex. The [frontend handoff](docs/handover/OPUS_FRONTEND_HANDOFF.md) and [balance integration plan](docs/handover/BALANCE_INTEGRATION.md) describe pending work, including temporarily disabling chibi switching while retaining its artwork. These plans are not shipped fixes.
+Frontend work is owned by Claude Opus 5.5 and host/data integration by Codex. The unreleased frontend rework (layout, settings, theatre, calibration, voice) is recorded in the [frontend handoff status](docs/handover/OPUS_FRONTEND_HANDOFF.md#status) and the changelog. Reading the balance at startup still depends on the pending [balance integration](docs/handover/BALANCE_INTEGRATION.md).
 
 ### Contributors and acknowledgements
 
@@ -81,8 +81,7 @@ The next iteration assigns frontend work to Claude Opus 5.5 and host/data integr
 - **GPT 6.1Sol / Codex (OpenAI)** — AI-assisted v0.4.0 engineering, interaction design, stability work, tests and release documentation.
 - **Claude Sonnet 5.5 (Anthropic)** — AI-assisted product review and UI/UX recommendations; advisory contribution.
 - **Gemini 4 Argon (Google)** — AI-assisted product review, theatre layout and visual interaction proposals; advisory contribution.
-
-Claude Opus 5.5 is assigned the upcoming frontend iteration; implementation credit will be added for completed work.
+- **Claude Opus 5.5 (Anthropic)** — AI-assisted frontend rework after v0.4.0 (unreleased): pet and settings group layout with edge handling, rebuilt settings panel and footer, per-pose portrait calibration, honest balance states, theatre layout, a new Web Audio character voice, the design-token stylesheet rewrite and the related regression tests.
 
 Contributions and reports are welcome through [Issues](https://github.com/Ewigkeit1203/dsh-whale-pet/issues) and pull requests. Include your DSH version and reproduction steps; omit private conversations and credentials.
 
@@ -161,9 +160,9 @@ npm test
 node --check lib/client.js
 ```
 
-构建会把界面、状态机、宿主适配器、CSS 和 12 张 PNG 编入 DSH `__ModuleLoader__` 使用的 `lib/client.js`。修改源码后重新构建即可，无需再手工维护第二份界面。当前开发版本共有 **39 项自动测试**。v0.4 改进与待验收内容见 [PM 评审落地记录](docs/PM_REVIEW_IMPLEMENTATION.md)和[Gemini 跟进](docs/GEMINI_REVIEW_IMPLEMENTATION.md)。
+构建会把界面、状态机、宿主适配器、CSS 和 12 张 PNG 编入 DSH `__ModuleLoader__` 使用的 `lib/client.js`。修改源码后重新构建即可，无需再手工维护第二份界面。当前开发版本共有 **75 项自动测试**。v0.4 改进与待验收内容见 [PM 评审落地记录](docs/PM_REVIEW_IMPLEMENTATION.md)和[Gemini 跟进](docs/GEMINI_REVIEW_IMPLEMENTATION.md)。
 
-下一轮由 Claude Opus 5.5 负责前端，Codex 负责宿主与数据集成。[前端交接需求](docs/handover/OPUS_FRONTEND_HANDOFF.md)与[余额接入计划](docs/handover/BALANCE_INTEGRATION.md)列出了待办，包括保留素材并暂时禁用 Q 版切换；这些计划不代表功能已完成或发布。
+前端由 Claude Opus 5.5 负责，宿主与数据集成由 Codex 负责。尚未发布的前端重做（布局、设置、剧场、立绘校准、人物音效）记录在[前端交接进度](docs/handover/OPUS_FRONTEND_HANDOFF.md#status)与更新日志中；启动时读取余额仍待[余额接入](docs/handover/BALANCE_INTEGRATION.md)完成。
 
 ### 贡献者与致谢
 
@@ -172,8 +171,7 @@ node --check lib/client.js
 - **GPT 6.1Sol / Codex (OpenAI)**：AI 辅助 v0.4.0 工程、交互设计、稳定性修复、测试与发布文档。
 - **Claude Sonnet 5.5（Anthropic）**：AI 辅助产品评审、界面审查及路线图建议；提供产品建议。
 - **Gemini 4 Argon（Google）**：AI 辅助产品评审、剧场布局与视觉交互方案；提供产品建议。
-
-Claude Opus 5.5 将负责下一轮前端，完成后按实际工作补充贡献记录。
+- **Claude Opus 5.5（Anthropic）**：AI 辅助 v0.4.0 之后的前端重做（未发布）：角色与设置面板整体布局及贴边处理、设置面板与底部区域重做、逐姿态立绘校准、如实的余额状态、剧场布局、新的 Web Audio 人物音效、基于设计变量的样式重写及相应回归测试。
 
 欢迎通过 [Issues](https://github.com/Ewigkeit1203/dsh-whale-pet/issues) 和 Pull Request 反馈问题或贡献代码。请提供 DSH 版本和复现步骤，避免上传私人对话与账户凭据。
 

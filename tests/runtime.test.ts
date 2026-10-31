@@ -5,7 +5,7 @@ import vm from 'node:vm'
 import { PetStateMachine } from '../lib/client/state-machine.js'
 
 // Exercise the real browser artifact as well as the TypeScript compiler output.
-function loadBundle() {
+function loadBundle(storage?: { getItem(key: string): string | null; setItem(key: string, value: string): void }) {
   let plugin: any
   let hookIndex = 0
   const hooks: any[] = []
@@ -29,14 +29,14 @@ function loadBundle() {
   class FakeElement { closest(selector: string) { return selector.includes('data-chat-node-key') ? this : null } }
   const context: any = {
     Element: FakeElement,
-    console, setTimeout, clearTimeout, setInterval, clearInterval,
+    console, setTimeout, clearTimeout, setInterval, clearInterval, localStorage: storage,
     window: { addEventListener: listen, removeEventListener: unlisten, innerWidth: 1280, innerHeight: 800, __ModuleLoader__: {
       load(module: any) { plugin = module.factory(() => React) },
     } },
     document: { hidden: false, hasFocus: () => true, addEventListener: listen, removeEventListener: unlisten, getElementById: () => ({}), querySelector: () => null, querySelectorAll: () => [] },
   }
   const bundle = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
-    .replace('const DialogueContent =', 'globalThis.BundleAudio = PetAudio; const DialogueContent =')
+    .replace('const DialogueContent =', 'globalThis.BundleAudio = PetVoice; const DialogueContent =')
     .replace('const MAIDEN_PATH =', 'globalThis.BundleStateMachine = PetStateMachine; const MAIDEN_PATH =')
   vm.runInNewContext(bundle, context)
   let overlay: any
@@ -182,15 +182,18 @@ test('browser bundle: snapped range resizes only the sprite and leaves controls 
   assert.equal(slider.props.step, '1')
   assert.equal(slider.props.max, '4')
   assert.equal(slider.props['aria-valuetext'], '100%')
+  const before = walk(tree).find(node => String(node.props.className).startsWith('petSpriteSize')).props.style
   slider.props.onChange({ target: { value: '0' } })
   tree = runtime.render()
   const sprite = walk(tree).find(node => String(node.props.className).startsWith('petSpriteSize'))
-  assert.equal(sprite.props.style.zoom, 0.5)
+  assert.equal(Number.parseFloat(sprite.props.style.height), Number.parseFloat(before.height) / 2)
+  assert.equal(sprite.props.style.zoom, undefined, 'no CSS zoom: the hit area and collision box are the drawn box')
   const drawer = walk(tree).find(node => node.props.className === 'settingsDrawer')
   assert.equal(drawer.props.style.position, 'fixed')
-  assert.equal(drawer.props.style.zoom, undefined)
-  assert.equal(walk(tree).find(node => String(node.props.className).includes('characterWrapper')).props.style?.zoom, undefined)
+  assert.equal(drawer.props.style.width, 340, 'controls keep their size')
   assert.equal(walk(tree).find(node => node.props['aria-valuetext'] === '50%').props.value, 0)
+  const puppet = walk(tree).find(node => node.props.imgSrc)
+  assert.equal(puppet.props.box.height, Number.parseFloat(sprite.props.style.height), 'Maid fills the stage height at scale 1')
 })
 
 test('browser bundle: Hide restores the theatre, Log uses loaded messages and mute is available', t => {
@@ -211,28 +214,37 @@ test('browser bundle: Hide restores the theatre, Log uses loaded messages and mu
   assert.ok(walk(tree).some(node => node.props.className === 'petLog'))
 })
 
-test('browser bundle: character voice repeats during streaming and stops with effect cleanup', t => {
-  t.mock.timers.enable({ apis: ['setInterval'] })
+test('browser bundle: voice follows newly streamed prose only, and is silent while muted', t => {
   const runtime = loadBundle()
   const sm = runtime.mount()
   t.after(() => sm.dispose())
+  const spoken: string[] = []
+  let cuts = 0
+  runtime.Audio.prototype.speak = function (text: string) { spoken.push(text); return 1 }
+  runtime.Audio.prototype.cut = function () { cuts++ }
+  const voiceEffect = () => runtime.viewEffects.find(callback => String(callback).includes('appendedSpeech'))
+  runtime.render(); t.after(runtime.viewEffects.find(fn => String(fn).includes('stateMachine.subscribe'))())
   sm.setStreaming(true)
-  let sounds = 0
-  runtime.Audio.prototype.play = () => { sounds++ }
+  sm.setLatestDialogue('你好')
+  runtime.render(); voiceEffect()()
+  sm.setLatestDialogue('你好，世界')
+  runtime.render(); voiceEffect()()
+  assert.deepEqual(spoken, [], 'muted by default')
   let tree = runtime.render()
   walk(tree).find(node => node.children.includes('设置')).props.onClick()
   tree = runtime.render()
-  const label = walk(tree).find(node => node.type === 'label' && node.children.includes('人物音效'))
-  walk(label).find(node => node.type === 'input').props.onChange()
+  const label = walk(tree).find(node => node.type === 'label' && walk(node).some(child => child.children?.includes('人物音效')))
+  walk(label).find(node => node.type === 'input').props.onChange({ target: { checked: true } })
+  runtime.render(); voiceEffect()()
+  sm.setLatestDialogue('你好，世界。今天\n```js\nlet secret = 1')
+  runtime.render(); voiceEffect()()
+  assert.equal(spoken.length, 1)
+  assert.match(spoken[0], /今天/)
+  assert.doesNotMatch(spoken[0], /secret/, 'code is not voiced')
+  sm.setStreaming(false)
   runtime.render()
-  const effect = runtime.viewEffects.find(callback => String(callback).includes('syllable'))
-  assert.ok(effect)
-  const stop = effect()
-  t.mock.timers.tick(735)
-  assert.equal(sounds, 5, 'speech plays throughout output, with short breathing spaces')
-  stop()
-  t.mock.timers.tick(1000)
-  assert.equal(sounds, 5, 'stream completion or mute cleanup cancels the voice loop')
+  runtime.viewEffects.find(callback => String(callback).includes('!status.isStreaming && !revealDrivesVoice'))()
+  assert.ok(cuts >= 1, 'stream end cuts the voice immediately')
 })
 
 test('browser bundle: reading fade recovers on pet hover, Alt alone controls click-through', t => {
@@ -252,27 +264,64 @@ test('browser bundle: reading fade recovers on pet hover, Alt alone controls cli
  tree=runtime.render();assert.equal(tree.props['data-ghost'],false)
 })
 
-test('browser bundle: an open settings panel follows a pet drag without being re-opened', t=>{
- const runtime=loadBundle();const sm=runtime.mount();t.after(()=>sm.dispose())
- let tree=runtime.render()
- walk(tree).find(node=>node.children.includes('设置')).props.onClick()
- runtime.render()
- const place=runtime.viewEffects.find(fn=>String(fn).includes('const place'))
- const removePlace=place();t.after(removePlace)
- tree=runtime.render()
- const before=walk(tree).find(node=>node.props.className==='settingsDrawer').props.style
- walk(tree).find(node=>node.props.imgSrc).props.onMouseDown({button:0,clientX:1000,clientY:400})
- runtime.render()
- runtime.viewEffects.find(fn=>String(fn).includes('panelTether.current'))()
- const drag=runtime.viewEffects.find(fn=>String(fn).includes('const cancelDrag'))
- const removeDrag=drag();t.after(removeDrag)
- runtime.dispatch('mousemove',{clientX:900,clientY:350})
- runtime.render()
- runtime.viewEffects.find(fn=>String(fn).includes('panelTether.current'))()
- tree=runtime.render()
- const after=walk(tree).find(node=>node.props.className==='settingsDrawer').props.style
- assert.equal(after.left,before.left-100)
- assert.equal(after.top,before.top-50)
+test('browser bundle: settings and pet move as one group at the viewport edges (F02)', t => {
+  const runtime = loadBundle(); const sm = runtime.mount(); t.after(() => sm.dispose())
+  let tree = runtime.render()
+  walk(tree).find(node => node.children.includes('设置')).props.onClick()
+  for (const [x, y] of [[5000, 5000], [-5000, -5000], [5000, -5000], [-5000, 5000], [640, 400]]) {
+    tree = runtime.render()
+    walk(tree).find(node => node.props.imgSrc).props.onMouseDown({ button: 0, clientX: 600, clientY: 400 })
+    runtime.render()
+    const remove = runtime.viewEffects.find(fn => String(fn).includes('const cancelDrag'))()
+    runtime.dispatch('mousemove', { clientX: x, clientY: y })
+    runtime.dispatch('mousemove', { clientX: x + 40, clientY: y + 40 })
+    tree = runtime.render()
+    const pet = tree.props.style, drawer = walk(tree).find(node => node.props.className === 'settingsDrawer')
+    assert.equal(drawer.props['data-mode'], 'tethered')
+    const petLeft = Number.parseFloat(pet.left), petRight = petLeft + Number.parseFloat(pet.width)
+    const panelLeft = drawer.props.style.left, panelRight = panelLeft + drawer.props.style.width
+    assert.ok(panelRight <= petLeft - 12 || panelLeft >= petRight + 12, `panel ${panelLeft}-${panelRight} clear of pet ${petLeft}-${petRight}`)
+    assert.ok(panelLeft >= 16 && panelRight <= 1280 - 16 && petLeft >= 16 && petRight <= 1280 - 16)
+    runtime.dispatch('mouseup', { clientX: x + 40, clientY: y + 40 })
+    remove()
+  }
+})
+
+test('browser bundle: an old chibi preference renders the maiden portrait and no form switch is offered (F04)', t => {
+  const store = new Map([['dsh-whale-pet.preferences.v1', JSON.stringify({ form: 'chibi', onboardingDone: true })]])
+  const runtime = loadBundle({ getItem: (key: string) => store.get(key) ?? null, setItem: (key: string, value: string) => store.set(key, value) })
+  const sm = runtime.mount(); t.after(() => sm.dispose())
+  runtime.render()
+  runtime.viewEffects.find(fn => String(fn).includes('effectiveForm'))()
+  t.after(runtime.viewEffects.find(fn => String(fn).includes('stateMachine.subscribe'))())
+  let tree = runtime.render()
+  assert.equal(sm.getStatus().form, 'maiden')
+  assert.equal(walk(tree).find(node => node.props.imgSrc).props.poseName, 'Maid')
+  sm.setForm('chibi')
+  tree = runtime.render()
+  assert.equal(walk(tree).find(node => node.props.imgSrc).props.poseName, 'Maid', 'even a forced chibi state renders maiden while paused')
+  walk(tree).find(node => node.children.includes('设置')).props.onClick()
+  tree = runtime.render()
+  const labels = walk(tree).flatMap(node => node.children.filter((child: any) => typeof child === 'string'))
+  assert.ok(!labels.some((text: string) => /Q版|角色形态|Chibi/i.test(text)), 'no chibi entry in toolbar or settings')
+  assert.ok(labels.includes('进入剧场模式'), 'theatre entry kept in the footer')
+})
+
+test('browser bundle: unread balance is shown as — with honest guidance, never as ¥0.00 (F05)', t => {
+  const runtime = loadBundle(); const sm = runtime.mount(); t.after(() => sm.dispose())
+  let tree = runtime.render()
+  t.after(runtime.viewEffects.find(fn => String(fn).includes('stateMachine.subscribe'))())
+  walk(tree).find(node => node.children.includes('设置')).props.onClick()
+  tree = runtime.render()
+  const card = walk(tree).find(node => node.props.className === 'petWalletCard')
+  assert.equal(card.props['data-status'], 'unavailable')
+  const text = walk(card).flatMap(node => node.children.filter((child: any) => typeof child === 'string')).join('')
+  assert.ok(text.includes('—'))
+  assert.ok(!text.includes('¥0.00'))
+  assert.ok(text.includes('打开 DSH 账户设置'))
+  sm.setBalances('¥5.00', '¥1.00')
+  tree = runtime.render()
+  assert.equal(walk(tree).find(node => node.props.className === 'petWalletCard').props['data-status'], 'live')
 })
 
 test('browser bundle: font size is continuously adjustable with a live numeric label', t=>{

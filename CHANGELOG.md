@@ -9,6 +9,15 @@
 
 ### Unreleased
 
+- Frontend rework by Claude Opus 5.5 (not released; version unchanged):
+  - Settings and pet now lay out as one group: the panel stays beside the pet with a 16px gap, switches sides only when the current side runs out of room, and moves the pet to the nearest spot where both fit. Windows too small for the pair open settings as a labelled separate panel. Wandering pauses while settings are open.
+  - Settings rebuilt with a fixed header, a scrolling body and a one-row footer (12px between note and button, 16px bottom margin). The chibi form switch is gone from the toolbar and settings; a stored `chibi` preference renders the maiden portrait while the feature is paused. All artwork is kept.
+  - Every pose renders in one shared stage anchored at the feet, with per-pose scale calibrated by head size. sajiao no longer looks smaller, and switching poses no longer moves the pet. Sizing replaces CSS zoom, so hit areas follow the drawn image.
+  - Balance has a fixed home: a card in settings and a small chip above the head. Unread values show as —, never ¥0.00. Old snapshots are marked as not live. Bowls and low-balance hints only run on fresh CNY data. Reading the balance at startup is still pending (Codex).
+  - Theatre reorganised: primary header actions, the head stays visible in expanded reading, more opaque reading surfaces, full-reading mode only follows new text while you are at the bottom, and narrow windows switch the header to icon buttons.
+  - New character voice (`voice.ts`): soft mid-range speech blips that follow text as it appears, with breaths and falling sentence ends. Scheduling is capped, so a stalled stream goes quiet within about half a second and never replays a backlog. Code is not voiced. Sound is still muted by default.
+  - Stylesheets rewritten around theme tokens without override layers. Remaining “Little Whale” wording replaced with 大肥鱼.
+  - Tests: 39 → 75, adding edge and corner layout, old chibi preference, pose calibration, balance states and voice lifecycle.
 - Standardized the project name as 大肥鱼, placed the creator first in both contributor lists, and clarified the current balance-reading limitation.
 - Added the Opus 5.5 frontend handoff and Codex balance integration plan, with ownership, priorities and acceptance criteria. These documents describe pending work; no UI fix, chibi disablement or startup balance integration is included in this entry.
 
@@ -97,6 +106,15 @@
 
 ### 尚未发布
 
+- Claude Opus 5.5 前端重做（未发布，版本号不变）：
+  - 设置面板与角色作为整体布局：面板贴在角色旁并保持 16px 间距，只在当前侧放不下时才换侧，必要时把角色移到两者都能放下的最近位置。窗口放不下这一组时，设置改为带标识的独立面板。设置打开期间暂停游荡。
+  - 设置面板重做为固定标题、可滚动正文和单行底部区域（说明与按钮间距 12px，距底 16px）。工具栏与设置中移除 Q 版切换；旧的 `chibi` 偏好在暂停期间按普通立绘显示，全部素材保留。
+  - 所有姿态在同一舞台框内按脚底对齐显示，并按头部尺寸逐姿态校准缩放。撒娇不再显小，切换姿态也不会挪动角色。用尺寸代替 CSS zoom，命中区域随实际图像变化。
+  - 余额有了固定位置：设置中的余额卡片和头顶的小标签。未读取显示 —，绝不显示 ¥0.00；旧数据标注“非实时”；“还能吃几碗”和低余额提醒只用最新的人民币数据。启动时读取余额仍待 Codex 接入。
+  - 剧场重新整理：顶部主要操作分组；大屏阅读完整露头；阅读区域更不透明；完整阅读模式只在停留底部时跟随新文字；窄窗口顶部改为图标按钮。
+  - 新人物音效（`voice.ts`）：随文字出现发出轻柔的中频说话音，带换气停顿和句末下行音。播放调度有上限，网络停顿约半秒内静音，不补播积压内容；代码不发声；仍默认静音。
+  - 样式基于主题变量重写，去掉层层覆盖；剩余的“Little Whale”称呼统一为大肥鱼。
+  - 测试由 39 项增至 75 项，新增四角与贴边布局、旧 chibi 偏好、立绘校准、余额状态和音效生命周期。
 - 产品名统一为“大肥鱼”，中英文贡献者均将发起人列在首位，并说明当前余额读取限制。
 - 新增 Opus 5.5 前端交接及 Codex 余额接入计划，明确分工、优先级和验收条件。文档内容为待办，本条不包含 UI 修复、Q 版禁用或启动余额接入。
 

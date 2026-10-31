@@ -4,9 +4,9 @@
 
 Ewigkeit1203 owns feature decisions. Claude Opus 5.5 owns frontend design and implementation, including interaction geometry, pose calibration and character sound. Codex owns backend/host integration, data contracts, state reliability and build tooling. No separate backend server is currently implemented.
 
-请先读 [Opus 前端交接需求](OPUS_FRONTEND_HANDOFF.md)及[余额数据接入计划](BALANCE_INTEGRATION.md)。它们记录当前待办，不是已完成清单。用户已明确授权暂时禁用 Q 版切换并保留素材；旧 chibi 偏好迁移和入口隐藏尚待实施。产品名称统一为“大肥鱼”，保留包名 `dsh-whale-pet`；不再使用 Little Whale 作为品牌，界面中的旧称呼由 Opus 一并替换。
+请先读 [Opus 前端交接需求](OPUS_FRONTEND_HANDOFF.md)及[余额数据接入计划](BALANCE_INTEGRATION.md)。它们记录当前待办，不是已完成清单。用户已明确授权暂时禁用 Q 版切换并保留素材；入口已隐藏，旧 chibi 偏好在前端渲染为普通立绘（`features.ts`），正式偏好迁移由 Codex 确认。产品名称统一为“大肥鱼”，保留包名 `dsh-whale-pet`；不再使用 Little Whale 作为品牌，界面中的旧称呼由 Opus 一并替换。
 
-Known regression: settings and pet clamp independently at edges, allowing overlap. Follow frontend F02 rather than assuming the existing drag-follow test covers edge behavior. Startup balance acquisition still depends on opening DSH account settings; no verified host account adapter exists yet.
+Frontend F01–F08 are implemented but unreleased (see the status table in the frontend handoff). Settings and pet now share one group layout (`layout.ts`) with edge tests. Startup balance acquisition still depends on opening DSH account settings; no verified host account adapter exists yet.
 
 ## Core rules / 核心约定
 
@@ -20,7 +20,7 @@ Known regression: settings and pet clamp independently at edges, allowing overla
 
 ## Validation / 验证
 
-Run npm run build, npm run typecheck, npm test, and node --check lib/client.js. Current suite: 39 tests. scripts/package-release.ps1 generates a ZIP and SHA-256 checksum. scripts/generate-hitareas.py is a development-only Pillow helper for alpha envelopes; regenerate after replacing artwork.
+Run npm run build, npm run typecheck, npm test, and node --check lib/client.js. Current suite: 75 tests. scripts/package-release.ps1 generates a ZIP and SHA-256 checksum. scripts/generate-hitareas.py is a development-only Pillow helper for alpha envelopes; regenerate after replacing artwork.
 
 ## Release / 发布
 

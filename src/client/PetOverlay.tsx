@@ -1,11 +1,16 @@
 import { SettingsPanel } from './SettingsPanel.js'
-import { viewportPanel, paginateText, revealDelay, diagnosticReport } from './usability.js'
-import { PetAudio, dialogueBlocks, readConversationLog, parseBalance, type HistoryEntry } from './experience.js'
-import { DialogueContent } from './DialogueContent.js'
+import { TheatreView } from './TheatreView.js'
+import { paginateText, revealDelay, diagnosticReport } from './usability.js'
+import { dialogueBlocks, readConversationLog, type HistoryEntry } from './experience.js'
 import { readPreferences, savePreferences, quietPreset, defaultPreferences, type Preferences } from './preferences.js'
+import { FEATURES, effectiveForm } from './features.js'
+import { POSE_META, spriteGeometry } from './poses.js'
+import { LAYOUT, layoutGroup, clampPet, placeGroupX, groupFits, type PanelSide } from './layout.js'
+import { walletView } from './wallet.js'
+import { PetVoice, appendedSpeech, speakableText } from './voice.js'
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import type { PetStateMachine } from './state-machine.js'
-import type { PetStatusInfo, PetPosition } from './types.js'
+import type { PetStatusInfo } from './types.js'
 import { LivingPuppet } from './LivingPuppet.js'
 import {
   MAID_DATA_URI,
@@ -21,38 +26,40 @@ import {
   THINK5_DATA_URI,
   DIZZY_DATA_URI,
 } from './assets-data.js'
-import styles from './PetOverlay.module.css'
 
 export interface PetOverlayProps {
   stateMachine: PetStateMachine
 }
 
-/**
- * Splits dialogue text into complete-sentence pages that comfortably fill the GalGame dialogue box.
- * Ensures complete sentences without abrupt mid-sentence cutoffs.
- */
+/** Measured pagination; code blocks stay whole so they can scroll inside their card. */
 function paginateDialogue(text: string, width: number, height: number, font: number): string[] {
- const blocks=dialogueBlocks(text)
- let measure: ((text:string)=>number) | undefined
- if(typeof document.createElement === 'function') {
-   const context=document.createElement('canvas').getContext('2d')
-   if(context) { context.font = font + 'px "Microsoft YaHei", sans-serif'; measure = value=>context.measureText(value).width }
- }
- return blocks.flatMap(block=>block.kind==='code'?['```'+(block.language||'')+'\n'+block.text+'\n```']:paginateText(block.text,width,height,font,measure))
+  const blocks = dialogueBlocks(text)
+  let measure: ((text: string) => number) | undefined
+  if (typeof document.createElement === 'function') {
+    const context = document.createElement('canvas').getContext('2d')
+    if (context) { context.font = font + 'px "Microsoft YaHei", "PingFang SC", sans-serif'; measure = value => context.measureText(value).width }
+  }
+  return blocks.flatMap(block => block.kind === 'code' ? ['```' + (block.language || '') + '\n' + block.text + '\n```'] : paginateText(block.text, width, height, font, measure))
 }
+
+const COMPOSER_SELECTOR = '[data-composer-card], [data-composer-seat]'
+const DOCK_PEEK = 0.52
+
+const dockIcon = (d: string) => <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>
 
 export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const [preferences, setPreferences] = useState(readPreferences)
-  const sizeSteps = [0.5, 0.75, 1, 1.15, 1.3]
-  const selectedSize = sizeSteps.reduce((nearest, value) => Math.abs(value - preferences.scale) < Math.abs(nearest - preferences.scale) ? value : nearest)
   const t = (zh: string, en: string) => preferences.language === 'en' ? en : zh
   const update = (patch: Partial<Preferences>) => setPreferences(prev => ({ ...prev, ...patch }))
   const [status, setStatus] = useState<PetStatusInfo>(() => stateMachine.getStatus())
-  const [position, setPosition] = useState<PetPosition>({
-    x: preferences.x ?? Math.max(10, window.innerWidth - 300),
-    y: preferences.y ?? Math.max(90, window.innerHeight - Math.min(480, window.innerHeight * 0.6) - 30),
-    side: 'right',
-  })
+  const [viewport, setViewport] = useState(() => ({ width: window.innerWidth, height: window.innerHeight }))
+  const initialStage = spriteGeometry('Maid', window.innerHeight, preferences.scale)
+  const [position, setPosition] = useState(() => clampPet(
+    preferences.x ?? window.innerWidth - initialStage.stageWidth - 24,
+    preferences.y ?? window.innerHeight - initialStage.stageHeight - 30,
+    initialStage.stageWidth, initialStage.stageHeight, window.innerWidth, window.innerHeight))
+  const [composerTop, setComposerTop] = useState<number | undefined>(undefined)
+  const [panelHeight, setPanelHeight] = useState(0)
   const [uiHidden, setUiHidden] = useState(false)
   const [logOpen, setLogOpen] = useState(false)
   const [history, setHistory] = useState<HistoryEntry[]>([])
@@ -60,8 +67,8 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const [toast, setToast] = useState('')
   const [affection, setAffection] = useState<'pat' | 'dizzy' | 'float' | ''>('')
   const [clock, setClock] = useState(() => Date.now())
-  const audioRef = useRef<PetAudio | null>(null)
-  if (!audioRef.current) audioRef.current = new PetAudio()
+  const voiceRef = useRef<PetVoice | null>(null)
+  if (!voiceRef.current) voiceRef.current = new PetVoice()
   const previousPose = useRef('')
   const revealIdentity = useRef({ page: -1, text: '' })
   const startedAt = useRef(0)
@@ -73,7 +80,6 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const [petHidden, setPetHidden] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [bubbleHidden, setBubbleHidden] = useState(false)
-  const panelTether = useRef(position)
   const wheelTime = useRef(0)
   const [dimmed, setDimmed] = useState(false)
   const [foreground, setForeground] = useState(true)
@@ -82,14 +88,12 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [settingsAnchor, setSettingsAnchor] = useState({ x: 16, y: 90 })
   const [isBouncing, setIsBouncing] = useState(false)
-  const wanderingEnabled = preferences.wandering
-  const setWanderingEnabled = (wandering: boolean) => update({ wandering })
   const [inputValue, setInputValue] = useState('')
   const [currentPageIndex, setCurrentPageIndex] = useState(0)
   const [isThoughtBubbleVisible, setIsThoughtBubbleVisible] = useState(true)
 
+  const sideRef = useRef<PanelSide | undefined>(undefined)
   const isDraggingRef = useRef(false)
   const dragStartRef = useRef<{ startX: number; startY: number; petX: number; petY: number; startTime: number; maxDistance: number; distance: number; lastX: number; lastY: number; lastMove: number; vx: number; vy: number } | null>(null)
   const wanderTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -97,8 +101,14 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const menuTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const textScrollRef = useRef<HTMLDivElement>(null)
   const thoughtScrollRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const followThoughtRef = useRef(true)
+  const followTextRef = useRef(true)
   const lastDialogueRef = useRef('')
+  const spokenStreamRef = useRef('')
+  const spokenRevealRef = useRef(0)
+  /** Latest geometry for event handlers registered once per drag. */
+  const constrainRef = useRef<(x: number, y: number) => { x: number; y: number }>((x, y) => ({ x, y }))
 
   useEffect(() => () => {
     delayedTimers.current.forEach(timer => clearTimeout(timer))
@@ -113,42 +123,120 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     return timer
   }
 
+  // Chibi form is paused: render maiden even if an older preference stored chibi.
   useEffect(() => {
-    stateMachine.setForm(preferences.form)
+    stateMachine.setForm(effectiveForm(preferences.form))
     stateMachine.setAutoGalGameOnChat(preferences.autoGalGame)
   }, [stateMachine])
   useEffect(() => {
-    const timer = setTimeout(() => savePreferences({ ...preferences, form: status.form, autoGalGame: status.autoGalGameOnChat, x: position.x, y: position.y }), 250)
+    const timer = setTimeout(() => savePreferences({ ...preferences, form: FEATURES.chibiForm ? status.form : preferences.form, autoGalGame: status.autoGalGameOnChat, x: position.x, y: position.y }), 250)
     return () => clearTimeout(timer)
   }, [preferences, status.form, status.autoGalGameOnChat, position])
+
+  const petName = preferences.petName === '大肥鱼' ? '大肥鱼' : preferences.petName
   const companionSpeech = preferences.language === 'zh' ? status.speech :
-    status.pose === 'sajiao' ? 'Hey, stay with your little whale a little longer!' :
-    ({ IDLE: 'Your little whale is right here with you.', PEEKING: 'I’m listening. What’s on your mind?', REASONING: 'Let me think this through…', ANSWERING: 'Putting the answer together for you…', EATING: 'Time for a little rice break!', WANDERING: 'Taking a little stroll…' }[status.state])
+    status.pose === 'sajiao' ? 'Hey, stay with me a little longer!' :
+    ({ IDLE: 'I’m right here with you.', PEEKING: 'I’m listening. What’s on your mind?', REASONING: 'Let me think this through…', ANSWERING: 'Putting the answer together for you…', EATING: 'Time for a little rice break!', WANDERING: 'Taking a little stroll…' }[status.state])
   const phaseLabel = ({ IDLE: t('待机', 'Ready'), PEEKING: t('倾听中', 'Listening'), REASONING: t('思考中', 'Thinking'), ANSWERING: t('回答中', 'Answering'), EATING: t('休息中', 'Resting'), WANDERING: t('散步中', 'Strolling') }[status.state])
 
+  // ---- Geometry -------------------------------------------------------------
+  const renderForm = FEATURES.chibiForm ? status.form : 'maiden'
+  const isMaiden = renderForm === 'maiden'
+  const resolveCharacter = (): [string, string] => {
+    if (!isMaiden) return [CHIBI_DATA_URI, 'DaFeiYu']
+    if (affection === 'pat') return [SAJIAO_DATA_URI, 'sajiao']
+    if (affection === 'dizzy' && !status.isStreaming) return [DIZZY_DATA_URI, 'Dizzy']
+    if (status.pose === 'sajiao' || status.pose === 'mad') return [SAJIAO_DATA_URI, 'sajiao']
+    if (status.isStreaming) return [ANSWERING_DATA_URI, 'Answering']
+    if (status.pose === 'eating' || status.state === 'EATING') return [BAIFAN_DATA_URI, 'baifan']
+    if (status.pose === 'answering' || status.state === 'ANSWERING') return [ANSWERING_DATA_URI, 'Answering']
+    if (status.pose === 'getit') return [GETIT_DATA_URI, 'getit']
+    if (status.pose === 'think1') return [THINK1_DATA_URI, 'Think1']
+    if (status.pose === 'think2') return [THINK2_DATA_URI, 'Think2']
+    if (status.pose === 'think3') return [THINK3_DATA_URI, 'Think3']
+    if (status.pose === 'think4') return [THINK4_DATA_URI, 'Think4']
+    if (status.pose === 'think5') return [THINK5_DATA_URI, 'Think5']
+    if (status.state === 'REASONING') return [THINK1_DATA_URI, 'Think1']
+    return [MAID_DATA_URI, 'Maid']
+  }
+  const [currentImgSrc, hitPose] = resolveCharacter()
+  const geometry = spriteGeometry(hitPose, viewport.height, preferences.scale)
+  const stageW = geometry.stageWidth
+  const stageH = geometry.stageHeight
+  const docked = preferences.docked
+  const petBox = docked
+    ? { x: viewport.width - stageW - 12, y: Math.round(viewport.height - stageH * DOCK_PEEK) }
+    : position
+  const group = isSettingsOpen ? layoutGroup({
+    viewportWidth: viewport.width, viewportHeight: viewport.height, composerTop,
+    pet: { x: petBox.x, y: petBox.y, width: stageW, height: stageH },
+    panelHeight, previousSide: sideRef.current, petPinned: docked,
+  }) : null
+  const petPos = group && group.mode === 'tethered' ? group.pet : petBox
+  const imageTop = stageH - geometry.imageHeight
+
+  constrainRef.current = (x: number, y: number) => {
+    const free = clampPet(x, y, stageW, stageH, viewport.width, viewport.height)
+    if (!isSettingsOpen || !groupFits(viewport.width, viewport.height, stageW, composerTop)) return free
+    const placed = placeGroupX(free.x, stageW, viewport.width, sideRef.current)
+    sideRef.current = placed.side
+    return { x: placed.x, y: free.y }
+  }
+
+  // Keep hysteresis and commit group adjustments so closing the panel does not jump.
+  useEffect(() => {
+    if (!group) return
+    sideRef.current = group.side
+    if (group.mode === 'tethered' && !docked && !isDraggingRef.current && (group.pet.x !== position.x || group.pet.y !== position.y)) setPosition(group.pet)
+  }, [group?.side, group?.mode, group?.pet.x, group?.pet.y, docked])
+
+  useEffect(() => {
+    const resize = () => {
+      setViewport(previous => previous.width === window.innerWidth && previous.height === window.innerHeight ? previous : { width: window.innerWidth, height: window.innerHeight })
+    }
+    window.addEventListener('resize', resize)
+    return () => window.removeEventListener('resize', resize)
+  }, [])
+  // Size steps and window changes keep the full portrait on screen.
+  useEffect(() => {
+    setPosition(previous => {
+      const next = clampPet(previous.x, previous.y, stageW, stageH, viewport.width, viewport.height)
+      return next.x === previous.x && next.y === previous.y ? previous : next
+    })
+  }, [stageW, stageH, viewport.width, viewport.height])
+
+  // Settings: composer avoidance, outside click, Escape, panel measurement.
   useEffect(() => {
     if (!isSettingsOpen) return
     const place = () => {
-      const composer = document.querySelector('[data-composer-card], [data-composer-seat]')?.getBoundingClientRect()
-      const panel = viewportPanel(window.innerWidth, window.innerHeight, position.x, position.y, composer?.top)
-      setSettingsAnchor({ x: panel.x, y: panel.y })
+      const top = document.querySelector(COMPOSER_SELECTOR)?.getBoundingClientRect().top
+      setComposerTop(top !== undefined && Number.isFinite(top) && top > 0 ? Math.round(top) : undefined)
+      const panel = panelRef.current
+      if (panel) {
+        const header = panel.querySelector('.petPanelHeader') as HTMLElement | null
+        const body = panel.querySelector('.petSettingsBody') as HTMLElement | null
+        const footer = panel.querySelector('.petSettingsFooter') as HTMLElement | null
+        const natural = (header?.offsetHeight || 0) + (body?.scrollHeight || 0) + (footer?.offsetHeight || 0) + 2
+        setPanelHeight(previous => Math.abs(previous - natural) < 2 ? previous : natural)
+      }
     }
     place()
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(place) : null
+    const body = panelRef.current?.querySelector('.petSettingsBody')
+    if (body) observer?.observe(body)
+    panelRef.current?.addEventListener('toggle', place, true)
     window.addEventListener('resize', place)
     const dismiss = (event: PointerEvent) => { if (event.target instanceof Element && !event.target.closest('[data-whale-pet]')) setIsSettingsOpen(false) }
-    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') setIsSettingsOpen(false) }
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape' && !event.isComposing) setIsSettingsOpen(false) }
     window.addEventListener('pointerdown', dismiss, true)
     window.addEventListener('keydown', escape)
-    return () => { window.removeEventListener('resize', place); window.removeEventListener('pointerdown', dismiss, true); window.removeEventListener('keydown', escape) }
-  }, [isSettingsOpen])
+    return () => {
+      observer?.disconnect()
+      panelRef.current?.removeEventListener('toggle', place, true)
+      window.removeEventListener('resize', place); window.removeEventListener('pointerdown', dismiss, true); window.removeEventListener('keydown', escape)
+    }
+  }, [isSettingsOpen, preferences.language, preferences.fontSize])
 
-  useEffect(() => {
-    const previous = panelTether.current
-    panelTether.current = position
-    if (!isSettingsOpen || (!isDragging && affection !== 'float' && affection !== 'dizzy')) return
-    const composerTop = document.querySelector('[data-composer-card], [data-composer-seat]')?.getBoundingClientRect().top ?? window.innerHeight
-    setSettingsAnchor(anchor => ({ x: Math.max(16, Math.min(window.innerWidth - 356, anchor.x + position.x - previous.x)), y: Math.max(16, Math.min(Math.max(16, composerTop - 180), anchor.y + position.y - previous.y)) }))
-  }, [position.x, position.y, isSettingsOpen, isDragging, affection])
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
       if (event.key === 'Alt') setGhost(true)
@@ -162,40 +250,11 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', reset) }
   }, [stateMachine])
 
-  // Subscribe to state machine
-  useEffect(() => {
-    return stateMachine.subscribe((newStatus) => {
-      setStatus(newStatus)
-    })
-  }, [stateMachine])
-
-  useEffect(() => {
-    const fit = () => {
-      const node = document.querySelector('[data-whale-pet="widget"]')
-      if (!node) return
-      const rect = node.getBoundingClientRect()
-      setPosition(prev => ({ ...prev,
-        x: Math.max(10, Math.min(prev.x, window.innerWidth - rect.width - 16)),
-        y: Math.max(90, Math.min(prev.y, window.innerHeight - rect.height - 16)),
-      }))
-    }
-    fit()
-    window.addEventListener('resize', fit)
-    document.addEventListener('load', fit, true)
-    return () => {
-      window.removeEventListener('resize', fit)
-      document.removeEventListener('load', fit, true)
-    }
-  }, [status.form, status.pose, status.isGalGameMode, preferences.scale])
+  useEffect(() => stateMachine.subscribe(next => setStatus(next)), [stateMachine])
 
   useEffect(() => {
     if (!status.isGalGameMode) { setUiHidden(false); setLogOpen(false) }
   }, [status.isGalGameMode])
-  useEffect(() => {
-    const pause = () => { if (document.hidden) audioRef.current?.silence() }
-    document.addEventListener('visibilitychange', pause)
-    return () => document.removeEventListener('visibilitychange', pause)
-  }, [])
 
   useEffect(() => {
     const measure = () => {
@@ -204,14 +263,14 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     }
     measure()
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null
-    if(textScrollRef.current)observer?.observe(textScrollRef.current)
+    if (textScrollRef.current) observer?.observe(textScrollRef.current)
     window.addEventListener('resize', measure)
     return () => { observer?.disconnect(); window.removeEventListener('resize', measure) }
-  }, [status.isGalGameMode, preferences.fontSize, preferences.reading, expanded])
+  }, [status.isGalGameMode, preferences.fontSize, preferences.reading, expanded, uiHidden])
   useEffect(() => {
     const media = window.matchMedia?.('(prefers-reduced-motion: reduce)')
     const motion = () => setReduceMotion(media?.matches ?? false)
-    const visibility = () => { const active = !document.hidden && document.hasFocus(); setForeground(active); stateMachine.setPaused(!active); if (!active) audioRef.current?.silence() }
+    const visibility = () => { const active = !document.hidden && document.hasFocus(); setForeground(active); stateMachine.setPaused(!active); if (!active) voiceRef.current?.silence() }
     motion(); visibility()
     media?.addEventListener('change', motion)
     window.addEventListener('focus', visibility); window.addEventListener('blur', visibility); document.addEventListener('visibilitychange', visibility)
@@ -223,41 +282,30 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       } else setDimmed(false)
     }
     window.addEventListener('pointermove', reading, { passive: true }); window.addEventListener('wheel', reading, { passive: true })
-    return () => { if(timer) clearTimeout(timer); stateMachine.setPaused(false); media?.removeEventListener('change', motion); window.removeEventListener('focus', visibility); window.removeEventListener('blur', visibility); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pointermove', reading); window.removeEventListener('wheel', reading) }
+    return () => { if (timer) clearTimeout(timer); stateMachine.setPaused(false); media?.removeEventListener('change', motion); window.removeEventListener('focus', visibility); window.removeEventListener('blur', visibility); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pointermove', reading); window.removeEventListener('wheel', reading) }
   }, [stateMachine])
   useEffect(() => {
     if (previousStream.current && !status.isStreaming && !status.isReasoning && !foreground && preferences.notifications && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      const notification = new Notification('大肥鱼 · Little Whale', { body: t('回答完成啦，回来看看吧。', 'Your answer is ready.'), tag: 'whale-finished' })
+      const notification = new Notification(petName, { body: t('回答完成啦，回来看看吧。', 'Your answer is ready.'), tag: 'whale-finished' })
       notification.onclick = () => { window.focus(); notification.close() }
     }
     previousStream.current = status.isStreaming
   }, [status.isStreaming, status.isReasoning, foreground, preferences.notifications])
 
-  // Sync GalGame mode class to document.body
   useEffect(() => {
-    if (status.isGalGameMode) {
-      document.body.classList.add('dsh-galgame-mode')
-    } else {
-      document.body.classList.remove('dsh-galgame-mode')
-    }
-    return () => {
-      document.body.classList.remove('dsh-galgame-mode')
-    }
+    if (status.isGalGameMode) document.body.classList.add('dsh-galgame-mode')
+    else document.body.classList.remove('dsh-galgame-mode')
+    return () => { document.body.classList.remove('dsh-galgame-mode') }
   }, [status.isGalGameMode])
 
-  // Paginate reply text for Visual Novel paragraph progression
-  // 目标字数与剧场框尺寸匹配：框加大后尽量放满每一段
-  const dialoguePages = useMemo(() => {
-    return paginateDialogue(status.latestDialogue || companionSpeech, pageBox.width, pageBox.height, preferences.fontSize)
-  }, [status.latestDialogue, companionSpeech, pageBox, preferences.fontSize])
+  // ---- Theatre reading ------------------------------------------------------
+  const dialoguePages = useMemo(() => paginateDialogue(status.latestDialogue || companionSpeech, pageBox.width, pageBox.height, preferences.fontSize),
+    [status.latestDialogue, companionSpeech, pageBox, preferences.fontSize])
 
-  // Reset pagination when a new response starts
   useEffect(() => {
     const cur = status.latestDialogue || status.speech
     if (cur !== lastDialogueRef.current) {
-      if (!lastDialogueRef.current || !cur.startsWith(lastDialogueRef.current.slice(0, 30))) {
-        setCurrentPageIndex(0)
-      }
+      if (!lastDialogueRef.current || !cur.startsWith(lastDialogueRef.current.slice(0, 30))) { setCurrentPageIndex(0); followTextRef.current = true }
       lastDialogueRef.current = cur
     }
   }, [status.latestDialogue, status.speech])
@@ -267,7 +315,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     const close = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null
       if (event.isComposing || event.ctrlKey || event.metaKey || event.altKey || target?.closest('input, textarea, select, button, summary, [contenteditable="true"]')) return
-      if (event.key !== 'Escape' && event.key !== 'Enter' && event.key !== ' ' && event.key !== 'ArrowRight' && event.key !== 'ArrowLeft' && !['l','a','h','m'].includes(event.key.toLowerCase())) return
+      if (event.key !== 'Escape' && event.key !== 'Enter' && event.key !== ' ' && event.key !== 'ArrowRight' && event.key !== 'ArrowLeft' && !['l', 'a', 'h', 'm'].includes(event.key.toLowerCase())) return
       if (event.key !== 'Escape') {
         if (target?.closest('[role="button"], [role="log"]')) return
         event.preventDefault()
@@ -279,51 +327,50 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
         else handleAdvancePage()
         return
       }
-      if (event.key === 'Escape' && !event.isComposing) { const more = document.querySelector('[data-whale-pet] details[open]'); if (more) { more.removeAttribute('open'); return }; if (uiHidden) setUiHidden(false); else if (logOpen) setLogOpen(false); else stateMachine.setGalGameMode(false) }
+      const more = document.querySelector('[data-whale-pet] details[open]')
+      if (more) { more.removeAttribute('open'); return }
+      if (uiHidden) setUiHidden(false); else if (logOpen) setLogOpen(false); else stateMachine.setGalGameMode(false)
     }
     window.addEventListener('keydown', close)
     return () => window.removeEventListener('keydown', close)
-  }, [status.isGalGameMode, stateMachine, uiHidden, logOpen, revealed, currentPageIndex, dialoguePages, preferences.autoAdvance, preferences.reading])
+  }, [status.isGalGameMode, stateMachine, uiHidden, logOpen, revealed, currentPageIndex, dialoguePages, preferences.autoAdvance, preferences.reading, preferences.muted])
 
-  // Re-open thought bubble when new reasoning begins
   useEffect(() => {
-    if (status.isReasoning) {
-      followThoughtRef.current = true
-      setIsThoughtBubbleVisible(true)
-    }
+    if (status.isReasoning) { followThoughtRef.current = true; setIsThoughtBubbleVisible(true) }
   }, [status.isReasoning])
-
-  // Auto-scroll thought bubble as CoT streams in
   useEffect(() => {
-    if (thoughtScrollRef.current && followThoughtRef.current) {
-      thoughtScrollRef.current.scrollTop = thoughtScrollRef.current.scrollHeight
-    }
+    if (thoughtScrollRef.current && followThoughtRef.current) thoughtScrollRef.current.scrollTop = thoughtScrollRef.current.scrollHeight
   }, [status.reasoningText])
-
-  // Auto-scroll dialogue box when streaming
+  // Pages start at the top; full reading follows new text only while the reader is at the bottom.
   useEffect(() => {
-    if (status.isGalGameMode && textScrollRef.current && preferences.reading === 'pages') {
-      textScrollRef.current.scrollTop = textScrollRef.current.scrollHeight
-    }
-  }, [currentPageIndex, status.latestDialogue, status.isGalGameMode])
-
+    const box = textScrollRef.current
+    if (!status.isGalGameMode || !box) return
+    if (preferences.reading === 'pages') box.scrollTop = 0
+    else if (followTextRef.current) box.scrollTop = box.scrollHeight
+  }, [currentPageIndex, status.latestDialogue, status.isGalGameMode, preferences.reading])
 
   useEffect(() => {
     const timer = setInterval(() => { if (!document.hidden) setClock(Date.now()) }, 1000)
-    return () => { clearInterval(timer); audioRef.current?.dispose() }
+    return () => { clearInterval(timer); voiceRef.current?.dispose() }
   }, [])
+
+  // ---- Voice ----------------------------------------------------------------
+  const voiceAllowed = !preferences.muted && !preferences.quiet && preferences.volume > 0 && foreground && !uiHidden && !logOpen
+  useEffect(() => { voiceRef.current?.setVolume(preferences.volume) }, [preferences.volume])
   useEffect(() => {
-    if (preferences.muted || preferences.quiet) audioRef.current?.silence()
-  }, [preferences.muted, preferences.quiet])
+    if (preferences.muted || preferences.quiet) voiceRef.current?.silence()
+    else if (!voiceAllowed) voiceRef.current?.cut()
+  }, [voiceAllowed, preferences.muted, preferences.quiet])
   useEffect(() => {
     const pose = status.pose
-    if (pose !== previousPose.current && !preferences.muted && !preferences.quiet) {
-      if (pose === 'getit') audioRef.current?.play('ding', preferences.volume)
-      if (pose === 'sajiao') audioRef.current?.play('jelly', preferences.volume)
-      if (pose === 'eating') audioRef.current?.play('rice', preferences.volume)
+    if (pose !== previousPose.current && voiceAllowed) {
+      if (pose === 'getit') voiceRef.current?.cue('eureka')
+      if (pose === 'sajiao') voiceRef.current?.cue('jelly')
+      if (pose === 'eating') voiceRef.current?.cue('rice')
+      if (/^think/.test(pose) && !/^think/.test(previousPose.current)) voiceRef.current?.cue('think')
     }
     previousPose.current = pose
-  }, [status.pose, preferences.muted, preferences.quiet, preferences.volume])
+  }, [status.pose, voiceAllowed])
   useEffect(() => {
     if (status.isReasoning || status.isStreaming) { if (!startedAt.current) startedAt.current = Date.now() }
     else startedAt.current = 0
@@ -337,158 +384,103 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     }
   }, [clock, preferences.reminders, preferences.quiet, status.state, stateMachine])
 
-  // Menu hover persistence logic
+  // ---- Hover dock -----------------------------------------------------------
   const handleMouseEnterPet = useCallback(() => {
-    if (menuTimerRef.current) {
-      clearTimeout(menuTimerRef.current)
-      menuTimerRef.current = null
-    }
+    if (menuTimerRef.current) { clearTimeout(menuTimerRef.current); menuTimerRef.current = null }
     setDimmed(false)
     setIsMenuOpen(true)
   }, [])
-
   const handleMouseLeavePet = useCallback(() => {
     if (menuTimerRef.current) clearTimeout(menuTimerRef.current)
-    menuTimerRef.current = later(() => {
-      setIsMenuOpen(false)
-    }, 750)
+    menuTimerRef.current = later(() => setIsMenuOpen(false), 750)
   }, [])
 
-  // Mouse gaze tracking listener
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (status.isInputFocused) return
-      const centerX = window.innerWidth / 2
-      const centerY = window.innerHeight / 2
-      const nx = (e.clientX - centerX) / (window.innerWidth / 2)
-      const ny = (e.clientY - centerY) / (window.innerHeight / 2)
-      stateMachine.setGazeOffset({ x: nx, y: ny })
+      stateMachine.setGazeOffset({ x: (e.clientX - window.innerWidth / 2) / (window.innerWidth / 2), y: (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2) })
     }
-
     window.addEventListener('mousemove', handleMouseMove, { passive: true })
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove)
-    }
+    return () => window.removeEventListener('mousemove', handleMouseMove)
   }, [status.isInputFocused, stateMachine])
 
-  // Wandering Logic (Pauses on dragging)
+  // Wandering pauses while dragging, hovering, docked, in the theatre or with settings open.
   useEffect(() => {
-    if (petHidden || !wanderingEnabled || status.isGalGameMode || reduceMotion || !foreground || preferences.docked) {
-      if (wanderTimerRef.current !== null) {
-        clearInterval(wanderTimerRef.current)
-        wanderTimerRef.current = null
-      }
+    if (petHidden || !preferences.wandering || status.isGalGameMode || reduceMotion || !foreground || docked || isSettingsOpen) {
+      if (wanderTimerRef.current !== null) { clearInterval(wanderTimerRef.current); wanderTimerRef.current = null }
       return
     }
-
     const interval = setInterval(() => {
-      if (isDraggingRef.current || isMenuOpen || isSettingsOpen) return
-
-      const curStatus = stateMachine.getStatus()
-      if (curStatus.state !== 'IDLE' && curStatus.state !== 'WANDERING') return
-
+      if (isDraggingRef.current || isMenuOpen) return
+      const current = stateMachine.getStatus()
+      if (current.state !== 'IDLE' && current.state !== 'WANDERING') return
       stateMachine.setWandering(true)
-
-      const margin = 40
-      const width = status.form === 'maiden' ? 280 : 170
-      const height = status.form === 'maiden' ? 420 : 220
-      const maxX = Math.max(margin, window.innerWidth - width - margin)
-      const minX = Math.max(margin, window.innerWidth - 420)
-      const targetX = Math.floor(minX + Math.random() * (maxX - minX))
-      const targetY = Math.max(margin, window.innerHeight - height - margin)
-
-      setPosition((prev) => ({
-        x: targetX,
-        y: targetY,
-        side: targetX < window.innerWidth / 2 ? 'left' : 'right',
-      }))
-
-      later(() => {
-        // Wandering finishes: pause and eat a couple bites of white rice
-        stateMachine.finishWanderingWithEating(3500)
-      }, 3300)
+      const maxX = Math.max(LAYOUT.margin, window.innerWidth - stageW - 40)
+      const minX = Math.max(LAYOUT.margin, window.innerWidth - stageW - 180)
+      setPosition(clampPet(Math.floor(minX + Math.random() * (maxX - minX)), window.innerHeight - stageH - 40, stageW, stageH, window.innerWidth, window.innerHeight))
+      later(() => stateMachine.finishWanderingWithEating(3500), 3300)
     }, 14000)
-
     wanderTimerRef.current = interval
-    return () => {
-      clearInterval(interval)
-      wanderTimerRef.current = null
-    }
-  }, [wanderingEnabled, status.form, status.isGalGameMode, isMenuOpen, isSettingsOpen, stateMachine, reduceMotion, foreground, preferences.docked, petHidden])
+    return () => { clearInterval(interval); wanderTimerRef.current = null }
+  }, [preferences.wandering, status.isGalGameMode, isMenuOpen, isSettingsOpen, stateMachine, reduceMotion, foreground, docked, petHidden, stageW, stageH])
 
-  // Dragging and click handlers for floating widget (Double-click shrunk state completely removed)
+  // ---- Drag, click, inertia --------------------------------------------------
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (status.isGalGameMode || preferences.docked || e.button !== 0) return
+    if (status.isGalGameMode || e.button !== 0) return
+    // Do not take focus from the host composer (and do not arm the keyboard focus ring) on a mouse press.
+    e.preventDefault?.()
     stateMachine.resetActivity()
     isDraggingRef.current = true
     setIsDragging(true)
     stateMachine.setWandering(false)
-
-    dragStartRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      petX: position.x,
-      petY: position.y,
-      startTime: Date.now(),
-      maxDistance: 0,
-      distance: 0, lastX: e.clientX, lastY: e.clientY, lastMove: Date.now(), vx: 0, vy: 0,
-    }
-  }, [position, status.isGalGameMode, stateMachine, preferences.docked])
+    dragStartRef.current = { startX: e.clientX, startY: e.clientY, petX: petPos.x, petY: petPos.y, startTime: Date.now(), maxDistance: 0, distance: 0, lastX: e.clientX, lastY: e.clientY, lastMove: Date.now(), vx: 0, vy: 0 }
+  }, [petPos.x, petPos.y, status.isGalGameMode, stateMachine])
 
   useEffect(() => {
     if (!isDragging) return
-
     const handleMouseMove = (e: MouseEvent) => {
-      if (!dragStartRef.current) return
-      const moveElapsed = Math.max(16, Date.now() - dragStartRef.current.lastMove)
-      dragStartRef.current.vx = (e.clientX - dragStartRef.current.lastX) / moveElapsed
-      dragStartRef.current.vy = (e.clientY - dragStartRef.current.lastY) / moveElapsed
-      dragStartRef.current.lastMove = Date.now()
-      dragStartRef.current.distance += Math.hypot(e.clientX - dragStartRef.current.lastX, e.clientY - dragStartRef.current.lastY)
-      dragStartRef.current.lastX = e.clientX; dragStartRef.current.lastY = e.clientY
-      const dx = e.clientX - dragStartRef.current.startX
-      const dy = e.clientY - dragStartRef.current.startY
-      dragStartRef.current.maxDistance = Math.max(dragStartRef.current.maxDistance, Math.hypot(dx, dy))
-      const rect = document.querySelector('[data-whale-pet="widget"]')?.getBoundingClientRect()
-      const newX = Math.max(10, Math.min(window.innerWidth - (rect?.width || 280) - 16, dragStartRef.current.petX + dx))
-      const newY = Math.max(90, Math.min(window.innerHeight - (rect?.height || 480) - 16, dragStartRef.current.petY + dy))
-      setPosition({
-        x: newX,
-        y: newY,
-        side: newX < window.innerWidth / 2 ? 'left' : 'right',
-      })
+      const drag = dragStartRef.current
+      if (!drag) return
+      const moveElapsed = Math.max(16, Date.now() - drag.lastMove)
+      drag.vx = (e.clientX - drag.lastX) / moveElapsed
+      drag.vy = (e.clientY - drag.lastY) / moveElapsed
+      drag.lastMove = Date.now()
+      drag.distance += Math.hypot(e.clientX - drag.lastX, e.clientY - drag.lastY)
+      drag.lastX = e.clientX; drag.lastY = e.clientY
+      const dx = e.clientX - drag.startX
+      const dy = e.clientY - drag.startY
+      drag.maxDistance = Math.max(drag.maxDistance, Math.hypot(dx, dy))
+      if (preferences.docked) return
+      setPosition(constrainRef.current(drag.petX + dx, drag.petY + dy))
     }
-
     const handleMouseUp = (e: MouseEvent) => {
       isDraggingRef.current = false
       setIsDragging(false)
-      if (dragStartRef.current) {
-        const dist = Math.max(dragStartRef.current.maxDistance, Math.hypot(e.clientX - dragStartRef.current.startX, e.clientY - dragStartRef.current.startY))
-        const duration = Date.now() - dragStartRef.current.startTime
-        if (dist >= 6) {
-          const dizzy = dragStartRef.current.distance > 900 && duration < 2500
-          if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches && Date.now() - dragStartRef.current.lastMove < 100) {
-            const rect = document.querySelector('[data-whale-pet="widget"]')?.getBoundingClientRect()
-            const vx = Math.max(-30, Math.min(30, dragStartRef.current.vx * 70))
-            const vy = Math.max(-20, Math.min(20, dragStartRef.current.vy * 70))
-            setPosition(previous => ({ ...previous, x: Math.max(10, Math.min(window.innerWidth - (rect?.width || 280) - 16, previous.x + vx)), y: Math.max(90, Math.min(window.innerHeight - (rect?.height || 480) - 16, previous.y + vy)) }))
+      const drag = dragStartRef.current
+      if (drag) {
+        const dist = Math.max(drag.maxDistance, Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY))
+        const duration = Date.now() - drag.startTime
+        if (dist >= 6 && !preferences.docked) {
+          const dizzy = drag.distance > 900 && duration < 2500
+          if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches && Date.now() - drag.lastMove < 100) {
+            const vx = Math.max(-30, Math.min(30, drag.vx * 70))
+            const vy = Math.max(-20, Math.min(20, drag.vy * 70))
+            setPosition(previous => constrainRef.current(previous.x + vx, previous.y + vy))
           }
           setAffection(dizzy ? 'dizzy' : 'float')
           later(() => setAffection(''), dizzy ? 2400 : 800)
         }
         if (dist < 6 && duration < 380) {
-          // Direct single-click: Q-bounce + Mad/Sajiao reaction + Slide out Settings
           setIsBouncing(true)
           later(() => setIsBouncing(false), 480)
           stateMachine.triggerMad()
-          setIsSettingsOpen((prev) => !prev)
+          setIsSettingsOpen(previous => !previous)
         }
       }
       dragStartRef.current = null
     }
-
-    window.addEventListener('mousemove', handleMouseMove)
     const cancelDrag = () => { isDraggingRef.current = false; setIsDragging(false); dragStartRef.current = null }
+    window.addEventListener('mousemove', handleMouseMove)
     window.addEventListener('blur', cancelDrag)
     window.addEventListener('mouseup', handleMouseUp)
     return () => {
@@ -496,25 +488,21 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       window.removeEventListener('mouseup', handleMouseUp)
       window.removeEventListener('blur', cancelDrag)
     }
-  }, [isDragging, stateMachine])
+  }, [isDragging, stateMachine, preferences.docked])
 
-  // Advance GalGame text page on clicking dialogue text
+  // ---- Theatre handlers -----------------------------------------------------
   const handleAdvancePage = () => {
-    if (isRevealing) { setRevealed(Array.from(displayDialogue).length); return }
+    if (isRevealing) { setRevealed(Array.from(displayDialogue).length); voiceRef.current?.cut(); return }
     if (preferences.reading !== 'pages') return
-    if (currentPageIndex < dialoguePages.length - 1) {
-      setCurrentPageIndex((prev) => prev + 1)
-    } else if (dialoguePages.length > 1) {
-      setCurrentPageIndex(0)
-    }
+    if (currentPageIndex < dialoguePages.length - 1) setCurrentPageIndex(prev => prev + 1)
+    else if (dialoguePages.length > 1) setCurrentPageIndex(0)
   }
 
-  // Send message via native DSH composer
+  // Send via the native DSH composer, keeping the draft whenever that fails.
   const handleSendMessage = () => {
     const text = inputValue.trim()
     if (!text) return
     unlockAudio()
-
     const composerEl = (
       document.querySelector('[data-composer-input]') ||
       document.querySelector('[data-composer-card] [contenteditable="true"]') ||
@@ -523,12 +511,10 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       document.querySelector('[data-composer-seat] textarea') ||
       document.querySelector('textarea')
     ) as HTMLElement | null
-
     if (!composerEl) {
       stateMachine.setLatestDialogue(t('未找到 DSH 输入框，请先打开一个对话。你的草稿已保留。', 'Open a DSH conversation first. Your draft has been kept.'))
       return
     }
-
     if (composerEl instanceof HTMLTextAreaElement || composerEl instanceof HTMLInputElement) {
       composerEl.focus()
       const proto = composerEl instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype
@@ -538,143 +524,94 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     } else {
       composerEl.focus()
       const sel = window.getSelection()
-      if (sel) {
-        const range = document.createRange()
-        range.selectNodeContents(composerEl)
-        sel.removeAllRanges()
-        sel.addRange(range)
-      }
-
+      if (sel) { const range = document.createRange(); range.selectNodeContents(composerEl); sel.removeAllRanges(); sel.addRange(range) }
       let inserted = false
-      try {
-        inserted = document.execCommand('insertText', false, text)
-      } catch {
-        inserted = false
-      }
-
+      try { inserted = document.execCommand('insertText', false, text) } catch { inserted = false }
       if (!inserted) {
-        try {
-          const inputEvent = new InputEvent('beforeinput', {
-            bubbles: true,
-            cancelable: true,
-            inputType: 'insertText',
-            data: text,
-          })
-          composerEl.dispatchEvent(inputEvent)
-        } catch {
-          // ignore
-        }
+        try { composerEl.dispatchEvent(new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText', data: text })) } catch { /* ignore */ }
         composerEl.textContent = text
         composerEl.dispatchEvent(new Event('input', { bubbles: true }))
       }
     }
-
     later(() => {
       const card = document.querySelector('[data-composer-card]') || document.querySelector('[data-composer-seat]')
-      let sendBtn: HTMLElement | null = null
-
-      if (card) {
-        const buttons = Array.from(card.querySelectorAll('button'))
-        sendBtn = (
-          buttons.find((b) => {
-            const aria = b.getAttribute('aria-label') || b.textContent || ''
-            return /send|发送|steer|queue/i.test(aria) && !b.disabled && b.getAttribute('aria-disabled') !== 'true'
-          }) || null
-        )
-      }
-
-      if (sendBtn && !sendBtn.hasAttribute('disabled')) {
-        sendBtn.click()
-        setInputValue('')
-      } else {
-        stateMachine.setLatestDialogue(t('暂时无法发送，请检查 DSH 输入框与发送按钮。你的草稿已保留。', 'Unable to send. Check the DSH composer; your draft has been kept.'))
-      }
+      const sendBtn = card ? Array.from(card.querySelectorAll('button')).find(b => /send|发送|steer|queue/i.test(b.getAttribute('aria-label') || b.textContent || '') && !b.disabled && b.getAttribute('aria-disabled') !== 'true') || null : null
+      if (sendBtn && !sendBtn.hasAttribute('disabled')) { sendBtn.click(); setInputValue('') }
+      else stateMachine.setLatestDialogue(t('暂时无法发送，请检查 DSH 输入框与发送按钮。你的草稿已保留。', 'Unable to send. Check the DSH composer; your draft has been kept.'))
     }, 80)
   }
 
-  // Dynamic Image Selection
-  const resolveCharacterImage = (): string => {
-    if (status.form === 'chibi') {
-      return CHIBI_DATA_URI // DaFeiYu.png
-    }
-    // Maiden form poses:
-    if (status.pose === 'sajiao' || status.pose === 'mad') return SAJIAO_DATA_URI
-    if (status.isStreaming) return ANSWERING_DATA_URI
-    if (status.pose === 'eating' || status.state === 'EATING') return BAIFAN_DATA_URI
-    if (status.pose === 'answering' || status.state === 'ANSWERING') return ANSWERING_DATA_URI
-    if (status.pose === 'getit') return GETIT_DATA_URI
-    if (status.pose === 'think1') return THINK1_DATA_URI
-    if (status.pose === 'think2') return THINK2_DATA_URI
-    if (status.pose === 'think3') return THINK3_DATA_URI
-    if (status.pose === 'think4') return THINK4_DATA_URI
-    if (status.pose === 'think5') return THINK5_DATA_URI
-    if (status.state === 'REASONING') {
-      return THINK1_DATA_URI
-    }
-    return MAID_DATA_URI
-  }
-
-  const isMaiden = status.form === 'maiden'
-  const currentImgSrc = affection === 'pat' ? SAJIAO_DATA_URI : affection === 'dizzy' && !status.isStreaming ? DIZZY_DATA_URI : resolveCharacterImage()
-  const hitPose = [[DIZZY_DATA_URI,'Dizzy'],[MAID_DATA_URI,'Maid'],[CHIBI_DATA_URI,'DaFeiYu'],[BAIFAN_DATA_URI,'baifan'],[ANSWERING_DATA_URI,'Answering'],[SAJIAO_DATA_URI,'sajiao'],[GETIT_DATA_URI,'getit'],[THINK1_DATA_URI,'Think1'],[THINK2_DATA_URI,'Think2'],[THINK3_DATA_URI,'Think3'],[THINK4_DATA_URI,'Think4'],[THINK5_DATA_URI,'Think5']].find(([src]) => src === currentImgSrc)?.[1] || 'Maid'
   const displayDialogue = preferences.reading === 'scroll' ? status.latestDialogue || companionSpeech : dialoguePages[currentPageIndex] || dialoguePages[0] || ''
-
   const characters = useMemo(() => Array.from(displayDialogue), [displayDialogue])
   const canReveal = preferences.typewriter && preferences.speed !== 'instant' && !reduceMotion && status.latestDialogue.length <= 600 && !/```|\|.*\|/.test(displayDialogue)
   const isRevealing = canReveal && preferences.reading === 'pages' && revealed < characters.length
   const visibleText = isRevealing ? characters.slice(0, revealed).join('') : displayDialogue
+  const revealDrivesVoice = status.isGalGameMode && isRevealing && foreground && !uiHidden && !logOpen
   useEffect(() => {
     const previous = revealIdentity.current
-    if (previous.page !== currentPageIndex || !displayDialogue.startsWith(previous.text)) setRevealed(0)
+    if (previous.page !== currentPageIndex || !displayDialogue.startsWith(previous.text)) { setRevealed(0); spokenRevealRef.current = 0 }
     revealIdentity.current = { page: currentPageIndex, text: displayDialogue }
   }, [currentPageIndex, displayDialogue])
   useEffect(() => {
     if (!canReveal || revealed >= characters.length || !foreground || !status.isGalGameMode || uiHidden || logOpen || !preferences.typewriter || preferences.reading !== 'pages') return
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { setRevealed(characters.length); return }
-    const timer = setTimeout(() => {
-      setRevealed(count => Math.min(count + 1, characters.length))
-    }, revealDelay(characters[Math.max(0, revealed - 1)] || '', preferences.speed))
+    const timer = setTimeout(() => setRevealed(count => Math.min(count + 1, characters.length)), revealDelay(characters[Math.max(0, revealed - 1)] || '', preferences.speed))
     return () => clearTimeout(timer)
-  }, [status.isGalGameMode, uiHidden, logOpen, preferences.typewriter, preferences.reading, preferences.muted, preferences.quiet, preferences.volume, characters.length, revealed, canReveal, foreground, preferences.speed])
+  }, [status.isGalGameMode, uiHidden, logOpen, preferences.typewriter, preferences.reading, characters.length, revealed, canReveal, foreground, preferences.speed])
   useEffect(() => {
     if (!preferences.autoAdvance || preferences.reading !== 'pages' || !status.isGalGameMode || status.isStreaming || isRevealing || uiHidden || logOpen || currentPageIndex >= dialoguePages.length - 1) return
     const timer = setTimeout(() => setCurrentPageIndex(i => Math.min(i + 1, dialoguePages.length - 1)), Math.min(4000, Math.max(2000, characters.length * 15)))
     return () => clearTimeout(timer)
   }, [preferences.autoAdvance, preferences.reading, status.isGalGameMode, status.isStreaming, isRevealing, uiHidden, logOpen, currentPageIndex, dialoguePages, characters.length])
+
+  // One scheduler, two sources: the theatre's letter-by-letter reveal when it
+  // is running, otherwise newly streamed text. Skips and bulk text are not voiced.
   useEffect(() => {
-    if (!foreground || preferences.muted || preferences.quiet || uiHidden || logOpen || !(status.isStreaming || (status.isGalGameMode && isRevealing))) return
-    let syllable = 0
-    const timer = setInterval(() => {
-      // Short phrases with breathing spaces keep the voice gentle rather than a continuous beep.
-      if (document.hidden) return
-      if (syllable++ % 7 < 5) audioRef.current?.play('blip', preferences.volume)
-    }, 105)
-    return () => clearInterval(timer)
-  }, [preferences.muted, preferences.quiet, preferences.volume, uiHidden, logOpen, status.isStreaming, status.isGalGameMode, isRevealing, foreground])
+    const previous = spokenRevealRef.current
+    spokenRevealRef.current = revealed
+    if (!revealDrivesVoice || !voiceAllowed || revealed <= previous) return
+    if (revealed - previous > 3) { voiceRef.current?.cut(); return }
+    voiceRef.current?.speak(speakableText(characters.slice(previous, revealed).join('')))
+  }, [revealed, revealDrivesVoice, voiceAllowed])
+  useEffect(() => {
+    const previous = spokenStreamRef.current
+    spokenStreamRef.current = status.latestDialogue
+    if (!status.isStreaming || !voiceAllowed || revealDrivesVoice) return
+    const speech = appendedSpeech(previous, status.latestDialogue)
+    if (speech) voiceRef.current?.speak(speech)
+  }, [status.latestDialogue, status.isStreaming, voiceAllowed, revealDrivesVoice])
+  useEffect(() => {
+    if (!status.isStreaming && !revealDrivesVoice) voiceRef.current?.cut()
+  }, [status.isStreaming, revealDrivesVoice])
 
   const copyCode = async (text: string) => {
-    try { await navigator.clipboard.writeText(text); setToast(t('代码已复制', 'Code copied')) }
-    catch { setToast(t('复制失败，请选中代码手动复制', 'Copy failed. Select the code and copy it manually.')) }
+    try { await navigator.clipboard.writeText(text); setToast(t('已复制', 'Copied')) }
+    catch { setToast(t('复制失败，请选中文字手动复制', 'Copy failed. Select the text and copy it manually.')) }
     later(() => setToast(''), 2500)
   }
-  const unlockAudio = () => { if (!preferences.muted && !preferences.quiet) audioRef.current?.unlock() }
-  const toggleMute = () => { if (preferences.muted) audioRef.current?.unlock(); else audioRef.current?.silence(); update({ muted: !preferences.muted }) }
+  const unlockAudio = () => { if (!preferences.muted && !preferences.quiet) voiceRef.current?.unlock() }
+  const toggleMute = () => { if (preferences.muted) voiceRef.current?.unlock(); else voiceRef.current?.silence(); update({ muted: !preferences.muted }) }
   const codeText = dialogueBlocks(status.latestDialogue).filter(block => block.kind === 'code').map(block => block.text).join('\n\n')
   const nativeSpeed = useMemo(() => {
     const value = document.querySelector('[data-tokens-per-second]')?.getAttribute('data-tokens-per-second')
     return value && Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : null
   }, [clock])
   const elapsed = startedAt.current ? Math.max(0, (clock - startedAt.current) / 1000).toFixed(1) : null
-  const sameCurrency = (status.toppedUpBalance.match(/[$¥￥€£]/)?.[0]?.replace('￥','¥') ?? '') === (status.grantedBalance.match(/[$¥￥€£]/)?.[0]?.replace('￥','¥') ?? '')
-  const balance = status.balancesKnown && sameCurrency ? (parseBalance(status.toppedUpBalance) ?? 0) + (parseBalance(status.grantedBalance) ?? 0) : null
-  const lowBalance = balance !== null && balance < 2
+  const wallet = walletView({ known: status.balancesKnown, toppedUp: status.toppedUpBalance, granted: status.grantedBalance, checkedAt: stateMachine.getStatus().balancesCheckedAt ?? null, now: clock, ricePrice: preferences.ricePrice })
   const hour = new Date(clock).getHours()
-  const contextualSpeech = affection === 'pat' ? t('嘿嘿……最喜欢你摸摸头啦～', 'Hehe… I love head pats!') : affection === 'dizzy' ? t('头好晕……深海漩涡出现啦！', 'Whoa… a deep-sea whirlpool!') : preferences.reminders && status.state === 'IDLE' && hour >= 1 && hour < 5 ? t('呼啊……夜深啦，记得休息，我陪着你。', 'It’s late… remember to rest. I’m right here.') : preferences.reminders && status.state === 'EATING' && hour === 12 ? t('午饭时间到！你也要按时吃饭哦～', 'Lunch time! Remember to have something to eat.') : lowBalance && status.state === 'IDLE' ? t('深海算力快见底啦，记得看看余额哦。', 'Our deep-sea credit is getting low. Check your balance.') : companionSpeech
+  const contextualSpeech = affection === 'pat' ? t('嘿嘿……最喜欢你摸摸头啦～', 'Hehe… I love head pats!')
+    : affection === 'dizzy' ? t('头好晕……深海漩涡出现啦！', 'Whoa… a deep-sea whirlpool!')
+    : preferences.reminders && status.state === 'IDLE' && hour >= 1 && hour < 5 ? t('呼啊……夜深啦，记得休息，我陪着你。', 'It’s late… remember to rest. I’m right here.')
+    : preferences.reminders && status.state === 'EATING' && hour === 12 ? t('午饭时间到！你也要按时吃饭哦～', 'Lunch time! Remember to have something to eat.')
+    : wallet.low && status.state === 'IDLE' ? t('深海算力快见底啦，记得看看余额哦。', 'Credit is getting low. Check your balance.')
+    : companionSpeech
+
   const patHead = (event: React.MouseEvent<HTMLDivElement>) => {
     if (event.buttons || isDraggingRef.current) return
     const rect = event.currentTarget.getBoundingClientRect()
-    if (event.clientX < rect.left + rect.width * 0.25 || event.clientX > rect.left + rect.width * 0.75) return
-    if (event.clientY > rect.top + rect.height * 0.36 || event.clientY < rect.top + rect.height * 0.08) return
+    const headTop = rect.top + imageTop + geometry.imageHeight * 0.03
+    const headBottom = rect.top + imageTop + geometry.imageHeight * 0.3
+    if (event.clientX < rect.left + rect.width * 0.25 || event.clientX > rect.left + rect.width * 0.75 || event.clientY < headTop || event.clientY > headBottom) return
     const sample = headPat.current, now = Date.now(), dx = event.clientX - sample.x
     if (now < sample.cooldown || Math.abs(dx) < 8) return
     if (now - sample.time > 700) sample.turns = 0
@@ -684,302 +621,187 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     if (sample.turns >= 5) {
       sample.turns = 0; sample.cooldown = now + 4000
       setAffection('pat'); stateMachine.resetActivity()
-      if (!preferences.muted && !preferences.quiet) audioRef.current?.play('jelly', preferences.volume)
+      if (voiceAllowed) voiceRef.current?.cue('jelly')
       later(() => setAffection(''), 2000)
     }
   }
 
-  const stateClass =
-    status.state === 'PEEKING'
-      ? styles.statePeeking
-      : status.state === 'REASONING'
-      ? styles.stateReasoning
-      : status.state === 'ANSWERING'
-      ? styles.stateAnswering
-      : status.state === 'EATING'
-      ? styles.stateEating
-      : status.state === 'WANDERING'
-      ? styles.stateWandering
-      : styles.stateIdle
+  const lang = preferences.language === 'zh' ? 'zh-CN' : 'en'
+  const openTheatre = () => { setIsSettingsOpen(false); stateMachine.setGalGameMode(true) }
 
-  // -------------------------------------------------------------
-  // GalGame Mode: Screen Centered Stage & Comic Thought Bubble
-  // -------------------------------------------------------------
+  // ---- Theatre ----------------------------------------------------------------
   if (status.isGalGameMode) {
-    const showThoughtBubble = isThoughtBubbleVisible && (status.isReasoning || Boolean(status.reasoningText))
-
-    return (
-      <>
-        {/* Full-screen Backdrop: Clicking anywhere on blank space exits GalGame mode */}
-        <div
-          data-whale-pet="backdrop" data-pet-theme={preferences.theme} lang={preferences.language === 'zh' ? 'zh-CN' : 'en'}
-          className="galgameBackdrop"
-          onClick={() => uiHidden ? setUiHidden(false) : stateMachine.setGalGameMode(false)}
-          onPointerDown={unlockAudio}
-          title={t("点击空白区域退出对话模式", "Click background to exit")}
-        />
-
-        {/* Comic Thought Bubble: Placed beside the character's head */}
-        {!uiHidden && showThoughtBubble && (
-          <div data-whale-pet="thought" data-pet-theme={preferences.theme} lang={preferences.language === 'zh' ? 'zh-CN' : 'en'} className="comicThoughtBubble">
-            <div className="thoughtBubbleHeader">
-              <div className="thoughtBubbleTitleGroup">
-                <span>💭</span>
-                <span>{t("深度思考过程", "Thoughts")}</span>
-                {status.isReasoning && <span className="thoughtLivePill">{t("推理中...", "Thinking…")}</span>}
-              </div>
-              <button
-                className="thoughtCloseBtn"
-                onClick={() => setIsThoughtBubbleVisible(false)}
-                title={t("隐藏思考气泡", "Hide thoughts")}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="thoughtBubbleContent" style={{ '--pet-text-size': preferences.fontSize + 'px' } as React.CSSProperties} ref={thoughtScrollRef} onScroll={e => { const node = e.currentTarget; followThoughtRef.current = node.scrollHeight - node.scrollTop - node.clientHeight < 36 }}>
-              {status.reasoningText || t('正在整理思路……', 'Thinking things through…')}
-            </div>
-
-            {/* Comic trailing bubbles leading to character head */}
-            <div className="comicTrailNode trail1" />
-            <div className="comicTrailNode trail2" />
-            <div className="comicTrailNode trail3" />
-          </div>
-        )}
-
-        {/* Character Stage: Centered on screen */}
-        <div data-expanded={expanded} data-theatre-hidden={uiHidden} data-whale-pet="stage" data-pet-theme={preferences.theme} lang={preferences.language === 'zh' ? 'zh-CN' : 'en'} className={`galgameCharacterCentered ${isMaiden ? 'galgameCharacterMaiden' : 'galgameCharacterChibi'}`}>
-          <LivingPuppet
-            poseName={hitPose}
-          imgSrc={currentImgSrc}
-            isMaiden={isMaiden}
-            isGalGameMode={true}
-            mouthOpenRatio={status.mouthOpenRatio}
-            gazeOffset={status.gazeOffset}
-            state={status.state}
-          />
-        </div>
-
-        {/* Spacious Visual Novel Dialogue Box (Z-Index 999999, Direct Reply, Click to Advance) */}
-        {!uiHidden && <div onPointerDownCapture={event => { unlockAudio(); if (!(event.target as Element).closest('details')) event.currentTarget.querySelector('details[open]')?.removeAttribute('open') }} data-whale-pet="dialogue" data-pet-theme={preferences.theme} lang={preferences.language === 'zh' ? 'zh-CN' : 'en'} className="galgameTheatreBox" data-expanded={expanded}>
-          {/* Header Bar: Clean & Minimal (Only NameTag and Exit button) */}
-          <div className="galgameHeaderBar">
-            <div className="galgameNameTag">
-              <span>🐟</span>
-              <span>{preferences.petName === '大肥鱼' ? t("大肥鱼", "Little Whale") : preferences.petName}</span>
-            </div>
-
-            <div className="galgameTopControls">
-              {(status.isStreaming || status.isReasoning) && <span className="petPhase" role="status">{phaseLabel}{elapsed !== null ? ' · ' + elapsed + 's' : ''}{nativeSpeed !== null ? ' · ' + nativeSpeed.toFixed(1) + ' tokens/s' : ''}</span>}
-              <button className="galgameCloseBtn" aria-pressed={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? t('标准剧场','Standard') : t('大屏阅读','Expand')}</button>
-              <button className="galgameCloseBtn" title={t('查看已加载的问答', 'Review loaded messages')} onClick={() => { setHistory(readConversationLog()); setLogOpen(true) }}>{t('回顾', 'Log')}</button>
-              <button className="galgameCloseBtn" title={t('读完后自动显示下一段', 'Show the next page automatically after reading')} aria-pressed={preferences.autoAdvance} onClick={() => update({ autoAdvance: !preferences.autoAdvance })}>{preferences.autoAdvance ? t('自动：开', 'Auto: On') : t('自动：关', 'Auto: Off')}</button>
-              <details className="petTheatreMore">
-                <summary aria-label={t('更多选项', 'More options')} title={t('更多选项', 'More options')}>•••</summary>
-                <div className="petMorePanel" onClick={e => { if ((e.target as Element).closest('button')) e.currentTarget.closest('details')?.removeAttribute('open') }}>
-                  <button onClick={() => setUiHidden(true)}><span aria-hidden="true">◉</span>{t('隐藏界面，欣赏立绘', 'Hide interface')}<kbd>H</kbd></button>
-                  <button onClick={toggleMute}><span aria-hidden="true">♫</span>{preferences.muted ? t('开启人物音效', 'Enable character sounds') : t('关闭人物音效', 'Mute character sounds')}</button>
-                  <button onClick={() => update({ reading: preferences.reading === 'pages' ? 'scroll' : 'pages' })}><span aria-hidden="true">▤</span>{preferences.reading === 'pages' ? t('切换为完整阅读', 'Read full response') : t('切换为分页阅读', 'Read in pages')}</button>
-                  <hr/><button onClick={() => update({ theme: preferences.theme === 'light' ? 'dark' : 'light' })}>{preferences.theme === 'light' ? t('☾ 深色主题', '☾ Dark theme') : t('☀ 浅色主题', '☀ Light theme')}</button>
-                  <button onClick={() => update({ language: preferences.language === 'zh' ? 'en' : 'zh' })}><span aria-hidden="true">◎</span>{preferences.language === 'zh' ? 'English' : '中文'}</button>
-                </div>
-              </details>
-              <button className="galgameCloseBtn" onClick={() => stateMachine.setGalGameMode(false)} title={t('退出对话模式 (Escape)', 'Exit dialogue (Escape)')}>{t('✕ 退出', '✕ Exit')}</button>
-            </div>
-          </div>
-
-          {/* Dialogue Text Area: Direct character response, click to switch to next paragraph */}
-          <div
-            className="galgameTextBody"
-            onWheel={event => {
-              if (preferences.reading !== 'pages' || (event.target as Element).closest('pre') || Math.abs(event.deltaY) < 15 || Date.now() - wheelTime.current < 400) return
-              event.preventDefault(); wheelTime.current = Date.now()
-              if (event.deltaY > 0) handleAdvancePage(); else setCurrentPageIndex(index => Math.max(0, index - 1))
-            }}
-            data-reading={preferences.reading} style={{ '--pet-text-size': preferences.fontSize + 'px' } as React.CSSProperties}
-            onPointerDown={unlockAudio}
-            ref={textScrollRef}
-            onClick={handleAdvancePage}
-            role="log" aria-live="polite" aria-atomic="false"
-            tabIndex={0}
-            onKeyDown={e => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleAdvancePage() } }}
-            title={dialoguePages.length > 1 ? t("点击切换下一段话", "Next page") : undefined}
-          >
-            <span className="galgameQuotes">「</span>
-            <DialogueContent text={visibleText} copy={copyCode} copyLabel={t('复制', 'Copy')} />
-            {status.isStreaming && <span className="galgameCursor" />}
-            <span className="galgameQuotes">」</span>
-          </div>
-
-          {preferences.reading === 'pages' && dialoguePages.length > 1 && <div className="petReadingNav">
-            <button disabled={currentPageIndex === 0} onClick={() => setCurrentPageIndex(i => Math.max(0, i - 1))}>{t('← 上一段', '← Previous')}</button>
-            <span className="petSinglePage">{currentPageIndex + 1} / {dialoguePages.length}</span>
-          </div>}
-          {!isRevealing && preferences.reading === 'pages' && currentPageIndex < dialoguePages.length - 1 && <span className="petNextTriangle" aria-hidden="true">▼</span>}
-          {isRevealing && <button className="petSkipReveal" onClick={() => setRevealed(characters.length)}>{t('跳过本段动画', 'Reveal this page')}</button>}
-
-          {/* Integrated Composer Box */}
-          <div className="galgameComposerArea">
-            <input
-              type="text"
-              className="galgameInput"
-              placeholder={t("输入你的问题，与大肥鱼对话…… (Enter 发送)", "Talk to Little Whale… (Enter to send)")}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) {
-                  e.preventDefault()
-                  handleSendMessage()
-                }
-              }}
-            />
-            <button className="galgameSendBtn" onClick={handleSendMessage}>{t('发送', 'Send')}</button>
-          </div>
-        </div>}
-        {uiHidden && <button data-whale-pet="restore" data-pet-theme={preferences.theme} className="petRestore" onClick={() => setUiHidden(false)}>{t('点击任意处恢复对话', 'Click anywhere to restore dialogue')}</button>}
-        {logOpen && !uiHidden && <aside data-whale-pet="log" data-pet-theme={preferences.theme} className="petLog" role="dialog" aria-label={t('历史回顾', 'Conversation log')}>
-          <header><strong>{t('历史回顾', 'Conversation log')}</strong><button onClick={() => setLogOpen(false)}>{t('关闭', 'Close')}</button></header>
-          <p>{t('显示当前页面已加载的问答，切换会话后重新打开即可更新。', 'Showing messages loaded on this page. Reopen after switching conversations.')}</p>
-          {history.length ? history.map((entry, index) => <article key={index}><strong>{entry.role === 'user' ? t('你', 'You') : t('大肥鱼', 'Little Whale')}</strong><button onClick={() => void copyCode(entry.text)}>{t('复制','Copy')}</button><DialogueContent text={entry.text} copy={copyCode} copyLabel={t('复制', 'Copy')} /></article>) : <p>{t('当前页面暂无已加载记录。', 'No loaded messages on this page.')}</p>}
-        </aside>}
-        {toast && <div data-whale-pet="toast" className="petToast" role="status">{toast}</div>}
-      </>
-    )
+    return TheatreView({
+      t, p: preferences, status, lang, petName,
+      puppet: { imgSrc: currentImgSrc, poseName: hitPose, poseScale: (POSE_META[hitPose] ?? POSE_META.Maid).scale, isMaiden },
+      phase: status.isStreaming || status.isReasoning ? phaseLabel + (elapsed !== null ? ' · ' + elapsed + 's' : '') + (nativeSpeed !== null ? ' · ' + nativeSpeed.toFixed(1) + ' tokens/s' : '') : null,
+      uiHidden, expanded, logOpen, history,
+      showThoughts: isThoughtBubbleVisible && (status.isReasoning || Boolean(status.reasoningText)),
+      visibleText, isRevealing, pageIndex: currentPageIndex, pageCount: dialoguePages.length,
+      inputValue, toast, textRef: textScrollRef, thoughtRef: thoughtScrollRef,
+      on: {
+        exit: () => stateMachine.setGalGameMode(false),
+        backdrop: () => uiHidden ? setUiHidden(false) : stateMachine.setGalGameMode(false),
+        unlock: unlockAudio,
+        hideUi: setUiHidden,
+        toggleExpanded: () => setExpanded(value => !value),
+        openLog: () => { setHistory(readConversationLog()); setLogOpen(true) },
+        closeLog: () => setLogOpen(false),
+        toggleAuto: () => update({ autoAdvance: !preferences.autoAdvance }),
+        toggleMute,
+        toggleReading: () => update({ reading: preferences.reading === 'pages' ? 'scroll' : 'pages' }),
+        toggleTheme: () => update({ theme: preferences.theme === 'light' ? 'dark' : 'light' }),
+        toggleLanguage: () => update({ language: preferences.language === 'zh' ? 'en' : 'zh' }),
+        hideThoughts: () => setIsThoughtBubbleVisible(false),
+        thoughtScroll: node => { followThoughtRef.current = node.scrollHeight - node.scrollTop - node.clientHeight < 36 },
+        textScroll: node => { followTextRef.current = node.scrollHeight - node.scrollTop - node.clientHeight < 36 },
+        advance: handleAdvancePage,
+        previous: () => setCurrentPageIndex(i => Math.max(0, i - 1)),
+        wheel: event => {
+          if (preferences.reading !== 'pages' || (event.target as Element).closest('pre') || Math.abs(event.deltaY) < 15 || Date.now() - wheelTime.current < 400) return
+          event.preventDefault(); wheelTime.current = Date.now()
+          if (event.deltaY > 0) handleAdvancePage(); else setCurrentPageIndex(index => Math.max(0, index - 1))
+        },
+        skipReveal: () => { setRevealed(characters.length); voiceRef.current?.cut() },
+        input: setInputValue,
+        send: handleSendMessage,
+        copy: text => void copyCode(text),
+      },
+    })
   }
 
-  // -------------------------------------------------------------
-  // Widget Mode: Floating Desktop Pet at Viewport Edge
-  // -------------------------------------------------------------
+  // ---- Desktop widget ---------------------------------------------------------
+  const crownAlign = petPos.x + stageW / 2 < 200 ? 'start' : petPos.x + stageW / 2 > viewport.width - 200 ? 'end' : 'center'
+  const bubbleSide = petPos.x + stageW / 2 < viewport.width / 2 ? 'right' : 'left'
+  const showDock = isMenuOpen && !isSettingsOpen && !isDragging
+  const showWalletChip = !isSettingsOpen && !isDragging && (wallet.status !== 'unavailable' || showDock)
+  const walletTitle = wallet.status === 'unavailable' ? t('余额未读取：打开 DSH 账户设置以读取', 'Balance not read: open DSH account settings')
+    : wallet.status === 'stale' ? t('余额不是实时数据，点击查看详情', 'Balance is not live. Click for details') : t('余额读取自 DSH 账户设置页', 'Balance read from DSH account settings')
+  const puppetOpacity = ghost && !isSettingsOpen ? Math.min(0.25, preferences.opacity) : dimmed && !isSettingsOpen ? Math.min(0.4, preferences.opacity) : preferences.opacity
+  const settingsProps = {
+    p: { ...preferences, autoGalGame: status.autoGalGameOnChat }, wallet, detached: group?.mode === 'detached',
+    update: (patch: Partial<Preferences>) => { update(patch); if (patch.autoGalGame !== undefined) stateMachine.setAutoGalGameOnChat(patch.autoGalGame) },
+    toggleMute,
+    quiet: () => setPreferences(previous => quietPreset(previous)),
+    reset: () => {
+      setPreferences({ ...defaultPreferences(), onboardingDone: true })
+      stateMachine.setForm('maiden'); stateMachine.setAutoGalGameOnChat(true)
+      const fresh = spriteGeometry('Maid', viewport.height, 1)
+      setPosition(clampPet(viewport.width - fresh.stageWidth - 24, viewport.height - fresh.stageHeight - 30, fresh.stageWidth, fresh.stageHeight, viewport.width, viewport.height))
+    },
+    doctor: () => setDoctor(diagnosticReport()),
+    notify: async () => {
+      if (preferences.notifications) { update({ notifications: false }); return }
+      if (typeof Notification === 'undefined') { setToast(t('当前环境不支持系统通知', 'Notifications are not available')); return }
+      const permission = await Notification.requestPermission()
+      update({ notifications: permission === 'granted' })
+      if (permission !== 'granted') setToast(t('未获得通知权限，已保持关闭', 'Permission not granted; notifications remain off'))
+    },
+    close: () => setIsSettingsOpen(false),
+    openTheatre,
+  }
+
   return (
     <div
       data-ghost={ghost && !isSettingsOpen} data-hidden={petHidden}
-      data-paused={!foreground || reduceMotion} data-dimmed={dimmed && !isSettingsOpen} data-docked={preferences.docked}
-      data-whale-pet="widget" data-pet-theme={preferences.theme} lang={preferences.language === 'zh' ? 'zh-CN' : 'en'}
-      className={`${styles.overlayContainer} ${
-        isDragging ? styles.dragging : affection === 'float' || affection === 'dizzy' ? 'petSettling' : status.state === 'WANDERING' ? styles.wandering : ''
-      }`}
-      style={{
-        left: `${position.x}px`,
-        top: `${position.y}px`,
-      }}
+      data-paused={!foreground || reduceMotion} data-dimmed={dimmed && !isSettingsOpen} data-docked={docked}
+      data-dragging={isDragging || undefined} data-settling={affection === 'float' || affection === 'dizzy' || undefined}
+      data-wandering={status.state === 'WANDERING' || undefined}
+      data-whale-pet="widget" data-pet-theme={preferences.theme} lang={lang}
+      className="petWidget"
+      style={{ left: `${petPos.x}px`, top: `${petPos.y}px`, width: `${stageW}px`, height: `${stageH}px` }}
       onPointerDown={unlockAudio}
       onMouseEnter={handleMouseEnterPet}
       onMouseLeave={handleMouseLeavePet}
     >
-      {doctor && <aside data-whale-pet="doctor" data-pet-theme={preferences.theme} className="petLog" role="dialog" aria-label="Doctor"><button onClick={() => setDoctor('')}>{t('关闭','Close')}</button><h2>Doctor</h2><p>{t('仅含选择器和匹配数量，不含聊天内容；空闲时生成标记可能缺失。','Selectors and counts only; no chat content. Generation markers can be absent while idle.')}</p><pre>{doctor}</pre><button onClick={() => void copyCode(doctor)}>{t('复制诊断信息','Copy diagnostics')}</button></aside>}
-      {!preferences.onboardingDone && !isSettingsOpen && <aside className="petOnboarding"><strong>{t('认识一下大肥鱼','Meet Little Whale')}</strong><p>{t('在头顶来回移动鼠标，试试摸头。','Move the pointer over my head for a head pat.')}</p><p>{t('点击聊天输入框，进入剧场模式。','Click the composer to enter the theatre.')}</p><p>{t('按住角色拖动，带我换个位置。','Drag me to a new spot.')}</p><button onClick={() => update({onboardingDone: true})}>{t('知道了 / 跳过','Got it / Skip')}</button></aside>}
+      {doctor && <aside data-whale-pet="doctor" data-pet-theme={preferences.theme} className="petLog" role="dialog" aria-label="Doctor">
+        <header><strong>Doctor</strong><button type="button" onClick={() => setDoctor('')}>{t('关闭', 'Close')}</button></header>
+        <p className="petLogNote">{t('仅含选择器和匹配数量，不含聊天内容；空闲时生成标记可能缺失。', 'Selectors and counts only; no chat content. Generation markers can be absent while idle.')}</p>
+        <pre>{doctor}</pre>
+        <button type="button" onClick={() => void copyCode(doctor)}>{t('复制诊断信息', 'Copy diagnostics')}</button>
+      </aside>}
+      {!preferences.onboardingDone && !isSettingsOpen && <aside className="petOnboarding" aria-label={t('认识大肥鱼', 'Meet 大肥鱼')}>
+        <strong>{t('认识一下大肥鱼', 'Meet 大肥鱼')}</strong>
+        <ul>
+          <li>{t('在头顶来回移动鼠标，试试摸头。', 'Move the pointer back and forth over her head for a head pat.')}</li>
+          <li>{t('点一下角色打开设置；点击聊天输入框进入剧场。', 'Click her to open settings; click the composer to enter the theatre.')}</li>
+          <li>{t('按住角色拖动，带她换个位置。', 'Drag her to a new spot.')}</li>
+        </ul>
+        <button type="button" className="petPrimary" onClick={() => update({ onboardingDone: true })}>{t('知道了', 'Got it')}</button>
+      </aside>}
       {toast && <div className="petToast" role="status">{toast}</div>}
-      <div className={`${styles.characterWrapper} ${stateClass}`}>
-        {/* Floating Action Toolbar */}
-        <div
-          data-settings-open={isSettingsOpen}
-          className={`${styles.toolbar} ${isMenuOpen && !isSettingsOpen ? styles.toolbarVisible : ''}`}
-          onMouseEnter={handleMouseEnterPet}
-          onMouseLeave={handleMouseLeavePet}
-        >
-          {/* Balance display directly on top of the toolbar */}
-          {status.balancesKnown && <div data-low={lowBalance} className={styles.balanceHeaderBar} title={t("当前账户实时余额", "Account balance")}>
-            <span className={styles.balanceTag}>{t("充值:", "Paid:")}</span>
-            <span className={styles.balanceVal}>{status.toppedUpBalance || '¥0.00'}</span>
-            <span className={styles.balanceDivider}>|</span>
-            <span className={styles.balanceTag}>{t("赠金:", "Bonus:")}</span>
-            <span className={styles.balanceVal}>{status.grantedBalance || '¥0.00'}</span>
-            {balance !== null && <span title={t('每碗额度可在设置调整；不估算今日用量', 'Credit per bowl is configurable; daily usage is not estimated')}> · {t('还能吃', 'Bowls left')} {Math.floor(balance / preferences.ricePrice)}</span>}
-          </div>}
 
-          <div className={styles.toolbarButtons}><button className={styles.toolBtn} aria-pressed={preferences.quiet} onClick={() => setPreferences(previous => quietPreset(previous))}>{preferences.quiet ? t('恢复陪伴', 'Resume') : t('安静模式', 'Quiet')}</button><button className={styles.toolBtn} aria-pressed={preferences.docked} onClick={() => update({docked: !preferences.docked})}>{t('贴边', 'Dock')}</button>
-            {codeText && <button className={styles.toolBtn} onClick={() => void copyCode(codeText)}>{t('复制代码', 'Copy code')}</button>}
-            <button
-              className={styles.toolBtn}
-              onClick={() => stateMachine.toggleForm()}
-              title={t("切换少女立绘 / Q版形态", "Switch portrait / chibi")}
-            >
-              {isMaiden ? t("切换Q版", "Chibi") : t("切换立绘", "Portrait")}
-            </button>
-            <button
-              className={styles.toolBtn}
-              onClick={() => stateMachine.setGalGameMode(true)}
-              title={t("切换进入对话模式", "Open dialogue")}
-            >{t('剧场模式', 'Theatre')}</button>
-            <button
-              className={styles.toolBtn}
-              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-              title={t("展开更多设置面板", "Open settings")}
-            >{t('设置', 'Settings')}</button>
+      <div className={'characterWrapper state-' + status.state.toLowerCase()}>
+        <div className="petCrown" data-align={crownAlign} style={{ bottom: `${stageH - imageTop + 6}px` }}>
+          <div className="toolbar" data-visible={showDock} data-settings-open={isSettingsOpen} onMouseEnter={handleMouseEnterPet} onMouseLeave={handleMouseLeavePet} role="toolbar" aria-label={t('大肥鱼快捷操作', '大肥鱼 actions')}>
+            <button type="button" className="toolBtn toolBtnPrimary" onClick={openTheatre} title={t('进入剧场模式（Alt+T）', 'Open theatre (Alt+T)')}>{dockIcon('M2.5 4.5h11v7h-11zM5.5 13.5h5')}{t('剧场', 'Theatre')}</button>
+            <button type="button" className="toolBtn" aria-expanded={isSettingsOpen} onClick={() => setIsSettingsOpen(!isSettingsOpen)} title={t('打开设置', 'Open settings')}>{dockIcon('M8 5.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4')}{t('设置', 'Settings')}</button>
+            <span className="toolDivider" aria-hidden="true" />
+            <button type="button" className="toolBtn toolIcon" aria-pressed={preferences.quiet} onClick={() => setPreferences(previous => quietPreset(previous))} aria-label={preferences.quiet ? t('结束安静模式', 'End quiet mode') : t('安静模式', 'Quiet mode')} title={preferences.quiet ? t('结束安静模式', 'End quiet mode') : t('安静模式：暂停闲聊、音效和游荡', 'Quiet mode: pause chatter, sounds and wandering')}>{dockIcon('M12.5 9.5A5 5 0 016.5 3.5a5 5 0 106 6z')}</button>
+            <button type="button" className="toolBtn toolIcon" aria-pressed={docked} onClick={() => update({ docked: !docked })} aria-label={t('贴边探头', 'Peek from the edge')} title={docked ? t('离开边缘', 'Leave the edge') : t('贴边探头', 'Peek from the edge')}>{dockIcon('M13.5 2.5v11M3 8h7M7 5l3 3-3 3')}</button>
+            {codeText && <button type="button" className="toolBtn toolIcon" onClick={() => void copyCode(codeText)} aria-label={t('复制代码', 'Copy code')} title={t('复制最近回答中的代码', 'Copy code from the latest answer')}>{dockIcon('M5.5 5.5h8v8h-8zM10.5 5.5v-3h-8v8h3')}</button>}
           </div>
+          {showWalletChip && <button type="button" className="petWalletChip" data-status={wallet.status} data-low={wallet.low || undefined} title={walletTitle} onClick={() => setIsSettingsOpen(true)} aria-label={walletTitle}>
+            {wallet.status === 'unavailable' ? <span>{t('余额', 'Balance')} —</span> : <>
+              <span>{wallet.toppedUp ?? '—'}</span><span className="petWalletSep" aria-hidden="true">·</span><span>{t('赠', 'Bonus')} {wallet.granted ?? '—'}</span>
+              {wallet.status === 'stale' && <span className="petWalletStale">{t('非实时', 'not live')}</span>}
+            </>}
+          </button>}
         </div>
 
-        {/* Slide-out Settings Drawer on Pet Click / Settings Toggle */}
-        {isSettingsOpen && (
-          <div
-            className={styles.settingsDrawer}
-            style={{ position: 'fixed', left: settingsAnchor.x, top: settingsAnchor.y, maxWidth: 'calc(100vw - 32px)', maxHeight: Math.max(96, Math.min(window.innerHeight - 16, document.querySelector('[data-composer-card], [data-composer-seat]')?.getBoundingClientRect().top ?? window.innerHeight - 16) - settingsAnchor.y - 16) }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className={styles.drawerHeader}>
-              <span>{t("🐟 大肥鱼设置", "🐟 Little Whale")}</span>
-              <button
-                className={styles.drawerCloseBtn}
-                onClick={() => setIsSettingsOpen(false)}
-                title={t("关闭设置", "Close settings")}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="petSettingsBody">
-            {SettingsPanel({ p: { ...preferences, form: status.form, autoGalGame: status.autoGalGameOnChat }, update: patch => { update(patch); if (patch.autoGalGame !== undefined) stateMachine.setAutoGalGameOnChat(patch.autoGalGame) }, toggleMute,
-              quiet: () => setPreferences(previous => quietPreset(previous)),
-              reset: () => { setPreferences({ ...defaultPreferences(), onboardingDone: true }); stateMachine.setForm('maiden'); stateMachine.setAutoGalGameOnChat(true); setPosition({ x: Math.max(16, window.innerWidth - 300), y: 100, side: 'right' }) },
-              doctor: () => setDoctor(diagnosticReport()),
-              notify: async () => {
-                if (preferences.notifications) { update({ notifications: false }); return }
-                if (typeof Notification === 'undefined') { setToast(t('当前环境不支持系统通知', 'Notifications are not available')); return }
-                const permission = await Notification.requestPermission()
-                update({ notifications: permission === 'granted' })
-                if (permission !== 'granted') setToast(t('未获得通知权限，已保持关闭', 'Permission not granted; notifications remain off'))
-              }
-            })}
-            <div className={styles.drawerBtnGroup}><button className={styles.drawerBtn} onClick={() => stateMachine.toggleForm()}>{t('切换角色形态', 'Switch character form')}</button><button className={styles.drawerBtn} onClick={() => { setIsSettingsOpen(false); stateMachine.setGalGameMode(true) }}>{t('剧场模式', 'Theatre')}</button></div>
-            </div>
-          </div>
-        )}
-
-        {/* Speech Dialogue Bubble */}
         {!preferences.quiet && !bubbleHidden && status.speech && !isSettingsOpen && (
-          <div style={{ fontSize: preferences.fontSize - 3 }} className={styles.speechBubble} onClick={() => stateMachine.setGalGameMode(true)} role="button" tabIndex={0} onKeyDown={event => { if(event.key === 'Enter' || event.key === ' ') {event.preventDefault(); stateMachine.setGalGameMode(true)} }} data-side={position.x < window.innerWidth / 2 ? 'right' : 'left'}>
-            <button className="petBubbleClose" aria-label={t('隐藏闲聊气泡','Hide chatter bubble')} onClick={event => {event.stopPropagation();setBubbleHidden(true)}}>×</button>
+          <div style={{ fontSize: Math.max(12, preferences.fontSize - 3), top: `${imageTop + Math.round(geometry.imageHeight * 0.1)}px` }} className="speechBubble" data-side={bubbleSide}
+            onClick={() => stateMachine.setGalGameMode(true)} role="button" tabIndex={0} title={t('点击进入剧场', 'Click to open the theatre')}
+            onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); stateMachine.setGalGameMode(true) } }}>
+            <button type="button" className="petBubbleClose" aria-label={t('隐藏闲聊气泡', 'Hide chatter bubble')} onClick={event => { event.stopPropagation(); setBubbleHidden(true) }}>×</button>
             {contextualSpeech.replaceAll('主人', preferences.userName).replaceAll('大肥鱼', preferences.petName)}
           </div>
         )}
 
-        {/* Thinking Bubbles during Reasoning */}
-        {status.state === 'REASONING' && (
-          <div className={styles.bubbleContainer}>
-            <div className={`${styles.bubble} ${styles.bubble1}`} />
-            <div className={`${styles.bubble} ${styles.bubble2}`} />
-            <div className={`${styles.bubble} ${styles.bubble3}`} />
-          </div>
-        )}
+        {status.state === 'REASONING' && <div className="bubbleContainer" style={{ top: `${imageTop}px` }} aria-hidden="true"><i className="bubble bubble1" /><i className="bubble bubble2" /><i className="bubble bubble3" /></div>}
+        {affection === 'pat' && <div className="petHearts" style={{ top: `${imageTop}px` }} aria-hidden="true">♡ ♡ ♡</div>}
 
-        {affection === 'pat' && <div className="petHearts" aria-hidden="true">♡ ♡ ♡</div>}
-        {affection === 'dizzy' && <div className="petHearts" aria-hidden="true">◎ ◎</div>}
-        {/* Living Puppet (Double click switch to chibi removed) */}
-        <div data-sleepy={preferences.reminders && hour >= 1 && hour < 5 && status.state === 'IDLE'} onMouseMove={patHead} className={`petSpriteSize ${isBouncing ? styles.qBounce : ''} petReaction-${affection}`} style={{ zoom: preferences.scale }}>
-        <LivingPuppet
-          poseName={hitPose}
-          imgSrc={currentImgSrc}
-          isMaiden={isMaiden}
-          isGalGameMode={false}
-          mouthOpenRatio={status.mouthOpenRatio}
-          gazeOffset={status.gazeOffset}
-          state={status.state}
-          opacity={ghost && !isSettingsOpen ? Math.min(0.25, preferences.opacity) : dimmed && !isSettingsOpen ? Math.min(0.4, preferences.opacity) : preferences.opacity}
-          onMouseDown={handleMouseDown}
-        />
+        <div
+          data-sleepy={preferences.reminders && hour >= 1 && hour < 5 && status.state === 'IDLE'}
+          onMouseMove={patHead}
+          className={'petSpriteSize' + (isBouncing ? ' qBounce' : '') + (affection ? ' petReaction-' + affection : '')}
+          style={{ width: `${stageW}px`, height: `${stageH}px` }}
+          tabIndex={0}
+          role="button"
+          aria-label={t(`${petName}：按 Enter 打开设置`, `${petName}: press Enter for settings`)}
+          aria-expanded={isSettingsOpen}
+          onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); setIsSettingsOpen(open => !open) } }}
+        >
+          <LivingPuppet
+            poseName={hitPose}
+            imgSrc={currentImgSrc}
+            isMaiden={isMaiden}
+            isGalGameMode={false}
+            mouthOpenRatio={status.mouthOpenRatio}
+            gazeOffset={status.gazeOffset}
+            state={status.state}
+            box={{ width: geometry.imageWidth, height: geometry.imageHeight, left: geometry.imageLeft }}
+            opacity={puppetOpacity}
+            onMouseDown={handleMouseDown}
+          />
         </div>
       </div>
+
+      {isSettingsOpen && group && (
+        <div
+          ref={panelRef}
+          className="settingsDrawer"
+          data-mode={group.mode}
+          data-side={group.side}
+          role="dialog"
+          aria-labelledby="pet-settings-title"
+          style={{ position: 'fixed', left: group.panel.x, top: group.panel.y, width: group.panel.width, maxHeight: group.panel.maxHeight }}
+          onClick={e => e.stopPropagation()}
+          onMouseDown={e => e.stopPropagation()}
+        >
+          {SettingsPanel(settingsProps)}
+        </div>
+      )}
     </div>
   )
 }
