@@ -1,3 +1,4 @@
+import { messageText } from './experience.js'
 import React from 'react'
 import type { Context } from '@deepseek-ai/cordis'
 import { PetStateMachine } from './state-machine.js'
@@ -12,34 +13,17 @@ export const inject = ['slots']
  * thoughts, and summaries so thinking never leaks into dialogue.
  */
 function extractResponseText(container: Element): string {
-  if (!container) return ''
-
-  // 1. Direct MarkdownText query inside assistant container (excluding any think/reasoning blocks)
-  const mdElements = Array.from(
-    container.querySelectorAll('[class*="markdown"], [data-markdown-variant]')
-  ).filter(el => !el.closest('[data-variant="think"]') && !el.closest('[data-turn-process-inline]'))
-
-  if (mdElements.length > 0) {
-    const text = mdElements.map(el => el.textContent || '').join('\n').trim()
-    if (text) return text
-  }
-
-  // 2. Clone and strip think blocks fallback
-  const clone = container.cloneNode(true) as HTMLElement
-  const thinkElements = clone.querySelectorAll(
-    '[data-variant="think"], [data-turn-process-inline], details.think, [class*="reasoning"], [class*="thought"], .summary, .thinkBody'
-  )
-  thinkElements.forEach(el => el.remove())
-  return (clone.textContent || '').trim()
+  return messageText(container)
 }
 
 /**
  * Extracts live Chain-of-Thought reasoning text from the active reasoning element
  * or its React fiber if the element is collapsed.
  */
-function extractReasoningText(): string {
+function extractReasoningText(container: Element | null): string {
+  if (!container) return ''
   const thinkNodes = Array.from(
-    document.querySelectorAll('[data-variant="think"], details.think, [class*="reasoning"], [class*="thinkBody"]')
+    container.querySelectorAll('[data-variant="think"], details.think, [class*="reasoning"], [class*="thinkBody"]')
   )
   if (thinkNodes.length === 0) return ''
   const lastNode = thinkNodes[thinkNodes.length - 1]
@@ -122,24 +106,27 @@ function queryAccountBalances(): { toppedUp: string; granted: string } | null {
  * Find the latest assistant message node in the DSH conversation flow
  */
 function findLatestAssistantNode(): Element | null {
+  const prompts = document.querySelectorAll('[data-chat-flow-kind="user-prompt"]')
+  const latestPrompt = prompts[prompts.length - 1]
+  const currentTurn = (nodes: Element[]) => nodes.filter(node => !latestPrompt || !(node.compareDocumentPosition(latestPrompt) & Node.DOCUMENT_POSITION_FOLLOWING))
   // 1. Primary: exact assistant-step items
-  const assistantSeats = Array.from(document.querySelectorAll('[data-chat-flow-kind="assistant-step"]'))
+  const assistantSeats = currentTurn(Array.from(document.querySelectorAll('[data-chat-flow-kind="assistant-step"]')))
   if (assistantSeats.length > 0) {
     return assistantSeats[assistantSeats.length - 1]
   }
 
   // 2. Secondary: chat nodes that are not user-prompts
-  const candidateNodes = Array.from(
+  const candidateNodes = currentTurn(Array.from(
     document.querySelectorAll('[data-chat-node-key]:not([data-chat-flow-kind="user-prompt"])')
-  )
+  ))
   if (candidateNodes.length > 0) {
     return candidateNodes[candidateNodes.length - 1]
   }
 
   // 3. Fallback: assistant markdown roots
-  const mdRoots = Array.from(
+  const mdRoots = currentTurn(Array.from(
     document.querySelectorAll('div[class*="AssistantMarkdown_root"], div[class*="AssistantMarkdown"]')
-  )
+  ))
   if (mdRoots.length > 0) {
     return mdRoots[mdRoots.length - 1]
   }
@@ -149,7 +136,6 @@ function findLatestAssistantNode(): Element | null {
 
 export function apply(ctx: Context): void {
   const stateMachine = new PetStateMachine()
-  const loadTime = Date.now()
 
   // 1. Mount PetOverlay into the global frame-wide floating slot ('shell.overlay')
   ctx.slots.inject('shell.overlay', () => {
@@ -165,7 +151,7 @@ export function apply(ctx: Context): void {
   // 2. User Input & Composer Interaction Listener
   ctx.effect(() => {
     const isComposerElement = (el: EventTarget | null): boolean => {
-      if (!(el instanceof HTMLElement)) return false
+      if (!(el instanceof HTMLElement) || el.closest('[data-whale-pet]')) return false
       return (
         el.tagName === 'TEXTAREA' ||
         el.hasAttribute('data-composer-input') ||
@@ -196,14 +182,13 @@ export function apply(ctx: Context): void {
 
     // Only enter GalGame dialogue mode when user explicitly clicks into the composer area
     const handleComposerClick = (e: MouseEvent) => {
-      // Guard against initial autofocus or startup events within the first 1.8s
-      if (Date.now() - loadTime < 1800) return
+      if (!e.isTrusted) return
 
       stateMachine.resetActivity()
       const status = stateMachine.getStatus()
       if (!status.autoGalGameOnChat) return
       const target = e.target as HTMLElement | null
-      if (!target) return
+      if (!target || target.closest('[data-whale-pet]')) return
       if (
         (target.closest && (
           target.closest('[data-composer-card]') ||
@@ -220,12 +205,15 @@ export function apply(ctx: Context): void {
       }
     }
 
+    const handleActivity = () => stateMachine.resetActivity()
+    window.addEventListener('pointerdown', handleActivity, true)
     window.addEventListener('focusin', handleFocusIn, true)
     window.addEventListener('focusout', handleFocusOut, true)
     window.addEventListener('input', handleInput, true)
     window.addEventListener('click', handleComposerClick, true)
 
     return () => {
+      window.removeEventListener('pointerdown', handleActivity, true)
       window.removeEventListener('focusin', handleFocusIn, true)
       window.removeEventListener('focusout', handleFocusOut, true)
       window.removeEventListener('input', handleInput, true)
@@ -237,6 +225,8 @@ export function apply(ctx: Context): void {
   ctx.effect(() => {
     let lastSessionId: string | null | undefined = undefined
     let wasRunning = false
+    let scheduled: ReturnType<typeof setTimeout> | null = null
+    let lastBalanceCheck = 0
 
     const inspectDomState = () => {
       // ---- 0. Conversation identity & turn-start detection ----
@@ -244,6 +234,7 @@ export function apply(ctx: Context): void {
       const sessionId = sessionEl ? sessionEl.getAttribute('data-conversation-session') : null
       if (lastSessionId !== undefined && sessionId !== lastSessionId) {
         stateMachine.clearReasoningText()
+        stateMachine.setLatestDialogue('')
       }
       lastSessionId = sessionId
 
@@ -258,20 +249,20 @@ export function apply(ctx: Context): void {
       wasRunning = isRunning
 
       // Query balances if available
-      const balances = queryAccountBalances()
-      if (balances) {
-        stateMachine.setBalances(balances.toppedUp, balances.granted)
+      if (Date.now() - lastBalanceCheck >= 2000) {
+        lastBalanceCheck = Date.now()
+        const balances = queryAccountBalances()
+        if (balances) stateMachine.setBalances(balances.toppedUp, balances.granted)
       }
 
       // 1. Extract live Chain-of-Thought reasoning
-      const reasoningContent = extractReasoningText()
+      const latestAssistantNode = findLatestAssistantNode()
+      const reasoningContent = extractReasoningText(latestAssistantNode)
       if (reasoningContent) {
         stateMachine.setReasoningText(reasoningContent)
       }
 
       // 2. Locate latest assistant message container
-      const latestAssistantNode = findLatestAssistantNode()
-
       if (isRunning) {
         let cleanResponse = ''
         if (latestAssistantNode) {
@@ -280,7 +271,7 @@ export function apply(ctx: Context): void {
 
         if (cleanResponse) {
           // Model has begun streaming the actual response!
-          // Transitions state to EATING (switches character to baifan2.png!)
+          // Dedicated answering pose; rice eating only follows completed output.
           stateMachine.setStreaming(true)
           stateMachine.setReasoning(false)
           stateMachine.setLatestDialogue(cleanResponse)
@@ -303,21 +294,32 @@ export function apply(ctx: Context): void {
       }
     }
 
-    const observer = new MutationObserver(() => {
-      inspectDomState()
+    const observer = new MutationObserver(records => {
+      const hostChanged = records.some(record => {
+        const el = record.target instanceof Element ? record.target : record.target.parentElement
+        return !el?.closest('[data-whale-pet]')
+      })
+      if (!hostChanged || scheduled !== null) return
+      scheduled = setTimeout(() => {
+        scheduled = null
+        inspectDomState()
+      }, 100)
     })
 
     observer.observe(document.body, {
       childList: true,
       subtree: true,
+      characterData: true,
       attributes: true,
-      attributeFilter: ['data-streaming', 'data-chat-running', 'data-holding'],
+      attributeFilter: ['data-streaming', 'data-chat-running', 'data-holding', 'data-conversation-session'],
     })
 
-    const interval = setInterval(inspectDomState, 200)
+    inspectDomState()
+    const interval = setInterval(inspectDomState, 1000)
 
     return () => {
       observer.disconnect()
+      if (scheduled !== null) clearTimeout(scheduled)
       clearInterval(interval)
       stateMachine.dispose()
     }

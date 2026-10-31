@@ -92,8 +92,8 @@ body.dsh-galgame-mode [data-composer-seat] {
   animation: bubbleFloatIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-[data-ds-dark-theme] .comicThoughtBubble,
-body[data-ds-dark-theme] .comicThoughtBubble {
+[data-pet-theme="dark"] .comicThoughtBubble,
+[data-pet-theme="dark"] .comicThoughtBubble {
   background: rgba(15, 23, 42, 0.95) !important;
   border-color: rgba(56, 189, 248, 0.8) !important;
   box-shadow:
@@ -130,8 +130,8 @@ body[data-ds-dark-theme] .comicThoughtBubble {
   color: #0369a1 !important;
 }
 
-[data-ds-dark-theme] .thoughtBubbleTitleGroup,
-body[data-ds-dark-theme] .thoughtBubbleTitleGroup {
+[data-pet-theme="dark"] .thoughtBubbleTitleGroup,
+[data-pet-theme="dark"] .thoughtBubbleTitleGroup {
   color: #38bdf8 !important;
 }
 
@@ -178,8 +178,8 @@ body[data-ds-dark-theme] .thoughtBubbleTitleGroup {
   scrollbar-width: thin !important;
 }
 
-[data-ds-dark-theme] .thoughtBubbleContent,
-body[data-ds-dark-theme] .thoughtBubbleContent {
+[data-pet-theme="dark"] .thoughtBubbleContent,
+[data-pet-theme="dark"] .thoughtBubbleContent {
   color: #cbd5e1 !important;
 }
 
@@ -193,8 +193,8 @@ body[data-ds-dark-theme] .thoughtBubbleContent {
   pointer-events: none !important;
 }
 
-[data-ds-dark-theme] .comicTrailNode,
-body[data-ds-dark-theme] .comicTrailNode {
+[data-pet-theme="dark"] .comicTrailNode,
+[data-pet-theme="dark"] .comicTrailNode {
   background: rgba(15, 23, 42, 0.95) !important;
   border-color: rgba(56, 189, 248, 0.8) !important;
 }
@@ -260,8 +260,8 @@ body[data-ds-dark-theme] .comicTrailNode {
 }
 
 /* Dark theme support */
-[data-ds-dark-theme] .galgameTheatreBox,
-body[data-ds-dark-theme] .galgameTheatreBox {
+[data-pet-theme="dark"] .galgameTheatreBox,
+[data-pet-theme="dark"] .galgameTheatreBox {
   background: rgba(15, 23, 42, 0.96) !important;
   border: 2px solid rgba(56, 189, 248, 0.6) !important;
   box-shadow:
@@ -280,8 +280,8 @@ body[data-ds-dark-theme] .galgameTheatreBox {
   flex-shrink: 0 !important;
 }
 
-[data-ds-dark-theme] .galgameHeaderBar,
-body[data-ds-dark-theme] .galgameHeaderBar {
+[data-pet-theme="dark"] .galgameHeaderBar,
+[data-pet-theme="dark"] .galgameHeaderBar {
   border-bottom-color: rgba(51, 65, 85, 0.8) !important;
   background: rgba(30, 41, 59, 0.6) !important;
 }
@@ -303,8 +303,8 @@ body[data-ds-dark-theme] .galgameHeaderBar {
   user-select: none !important;
 }
 
-[data-ds-dark-theme] .galgameNameTag,
-body[data-ds-dark-theme] .galgameNameTag {
+[data-pet-theme="dark"] .galgameNameTag,
+[data-pet-theme="dark"] .galgameNameTag {
   background: #0f172a !important;
   border-color: #38bdf8 !important;
   color: #38bdf8 !important;
@@ -329,8 +329,8 @@ body[data-ds-dark-theme] .galgameNameTag {
   user-select: none !important;
 }
 
-[data-ds-dark-theme] .galgamePageBadge,
-body[data-ds-dark-theme] .galgamePageBadge {
+[data-pet-theme="dark"] .galgamePageBadge,
+[data-pet-theme="dark"] .galgamePageBadge {
   background: rgba(14, 116, 144, 0.4) !important;
   color: #38bdf8 !important;
 }
@@ -355,15 +355,15 @@ body[data-ds-dark-theme] .galgamePageBadge {
   transform: translateY(-1px) !important;
 }
 
-[data-ds-dark-theme] .galgameCloseBtn,
-body[data-ds-dark-theme] .galgameCloseBtn {
+[data-pet-theme="dark"] .galgameCloseBtn,
+[data-pet-theme="dark"] .galgameCloseBtn {
   background: rgba(239, 68, 68, 0.25) !important;
   border-color: rgba(248, 113, 113, 0.5) !important;
   color: #fca5a5 !important;
 }
 
-[data-ds-dark-theme] .galgameCloseBtn:hover,
-body[data-ds-dark-theme] .galgameCloseBtn:hover {
+[data-pet-theme="dark"] .galgameCloseBtn:hover,
+[data-pet-theme="dark"] .galgameCloseBtn:hover {
   background: #ef4444 !important;
   border-color: #ef4444 !important;
   color: #ffffff !important;
@@ -371,6 +371,7 @@ body[data-ds-dark-theme] .galgameCloseBtn:hover {
 
 /* Clickable & Spacious Dialogue Body */
 .galgameTextBody {
+  min-height: 0 !important;
   flex: 1 !important;
   overflow-y: auto !important;
   padding: 16px 26px !important;
@@ -385,8 +386,8 @@ body[data-ds-dark-theme] .galgameCloseBtn:hover {
   cursor: pointer !important;
 }
 
-[data-ds-dark-theme] .galgameTextBody,
-body[data-ds-dark-theme] .galgameTextBody {
+[data-pet-theme="dark"] .galgameTextBody,
+[data-pet-theme="dark"] .galgameTextBody {
   color: #f1f5f9 !important;
 }
 
@@ -397,8 +398,8 @@ body[data-ds-dark-theme] .galgameTextBody {
   margin: 0 4px !important;
 }
 
-[data-ds-dark-theme="true"] .galgameQuotes,
-body[data-ds-dark-theme="true"] .galgameQuotes {
+[data-pet-theme="dark"] .galgameQuotes,
+[data-pet-theme="dark"] .galgameQuotes {
   color: #38bdf8 !important;
 }
 
@@ -412,8 +413,8 @@ body[data-ds-dark-theme="true"] .galgameQuotes {
   animation: cursorBlink 0.9s infinite !important;
 }
 
-[data-ds-dark-theme="true"] .galgameCursor,
-body[data-ds-dark-theme="true"] .galgameCursor {
+[data-pet-theme="dark"] .galgameCursor,
+[data-pet-theme="dark"] .galgameCursor {
   background-color: #38bdf8 !important;
 }
 
@@ -450,15 +451,15 @@ body[data-ds-dark-theme="true"] .galgameCursor {
   transform: translateY(-2px) scale(1.02) !important;
 }
 
-[data-ds-dark-theme] .galgamePagePrompt,
-body[data-ds-dark-theme] .galgamePagePrompt {
+[data-pet-theme="dark"] .galgamePagePrompt,
+[data-pet-theme="dark"] .galgamePagePrompt {
   background: rgba(15, 23, 42, 0.9) !important;
   border-color: rgba(56, 189, 248, 0.6) !important;
   color: #38bdf8 !important;
 }
 
-[data-ds-dark-theme] .galgamePagePrompt:hover,
-body[data-ds-dark-theme] .galgamePagePrompt:hover {
+[data-pet-theme="dark"] .galgamePagePrompt:hover,
+[data-pet-theme="dark"] .galgamePagePrompt:hover {
   background: #38bdf8 !important;
   color: #0f172a !important;
 }
@@ -480,13 +481,14 @@ body[data-ds-dark-theme] .galgamePagePrompt:hover {
   border-bottom-right-radius: 22px !important;
 }
 
-[data-ds-dark-theme="true"] .galgameComposerArea,
-body[data-ds-dark-theme="true"] .galgameComposerArea {
+[data-pet-theme="dark"] .galgameComposerArea,
+[data-pet-theme="dark"] .galgameComposerArea {
   border-top-color: rgba(51, 65, 85, 0.8) !important;
   background: rgba(15, 23, 42, 0.7) !important;
 }
 
 .galgameInput {
+  min-width: 0 !important;
   flex: 1 !important;
   background: #ffffff !important;
   border: 1.5px solid #cbd5e1 !important;
@@ -503,15 +505,15 @@ body[data-ds-dark-theme="true"] .galgameComposerArea {
   box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15) !important;
 }
 
-[data-ds-dark-theme="true"] .galgameInput,
-body[data-ds-dark-theme="true"] .galgameInput {
+[data-pet-theme="dark"] .galgameInput,
+[data-pet-theme="dark"] .galgameInput {
   background: #1e293b !important;
   border-color: #475569 !important;
   color: #f8fafc !important;
 }
 
-[data-ds-dark-theme="true"] .galgameInput:focus,
-body[data-ds-dark-theme="true"] .galgameInput:focus {
+[data-pet-theme="dark"] .galgameInput:focus,
+[data-pet-theme="dark"] .galgameInput:focus {
   border-color: #38bdf8 !important;
   box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2) !important;
 }
@@ -537,3 +539,157 @@ body[data-ds-dark-theme="true"] .galgameInput:focus {
 .galgameSendBtn:active {
   transform: translateY(1px) !important;
 }
+/* Keep the thought bubble and composer usable in narrow and short windows. */
+@media (max-width: 640px) {
+  .comicThoughtBubble {
+    left: 12px !important;
+    top: 12px !important;
+    width: calc(100vw - 24px) !important;
+    height: min(28vh, 220px) !important;
+  }
+  .galgameTheatreBox {
+    bottom: 10px !important;
+    height: min(46vh, 380px) !important;
+    border-radius: 18px !important;
+  }
+  .galgameTextBody { padding: 12px 16px !important; font-size: 16px !important; }
+  .galgameComposerArea { padding: 8px !important; gap: 6px !important; }
+  .galgameInput { padding: 10px !important; }
+  .galgameSendBtn { padding: 10px 14px !important; }
+  .comicTrailNode { display: none !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-whale-pet], [data-whale-pet] *, [data-whale-pet]::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* Plugin-only palettes: no attributes or theme styles are applied to the host. */
+[data-whale-pet][data-pet-theme] {
+  --pet-glass: rgba(247, 251, 255, .76);
+  --pet-ink: #18324c;
+  --pet-muted: #516b83;
+  --pet-line: rgba(140, 183, 215, .48);
+  --pet-control: rgba(232, 243, 253, .66);
+  --pet-accent: #126fbb;
+  color: var(--pet-ink);
+  color-scheme: light;
+}
+[data-whale-pet][data-pet-theme="dark"] {
+  --pet-glass: rgba(19, 32, 51, .8);
+  --pet-ink: #edf5ff;
+  --pet-muted: #aac0d6;
+  --pet-line: rgba(144, 190, 227, .26);
+  --pet-control: rgba(50, 74, 103, .62);
+  --pet-accent: #83cbff;
+  color-scheme: dark;
+}
+[data-whale-pet] :is(.toolbar, .settingsDrawer, .speechBubble, .balanceHeaderBar),
+[data-whale-pet].galgameTheatreBox, [data-whale-pet].comicThoughtBubble {
+  background: var(--pet-glass) !important;
+  color: var(--pet-ink) !important;
+  border: 1px solid var(--pet-line) !important;
+  backdrop-filter: blur(24px) saturate(145%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(145%) !important;
+  box-shadow: 0 18px 50px rgba(5, 25, 50, .18), inset 0 1px 0 rgba(255,255,255,.18) !important;
+  transition: background-color .3s ease, color .3s ease, border-color .3s ease !important;
+}
+[data-whale-pet] :is(.galgameTextBody, .thoughtBubbleContent, .drawerLabel, .balanceVal, .thoughtBubbleTitleGroup, .drawerHeader) {
+  color: var(--pet-ink) !important;
+}
+[data-whale-pet] :is(.galgameComposerArea, .galgameHeaderBar) { background: transparent !important; border-color: var(--pet-line) !important; }
+[data-whale-pet] :is(.toolBtn, .drawerBtn, .drawerFullBtn, .galgameCloseBtn, .galgameInput, .galgamePageBadge, .galgamePagePrompt) {
+  background: var(--pet-control) !important;
+  color: var(--pet-ink) !important;
+  border-color: var(--pet-line) !important;
+}
+[data-whale-pet] .drawerBtnActive { background: var(--pet-accent) !important; color: #fff !important; }
+[data-whale-pet] .speechBubble::after { border-left-color: var(--pet-line) !important; }
+[data-whale-pet] .settingsDrawer { width: 290px; max-height: min(620px, 72vh); overflow-y: auto; box-sizing: border-box; }
+[data-whale-pet] .petPreferenceGrid { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 12px 8px; font-size: 12px; padding: 4px 0 14px; border-bottom: 1px solid var(--pet-line); }
+[data-whale-pet] .petPreferenceGrid input[type="range"] { width: 100%; accent-color: var(--pet-accent); }
+[data-whale-pet] .petPreferenceGrid input[type="checkbox"] { accent-color: var(--pet-accent); }
+[data-whale-pet] .petThemeSwitch { display: flex; padding: 3px; gap: 3px; background: var(--pet-control); border: 1px solid var(--pet-line); border-radius: 12px; }
+[data-whale-pet] .petThemeSwitch button { flex: 1; border: 0; border-radius: 9px; background: transparent; color: var(--pet-muted); cursor: pointer; min-height: 32px; transition: background .25s, color .25s, transform .25s; }
+[data-whale-pet] .petThemeSwitch button.selected { color: var(--pet-ink); background: var(--pet-glass); box-shadow: 0 2px 7px #0002; transform: translateY(-1px); }
+[data-whale-pet] .petPhase { font-size: 12px; color: var(--pet-muted); }
+[data-whale-pet] button:disabled { opacity: .4; cursor: default !important; }
+[data-whale-pet] .galgameTopControls { flex-wrap: wrap; gap: 6px !important; }
+@supports not (backdrop-filter: blur(1px)) {
+  [data-whale-pet][data-pet-theme] { --pet-glass: #f5f9ff; }
+  [data-whale-pet][data-pet-theme="dark"] { --pet-glass: #15243a; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-whale-pet][data-pet-theme] *, [data-whale-pet][data-pet-theme] {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Controls retain their physical size while only the character changes size. */
+[data-whale-pet] .petSizeSteps { display: flex; gap: 2px; }
+[data-whale-pet] .petSizeSteps button { display: flex; flex: 1; flex-direction: column; align-items: center; gap: 3px; padding: 6px 1px; min-width: 0; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--pet-muted); cursor: pointer; }
+[data-whale-pet] .petSizeSteps button small { font-size: 9px; }
+[data-whale-pet] .petSizeSteps button[aria-pressed="true"] { color: var(--pet-accent); border-color: var(--pet-line); background: var(--pet-control); }
+[data-whale-pet] .speechBubble { right: calc(100% - 26px); top: 22px; max-width: min(200px, calc(100vw - 32px)); }
+[data-whale-pet] .speechBubble[data-side="right"] { right: auto; left: calc(100% - 26px); }
+[data-whale-pet] .speechBubble[data-side="right"]::after { left: auto; right: 100%; border-width: 6px 8px 6px 0; border-color: transparent var(--pet-line) transparent transparent !important; }
+[data-whale-pet] .settingsDrawer { animation: none; }
+/* Discrete slider, visual-novel controls and companion feedback. */
+[data-whale-pet] .petSizeSlider { min-width: 0; }
+[data-whale-pet] .petSizeSlider input { width: 100%; accent-color: var(--pet-accent); cursor: ew-resize; }
+[data-whale-pet] .petSizeSlider > div { display: flex; justify-content: space-between; font-size: 9px; color: var(--pet-muted); }
+[data-whale-pet] .petCodeCard { display: block; white-space: normal; border: 1px solid var(--pet-line); background: var(--pet-control); border-radius: 12px; margin: 10px 0; overflow: hidden; font-size: 13px; }
+[data-whale-pet] .petCodeCard header { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--pet-line); }
+[data-whale-pet] .petCodeCard button, [data-whale-pet].petLog button { border: 1px solid var(--pet-line); background: var(--pet-glass); color: var(--pet-ink); border-radius: 8px; padding: 5px 10px; cursor: pointer; }
+[data-whale-pet] .petCodeCard pre { margin: 0; max-height: 260px; overflow: auto; padding: 12px; white-space: pre; user-select: text; }
+[data-whale-pet] .petListLine { display: inline-block; padding-left: 10px; }
+[data-whale-pet].petLog { position: fixed; inset: 7vh max(16px, calc((100vw - 850px) / 2)); z-index: 1000002; padding: 20px; overflow: auto; border-radius: 20px; border: 1px solid var(--pet-line); background: var(--pet-glass); color: var(--pet-ink); backdrop-filter: blur(28px); box-shadow: 0 20px 70px #0005; }
+[data-whale-pet].petLog > header { display: flex; justify-content: space-between; align-items: center; position: sticky; top: -20px; background: var(--pet-glass); padding: 12px 0; }
+[data-whale-pet].petLog > article { margin: 16px 0; padding: 14px; border: 1px solid var(--pet-line); border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+[data-whale-pet].petLog > article > strong { display: block; color: var(--pet-accent); margin-bottom: 8px; }
+[data-whale-pet].petRestore { position: fixed; z-index: 1000001; bottom: 24px; left: 50%; transform: translateX(-50%); padding: 10px 20px; background: var(--pet-glass); color: var(--pet-ink); border: 1px solid var(--pet-line); border-radius: 24px; cursor: pointer; }
+.petToast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 1000005; padding: 12px 20px; color: white; background: #16334ce8; border-radius: 16px; pointer-events: none; }
+[data-whale-pet] .balanceHeaderBar[data-low="true"] { border-color: #f09898 !important; color: #d44 !important; }
+[data-whale-pet] .balanceHeaderBar[data-low="true"] .balanceVal { color: #df6969 !important; }
+[data-whale-pet] .petHearts { position: absolute; top: 5%; left: 40%; z-index: 4; pointer-events: none; color: #f38cbd; font-size: 24px; animation: petHearts 2s ease-out both; }
+@keyframes petHearts { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-45px); opacity: 0; } }
+[data-whale-pet] .petReaction-dizzy { animation: petDizzy .45s ease-in-out 5; transform-origin: center bottom; }
+@keyframes petDizzy { 0%,100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+[data-whale-pet] .petReaction-float { animation: petFloat .8s ease-out; }
+@keyframes petFloat { 0% { transform: translateY(0); } 30% { transform: translateY(-10px); } 65% { transform: translateY(3px); } 100% { transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { [data-whale-pet] .petHearts, [data-whale-pet] .petReaction-dizzy, [data-whale-pet] .petReaction-float { animation: none !important; } }
+[data-whale-pet].petSettling { transition: left .24s cubic-bezier(.15,.7,.2,1), top .24s cubic-bezier(.15,.7,.2,1) !important; }
+[data-whale-pet] .petSpriteSize[data-sleepy="true"] { filter: saturate(.85) brightness(.96); }
+@media (prefers-reduced-motion: reduce) { [data-whale-pet].petSettling { transition: none !important; } }
+/* The theatre header contains only the actions used while reading. */
+[data-whale-pet] .galgameTopControls { flex-wrap: nowrap; gap: 8px !important; }
+[data-whale-pet] .galgameHeaderBar { padding: 10px 18px !important; min-height: 48px; box-sizing: border-box; }
+[data-whale-pet] .galgameCloseBtn { font-size: 13px !important; padding: 7px 12px !important; white-space: nowrap; }
+[data-whale-pet] .galgameCloseBtn[aria-pressed="true"] { color: var(--pet-accent) !important; border-color: var(--pet-accent) !important; }
+[data-whale-pet] .petTheatreMore { position: relative; }
+[data-whale-pet] .petTheatreMore > summary { list-style: none; cursor: pointer; padding: 8px 12px; border-radius: 9px; letter-spacing: 2px; color: var(--pet-muted); }
+[data-whale-pet] .petTheatreMore > summary::-webkit-details-marker { display: none; }
+[data-whale-pet] .petTheatreMore[open] > summary { background: var(--pet-control); color: var(--pet-ink); }
+[data-whale-pet] .petMorePanel { position: absolute; top: calc(100% + 8px); right: 0; z-index: 10; width: 220px; display: flex; flex-direction: column; gap: 4px; padding: 8px; background: var(--pet-glass); border: 1px solid var(--pet-line); border-radius: 14px; backdrop-filter: blur(30px); box-shadow: 0 12px 36px #0003; }
+[data-whale-pet] .petMorePanel button { background: transparent; border: none; text-align: left; padding: 10px 12px; color: var(--pet-ink); border-radius: 8px; cursor: pointer; font-size: 13px; }
+[data-whale-pet] .petMorePanel button:hover { background: var(--pet-control); }
+[data-whale-pet] .petReadingNav { display: flex; gap: 12px; align-items: center; padding: 4px 24px 8px; color: var(--pet-muted); font-size: 12px; }
+[data-whale-pet] .petReadingNav button { color: var(--pet-muted); background: transparent; border: 0; cursor: pointer; }
+[data-whale-pet] .petSizeSlider { position: relative; padding-bottom: 10px; }
+[data-whale-pet] .petSizeSlider input { margin: 0; display: block; }
+[data-whale-pet] .petSizeDots { display: flex; align-items: center; justify-content: space-between; margin: 5px 7px 0; height: 7px; pointer-events: none; }
+[data-whale-pet] .petSizeDots i { width: 4px; height: 4px; background: var(--pet-muted); border-radius: 50%; opacity: .55; }
+[data-whale-pet] .petSizeDots i.default { width: 7px; height: 7px; opacity: 1; background: var(--pet-accent); }
+[data-whale-pet] .petPreferenceGrid > label:has(input[type="checkbox"]) { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; line-height: 1.5; }
+@media (max-width: 640px) {
+  [data-whale-pet] .petPhase { display: none; }
+  [data-whale-pet] .galgameHeaderBar { padding: 8px !important; }
+  [data-whale-pet] .galgameCloseBtn { padding: 7px 8px !important; }
+}
+[data-whale-pet][data-pet-theme="light"] { --pet-menu-surface: rgba(246, 250, 255, .97); }
+[data-whale-pet][data-pet-theme="dark"] { --pet-menu-surface: rgba(23, 36, 55, .97); }
+[data-whale-pet] .petMorePanel { background: var(--pet-menu-surface); }
+[data-whale-pet] summary:focus-visible { outline: 2px solid var(--pet-accent); outline-offset: 2px; }

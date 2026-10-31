@@ -3,6 +3,8 @@ export interface StateMachineListener {
     (status: PetStatusInfo): void;
 }
 export declare class PetStateMachine {
+    private disposed;
+    private blinkStepTimer;
     private state;
     private form;
     private pose;
@@ -18,6 +20,7 @@ export declare class PetStateMachine {
     private speech;
     private latestDialogue;
     private reasoningText;
+    private balancesKnown;
     private toppedUpBalance;
     private grantedBalance;
     private mouthOpenRatio;
@@ -52,6 +55,7 @@ export declare class PetStateMachine {
     setReasoningText(text: string): void;
     clearReasoningText(): void;
     setStreaming(streaming: boolean): void;
+    private cancelEatingAndWandering;
     triggerPostOutputEating(durationMs?: number): void;
     finishWanderingWithEating(durationMs?: number): void;
     triggerMad(): void;

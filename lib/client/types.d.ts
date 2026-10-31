@@ -19,6 +19,7 @@ export interface PetStatusInfo {
     pose: PetPose;
     speech: string;
     reasoningText: string;
+    balancesKnown: boolean;
     toppedUpBalance: string;
     grantedBalance: string;
     isReasoning: boolean;

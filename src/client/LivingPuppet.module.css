@@ -113,3 +113,9 @@
     opacity: 0;
   }
 }
+
+/* Respect the viewport even when a pose has a wider aspect ratio. */
+.standingBase, .chibiBase {
+  max-width: min(280px, calc(100vw - 32px));
+  object-fit: contain;
+}

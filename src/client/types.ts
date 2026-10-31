@@ -36,6 +36,7 @@ export interface PetStatusInfo {
   pose: PetPose
   speech: string
   reasoningText: string // Chain-of-Thought reasoning content
+  balancesKnown: boolean
   toppedUpBalance: string // Topped-up balance (充值余额)
   grantedBalance: string  // Granted balance (赠金余额)
   isReasoning: boolean

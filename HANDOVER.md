@@ -1,16 +1,57 @@
-# DeepSeek Little Whale Maid ('大肥鱼') Plugin - Agent Handover Guide (v0.2.0)
+## 剧场精简与人物音效补充
+
+顶部保留回顾/自动/更多/退出，更多用原生 details，点击外部或 Escape 收起。人物音效开关使用正向语义（勾选代表开启），与逐字文字效果独立：streaming 或剧场逐字显示时每 105ms 合成短音，每五个音节留两拍停顿；音高约 240–305Hz，低通滤波，不使用原版游戏音频。大小 range 保留吸附语义，刻度用自绘圆点，数字仅用于无障碍读数。
+
+构建采用 TypeScript Compiler API，跳过内容相同的编译输出；lib/client.js 先写 .tmp 再 rename，减少热加载读取半成品与文件占用问题。当前共 30 项测试；剧场顶部及更多菜单已在 DSH 查看，尚未完成主观听感验证。
+
+## 体验迭代补充：吸附滑条、音效与剧场
+
+- 大小使用原生 range（0–4、step=1）和 datalist 刻度，映射 50/75/100/115/130%。只缩放角色。
+- experience.ts 提供原生音效、代码围栏解析、页面历史提取；DialogueContent.tsx 提供安全 React 文本/代码渲染。build.js 同步内嵌这些模块，无新增运行依赖。
+- 音效默认 muted=true，必须由用户操作解锁 AudioContext；quiet 同样静音。关闭/离开页面会释放或暂停音频；短音限频并限制同时发声数量。
+- 打字机每 42ms 显示一个 Unicode 码点；首次点击补全，下一次才翻页。Auto 在显示完成且生成结束后等待 2–4 秒。完整阅读和减少动态效果可绕过逐字显示。
+- Log 只读取 DOM 已加载的至多 80 条问答，不永久存储内容；隐藏 UI 后点击背景/恢复按钮或 Escape 恢复。
+- 摸头通过头部区域来回运动识别；高速长距离拖拽触发眩晕。复用现有 11 张图片和 CSS 粒子，不增加素材。
+- 作息关怀可关闭；午饭仅闲置时触发，每个加载周期每天一次。余额仅 balancesKnown 为真时提醒。
+- 耗时为本插件检测到生成开始后的时间；tokens/s 仅读取宿主显式 data-tokens-per-second，缺失则隐藏，绝不由字符数推算。
+- 本轮 29 项自动测试；新音效听感及实机视觉尚未验证（当前无 DSH 窗口）。
+
+## 大小与交互修正补充
+
+大小采用五档预设，只有 petSpriteSize 使用 zoom；菜单禁止随角色缩放。settingsDrawer 采用固定位置，打开时记录锚点；overlayContainer 不可添加 transform 或 will-change: transform，否则会改变 fixed 面板的定位参照。台词气泡向角色内侧靠近 26px，并按角色所在半屏切换方向。回归测试现共 25 项通过。
+
+## 2026-10-30：产品打磨与独立主题补充
+
+- 设置菜单新增中文/English、太阳/月亮独立主题、大小、透明度、安静陪伴、自动翻页；剧场支持上一段和完整滚动阅读。
+- 使用 localStorage 键 dsh-whale-pet.preferences.v1 保存经过校验的设置和位置；存储不可用时仍正常运行。
+- 主题只设置在插件 data-whale-pet 根节点，通过 data-pet-theme 生效，不读写 DSH 的主题。菜单使用半透明背景和 backdrop-filter 毛玻璃，无支持时使用实色回退。
+- build.js 现在自动把 PetOverlay.tsx 和 LivingPuppet.tsx 编译嵌入内联模板，因此界面也无需双份手动维护。修改 src 后仍必须运行 node build.js 更新 lib/client.js；构建使用已有 TypeScript 开发依赖，无新增运行时依赖。
+- 全部 11 张 PNG 仍 Base64 内嵌，保留 __ModuleLoader__ 加载方式。
+- 英文模式切换插件菜单和陪伴提示，用户问题、模型回答、推理原文不翻译。
+- 自动测试：npm test，共 24 项。实机新主题视觉与联网发送尚未完成验证。
+
+# DeepSeek Little Whale Maid ('大肥鱼') Plugin - Agent Handover Guide (v0.3.0)
 
 > **面向接手 Agent (GPT-6 Astra)**：这份文档是 `dsh-whale-pet` 项目的终极交接与架构全景指南。它详尽记录了项目背景、全套业务需求、状态流转逻辑、代码架构、构建打包机制、历史避坑经验及所有测试验证流程。请在开始任何修改前完整阅读本文档。
 
 ---
 
+## 本次工程检查补充（2026-10-30）
+
+- 状态机与宿主 DOM 适配器已改为从 TypeScript 编译输出嵌入浏览器模板：修改 src/client/state-machine.ts 或 src/client/index.ts 后运行 node build.js 即会同步到 lib/client.js。
+- PetOverlay 与 LivingPuppet 仍有 build.js 内联界面模板，修改这两部分时必须继续同步两份代码；CSS 仍直接读取并内联。
+- 保留全部 11 张现役 PNG、无新增运行时依赖、Base64 内嵌以及 DSH __ModuleLoader__ 装载机制。
+- npm test 现在运行 tests/*.test.ts，包括源状态机与实际 lib/client.js 的回归检查；构建后再运行测试。
+- 已修复散步回调抢占输出、待机防抖覆盖新推理、眨眼卸载残留、DOM 自观察扫描，以及反复轮询导致 60 秒孤单计时永不触发等问题。
+- 界面修复包括中文输入法回车、失败保留草稿、明确发送按钮识别、立绘窗口边界、呼吸与视差分层、小窗口布局和减少动态效果偏好。
+
 ## 1. 项目基本信息与核心定位
 
 - **项目名称**: `dsh-whale-pet`
-- **当前版本**: `v0.2.0`
+- **当前版本**: `v0.3.0`
 - **代码仓库绝对路径**: `C:/Users/etern/.gemini/antigravity/scratch/dsh-whale-pet`
 - **表情素材源目录**: `C:/Users/etern/OneDrive/Desktop/大肥鱼表情`
-- **发布产物路径**: `C:/Users/etern/OneDrive/Desktop/dsh-whale-pet-v0.2.0.zip`
+- **发布产物路径**: `C:/Users/etern/OneDrive/Desktop/dsh-whale-pet-v0.3.0.zip`
 - **Git 远程仓库**: `https://github.com/Ewigkeit1203/dsh-whale-pet.git`
 - **提交者身份规范**: 必须且仅能为 `Ewigkeit1203 <etern1ty061203@gmail.com>`，**严禁添加任何 `Co-authored-by` 邮箱**。
 - **项目定位**: 专为官方 [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) 客户端（基于 Cordis 框架、Electron/Web 与 React 19 构建）打造的**高互动性活体桌宠**与 **GalGame 视觉小说沉浸式对话插件**。
@@ -119,7 +160,7 @@ dsh-whale-pet/
 ├── install.bat              # Windows 一键自动安装脚本
 ├── uninstall.bat            # Windows 一键卸载脚本
 ├── CHANGELOG.md             # 中英双语更新日志（带锚点跳转）
-└── RELEASE_v0.2.0.md        # 发布说明
+└── RELEASE_v0.3.0.md        # 发布说明
 ```
 
 ---
@@ -180,8 +221,8 @@ $dist = Join-Path $env:TEMP 'dsh-whale-pet-dist'
 if (Test-Path $dist) { Remove-Item -Recurse -Force $dist }
 New-Item -ItemType Directory -Path $dist | Out-Null
 Copy-Item -Recurse 'lib', 'assets' $dist
-Copy-Item 'package.json', 'cordis.yml', 'install.bat', 'uninstall.bat', 'README.md', 'README.txt', '使用说明.txt', 'CHANGELOG.md', 'RELEASE_v0.2.0.md', 'LICENSE' $dist
-$zipDest = 'C:\Users\etern\OneDrive\Desktop\dsh-whale-pet-v0.2.0.zip'
+Copy-Item 'package.json', 'cordis.yml', 'install.bat', 'uninstall.bat', 'README.md', 'README.txt', '使用说明.txt', 'CHANGELOG.md', 'RELEASE_v0.3.0.md', 'LICENSE' $dist
+$zipDest = 'C:\Users\etern\OneDrive\Desktop\dsh-whale-pet-v0.3.0.zip'
 if (Test-Path $zipDest) { Remove-Item -Force $zipDest }
 Compress-Archive -Path (Join-Path $dist '*') -DestinationPath $zipDest -Force
 Write-Host 'Zip packaging complete:' (Get-Item $zipDest).Length 'bytes'

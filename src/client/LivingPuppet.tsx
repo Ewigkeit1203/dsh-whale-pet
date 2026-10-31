@@ -9,6 +9,7 @@ export interface LivingPuppetProps {
   mouthOpenRatio: number
   gazeOffset: GazeOffset
   state: PetState
+  opacity?: number
   onMouseDown?: (e: React.MouseEvent) => void
 }
 
@@ -20,6 +21,7 @@ export function LivingPuppet({
   gazeOffset,
   state,
   onMouseDown,
+  opacity = 1,
 }: LivingPuppetProps) {
   // 3D Parallax Tilt based on Gaze: Smooth head tracking with perspective
   const rotY = gazeOffset.x * 5.0
@@ -35,16 +37,16 @@ export function LivingPuppet({
         transform: `perspective(700px) rotateY(${rotY}deg) rotateX(${rotX}deg) translate(${transX}px, ${transY}px)`,
       }
 
-  const isTalking = mouthOpenRatio > 0.15 || state === 'EATING'
+  const isTalking = mouthOpenRatio > 0.15 || state === 'EATING' || state === 'ANSWERING'
 
   return (
     <div
       className={`${styles.puppetRoot} ${isGalGameMode ? styles.puppetGalGame : ''}`}
       onMouseDown={onMouseDown}
+      style={{ ...puppetStyle, opacity }}
     >
       <div
         className={`${styles.puppetCanvas} ${isTalking ? styles.canvasTalking : ''}`}
-        style={puppetStyle}
       >
         {/* Base Character Illustration with High Precision 2.5D Shading */}
         <img

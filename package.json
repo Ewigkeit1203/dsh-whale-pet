@@ -1,7 +1,7 @@
 {
   "name": "dsh-whale-pet",
-  "version": "0.2.0",
-  "description": "DeepSeek Little Whale Maid ('Big Fat Fish') Desktop/Web Pet for DSH",
+  "version": "0.3.0",
+  "description": "大肥鱼：DSH 桌宠与 GalGame 对话剧场，支持双语、独立主题和人物音效 / Little Whale: a bilingual DSH companion and visual-novel theatre with independent themes and synthesized character sounds.",
   "keywords": [
     "dsh-plugin",
     "deepseek-harness",
@@ -46,7 +46,8 @@
   "scripts": {
     "build": "node build.js",
     "typecheck": "tsc --noEmit",
-    "test": "node --test tests/whale-pet.test.ts"
+    "test": "node --test tests/*.test.ts",
+    "package:release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-release.ps1"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
@@ -55,5 +56,13 @@
   "peerDependencies": {
     "@deepseek-ai/cordis": "*",
     "react": "*"
+  },
+  "homepage": "https://github.com/Ewigkeit1203/dsh-whale-pet#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ewigkeit1203/dsh-whale-pet.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Ewigkeit1203/dsh-whale-pet/issues"
   }
 }

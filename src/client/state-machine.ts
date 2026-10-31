@@ -56,6 +56,8 @@ const SAJIAO_LONELY_DIALOGUES = [
 ]
 
 export class PetStateMachine {
+  private disposed = false
+  private blinkStepTimer: ReturnType<typeof setTimeout> | null = null
   private state: PetState = 'IDLE'
   private form: PetForm = 'maiden'
   private pose: PetPose = 'default'
@@ -71,6 +73,7 @@ export class PetStateMachine {
   private speech = ''
   private latestDialogue = ''
   private reasoningText = ''
+  private balancesKnown = false
   private toppedUpBalance = '¥0.00'
   private grantedBalance = '¥0.00'
   private mouthOpenRatio = 0
@@ -104,6 +107,7 @@ export class PetStateMachine {
       pose: this.pose,
       speech: this.speech,
       reasoningText: this.reasoningText,
+      balancesKnown: this.balancesKnown,
       toppedUpBalance: this.toppedUpBalance,
       grantedBalance: this.grantedBalance,
       isReasoning: this.isReasoning,
@@ -127,6 +131,7 @@ export class PetStateMachine {
   }
 
   private notify(): void {
+    if (this.disposed) return
     const status = this.getStatus()
     for (const listener of this.listeners) {
       try {
@@ -158,10 +163,11 @@ export class PetStateMachine {
 
     const scheduleNextBlink = () => {
       const delay = 3200 + Math.random() * 2400
+      if (this.disposed) return
       this.blinkTimer = setTimeout(() => {
         this.performBlinkCycle(() => {
           if (Math.random() < 0.25) {
-            setTimeout(() => {
+            this.blinkStepTimer = setTimeout(() => {
               this.performBlinkCycle(scheduleNextBlink)
             }, 100)
           } else {
@@ -174,20 +180,25 @@ export class PetStateMachine {
   }
 
   private performBlinkCycle(onComplete: () => void): void {
+    if (this.disposed) return
     if (this.isReasoning) {
       this.blinkRatio = 0.5
       this.notify()
-      setTimeout(onComplete, 400)
+      this.blinkStepTimer = setTimeout(() => {
+        this.blinkRatio = 0
+        this.notify()
+        onComplete()
+      }, 400)
       return
     }
 
     this.blinkRatio = 1.0
     this.notify()
 
-    setTimeout(() => {
+    this.blinkStepTimer = setTimeout(() => {
       this.blinkRatio = 0.0
       this.notify()
-      setTimeout(onComplete, 120)
+      this.blinkStepTimer = setTimeout(onComplete, 120)
     }, 90)
   }
 
@@ -204,7 +215,9 @@ export class PetStateMachine {
         this.madTimer = null
       }
       this.pose = 'default'
+      this.speech = this.getRandomDialogue(this.state)
       this.recomputeState()
+      this.notify()
     }
 
     this.scheduleInactivityCheck()
@@ -243,7 +256,9 @@ export class PetStateMachine {
   }
 
   public setBalances(toppedUp: string, granted: string): void {
-    if (this.toppedUpBalance === toppedUp && this.grantedBalance === granted) return
+    const known = this.balancesKnown
+    this.balancesKnown = true
+    if (known && this.toppedUpBalance === toppedUp && this.grantedBalance === granted) return
     this.toppedUpBalance = toppedUp
     this.grantedBalance = granted
     this.notify()
@@ -264,8 +279,8 @@ export class PetStateMachine {
   }
 
   public setReasoning(reasoning: boolean): void {
-    this.resetActivity()
     if (this.isReasoning === reasoning) return
+    this.resetActivity()
     this.isReasoning = reasoning
 
     if (this.thinkingCycleTimer !== null) {
@@ -274,6 +289,7 @@ export class PetStateMachine {
     }
 
     if (reasoning) {
+      this.cancelEatingAndWandering()
       this.lastThinkingPose = this.thinkingPool[Math.floor(Math.random() * this.thinkingPool.length)]
       this.pose = this.lastThinkingPose
       this.speech = this.getRandomDialogue('REASONING')
@@ -328,12 +344,14 @@ export class PetStateMachine {
   }
 
   public setStreaming(streaming: boolean): void {
-    this.resetActivity()
     if (this.isStreaming === streaming) return
+    this.resetActivity()
     const wasStreaming = this.isStreaming
     this.isStreaming = streaming
 
     if (streaming) {
+      this.isReasoning = false
+      this.isWandering = false
       if (this.thinkingCycleTimer !== null) {
         clearTimeout(this.thinkingCycleTimer)
         this.thinkingCycleTimer = null
@@ -353,7 +371,16 @@ export class PetStateMachine {
     this.recomputeState()
   }
 
+  private cancelEatingAndWandering(): void {
+    if (this.eatingTimer !== null) clearTimeout(this.eatingTimer)
+    this.eatingTimer = null
+    this.isEatingPostOutput = false
+    this.isEatingWandering = false
+    this.isWandering = false
+  }
+
   public triggerPostOutputEating(durationMs: number = 4500): void {
+    if (this.disposed || this.isStreaming || this.isReasoning) return
     if (this.eatingTimer !== null) {
       clearTimeout(this.eatingTimer)
     }
@@ -373,11 +400,13 @@ export class PetStateMachine {
   }
 
   public finishWanderingWithEating(durationMs: number = 3500): void {
+    if (this.disposed || !this.isWandering || this.isStreaming || this.isReasoning || this.isInputFocused || this.isGalGameMode) return
     this.isWandering = false
     this.isEatingWandering = true
     this.pose = 'eating'
-    this.speech = '散步累了，停下来吃两口热腾腾的白米饭补充能量~'
     this.recomputeState()
+    this.speech = '散步累了，停下来吃两口热腾腾的白米饭补充能量~'
+    this.notify()
 
     if (this.eatingTimer !== null) {
       clearTimeout(this.eatingTimer)
@@ -413,7 +442,9 @@ export class PetStateMachine {
       this.madTimer = null
       this.isLongSajiao = false
       if (this.pose === 'sajiao' || this.pose === 'mad') {
-        if (this.isReasoning) {
+        if (this.isStreaming) {
+          this.pose = 'answering'
+        } else if (this.isReasoning) {
           this.pose = this.lastThinkingPose || 'think1'
         } else if (this.isStreaming) {
           this.pose = 'answering'
@@ -481,6 +512,10 @@ export class PetStateMachine {
   }
 
   public setWandering(wandering: boolean): void {
+    if (!wandering && (this.isStreaming || this.isReasoning || this.isInputFocused || this.isGalGameMode)) {
+      this.isWandering = false
+      return
+    }
     if (this.isStreaming || this.isReasoning || this.isInputFocused || this.isGalGameMode) return
     if (wandering && this.state === 'IDLE') {
       this.isWandering = true
@@ -509,7 +544,11 @@ export class PetStateMachine {
       nextState = 'IDLE'
     }
 
-    if (nextState === this.state) return
+    if (nextState === this.state) {
+      if (this.debounceTimer !== null) clearTimeout(this.debounceTimer)
+      this.debounceTimer = null
+      return
+    }
 
     if ((this.state === 'ANSWERING' || this.state === 'EATING' || this.state === 'REASONING') &&
         nextState !== 'ANSWERING' && nextState !== 'EATING' && nextState !== 'REASONING') {
@@ -546,6 +585,9 @@ export class PetStateMachine {
   }
 
   public dispose(): void {
+    this.disposed = true
+    if (this.blinkStepTimer !== null) clearTimeout(this.blinkStepTimer)
+    this.blinkStepTimer = null
     if (this.debounceTimer !== null) {
       clearTimeout(this.debounceTimer)
       this.debounceTimer = null

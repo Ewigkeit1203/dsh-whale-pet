@@ -1,149 +1,162 @@
-# DeepSeek Little Whale Maid (dsh-whale-pet)
+<a id="top"></a>
+# DeepSeek Little Whale Maid / 大肥鱼 — v0.3.0
 
-[English](#english) | [中文说明](#chinese) | [Changelog / 更新日志](CHANGELOG.md)
+[English](#english) | [中文说明](#chinese) | [Releases / 下载](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) | [Changelog / 更新日志](CHANGELOG.md) | [v0.3.0 notes / 发布说明](RELEASE_v0.3.0.md)
 
----
-
-<a name="english"></a>
+<a id="english"></a>
 ## English
 
-DeepSeek Little Whale Maid (`dsh-whale-pet`) is an interactive desktop pet and Visual Novel (GalGame) conversational stage plugin developed for the official [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) desktop and web clients.
+An interactive desktop/web companion and visual-novel (GalGame) conversation theatre for the official [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness). Little Whale lives inside DSH, reacts to reasoning and answers, and keeps you company while you work.
 
-### Key Features
+### New in v0.3.0
 
-- **Dual Character Forms**: Seamlessly toggle between the full-height Maiden Standing Portrait (`Maid.png`) and the compact Chibi form (`DaFeiYu.png`).
-- **Independent Comic Thought Bubble**: Chain-of-Thought (CoT) reasoning is loaded into a dedicated, scrollable thought bubble positioned beside the character's head, preserving visibility of both the character and dialogue box.
-- **Dynamic Variable Thinking Poses**: During model reasoning, the character randomly cycles through 5 thinking poses (`Think1.png` to `Think5.png`) with occasional inspiration sparks (`getit.png`) using variable, non-fixed durations (2.0s - 3.8s) and non-fixed sequences.
-- **Dedicated Response Output Pose**: While outputting responses (`Answering.png`), the character displays an animated answering pose with dynamic lip-syncing and breathing effects.
-- **Post-Output & Wandering Rice Eating**: Once response generation finishes, the character celebrates with a hearty bowl of white rice (`baifan.png`) for ~4.5 seconds. She also takes a couple bites after wandering movement finishes. Strictly never displayed during active response streaming.
-- **Visual Novel (GalGame) Dialogue Progression**: A wide dialogue theater at the bottom formats and paginates long responses, allowing readers to advance through text paragraph-by-paragraph with a single click.
-- **Real-Time Dual Balance Display**: Directly reads and displays live account balances across the top toolbar, showing both Topped-up balance and Granted balance.
-- **Interactive Touch Reaction with Animation Safeguard & Boredom Prompt**: Clicking the character triggers a gelatin bounce and a 2-second playful pout (`sajiao.png`), returning safely to active thinking or answering. If left idle for 60 seconds without interaction, she pouts longer and asks the user to accompany her, automatically resetting on any interaction.
-- **Zero-Dependency One-Click Installation**: Packaged with automated install and uninstall scripts (`install.bat`, `uninstall.bat`). All character graphics are Base64-inlined into the bundle, ensuring offline reliability without network latency or 404 errors.
+- **Personal appearance:** Chinese/English menus, independent light/dark glass themes, opacity and a five-stop snapping size slider. Menus stay fixed while the character changes size; preferences and position are saved locally.
+- **Synthesized character sounds:** soft speech-like syllables throughout answer output and text reveal, plus inspiration and interaction tones. Native Web Audio, no audio downloads. Sound starts muted, with separate sound and volume controls.
+- **A calmer theatre:** typewriter reveal, previous-page and full-text reading, automatic progression, loaded-message history, Hide/restore and copyable code cards. Top controls stay compact: Log, Auto, More and Exit.
+- **Companion interactions:** head-pat hearts, shake reactions, bounded drag inertia, floating rebound and optional lunch/late-night reminders.
+- **Reliability:** safer state transitions, Chinese IME input, draft preservation, viewport fitting, timer cleanup and host-page observation.
 
-### Quick Start & Installation
+Two character forms and the original 11 illustrations remain: five randomized thinking poses, inspiration, answering, affectionate reactions and rice breaks. Reasoning stays in its own scrollable bubble. Active answers use the answering illustration; rice breaks follow output or wandering.
 
-#### Method 1: One-Click Automated Script (Recommended)
-1. Download `dsh-whale-pet.zip` from [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) and extract all files to a local directory (e.g. `D:\dsh-whale-pet`).
-2. Run `install.bat`.
-3. Open DeepSeek Harness, or press `Ctrl + R` in an existing DSH window to refresh. The pet will appear in the bottom-right corner.
+### Install or upgrade
 
-#### Method 2: Manual Profile Configuration
-Add the following lines to `~/.dsh/profiles/desktop/cordis.patch.yml`:
+1. Download **dsh-whale-pet-v0.3.0.zip** from [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases).
+2. Extract the entire archive into a permanent folder, such as `D:\dsh-whale-pet`.
+3. Run `install.bat`, then open DSH or press **Ctrl + R** in its window.
+4. Upgrade in the same folder, or rerun the installer if you moved the plugin. Keep the extracted files in place.
+
+DSH supplies React and Cordis. End users do not need Node.js, npm or extra assets. All images are embedded in the browser bundle. Windows one-click scripts target the desktop profile; a compatible DSH host configuration can also load the web client.
+
+For manual configuration, append the following to `~/.dsh/profiles/desktop/cordis.patch.yml`, replacing the example path:
+
 ```yaml
 - insert:
     - id: dsh-whale-pet
-      name: "file:///D:/your/path/dsh-whale-pet/lib/index.js"
-```
-Save the file and refresh DeepSeek Harness via `Ctrl + R`.
-
-#### Uninstallation
-Run `uninstall.bat` to cleanly remove the plugin configuration, then refresh DSH with `Ctrl + R`.
-
-### Interaction Reference
-
-| User Action | Triggered Behavior | Notes |
-| :--- | :--- | :--- |
-| **Mouse Hover** | Reveal Toolbar | Displays live Topped-up and Granted balances; provides form toggle and dialogue stage buttons. |
-| **Click / Poke** | Pouting Reaction | Plays a 2-second playful reaction (`sajiao.png`), then safely returns to the active animation cycle. |
-| **Long Inactivity (60s)** | Lonely / Boredom Prompt | Plays an extended sajiao animation asking user to accompany her; clears immediately on any interaction. |
-| **Mouse Drag** | Free Repositioning | Move the pet anywhere on screen. Wandering timers are locked during drags to prevent positional jumps. |
-| **Click Composer / Dialogue Button** | Enter GalGame Mode | Center stage layout with comic thought bubble, paginated text box, and backdrop dismiss. |
-
-### Development & Build
-
-```bash
-# Install development dependencies
-npm install
-
-# Compile TypeScript and inline assets into lib/client.js
-node build.js
-
-# Run test suite
-node --test tests/whale-pet.test.ts
-
-# Type checking
-npx tsc --noEmit
+      name: "file:///D:/dsh-whale-pet/lib/index.js"
 ```
 
-### Contributors
+Run `uninstall.bat` and refresh DSH to remove the plugin from the profile. Saved local preferences are retained.
 
-- **Ewigkeit1203** - Project Creator, Character Design & Direction
-- **Antigravity (Google DeepMind)** - AI Pair Programmer, Architecture & Engineering
+### Controls
+
+- Hover for the toolbar; click to interact and open Settings; drag to reposition. Wandering pauses during menu interaction.
+- Move the pointer back and forth over the head for a head-pat reaction. Fast, long-distance dragging triggers a brief dizzy reaction.
+- Click the native composer or Dialogue to enter the theatre. Click blank background or use Escape to leave.
+- Click dialogue once to complete its reveal, then again to advance. Previous goes back; More switches reading mode.
+- Log shows messages already loaded on the page. Auto waits after a page is revealed. Hide shows the illustration; click the background or restore button to return.
+- Settings offers Character sounds, volume, lunch/late-night reminders and an option to hide chatter and mute sounds. The stronger middle dot on the size slider is the default.
+
+### Compatibility and privacy
+
+Preferences use local storage. This plugin does not persist conversation history or send chat content to an extra service. Log reads currently loaded messages. Changing interface language does not translate questions, answers or reasoning.
+
+Balances and response detection depend on DSH's markup. Low-balance hints require an observed balance. Elapsed time starts when generation is detected; token speed appears only when DSH explicitly exposes it. Character counts are never presented as tokens/s.
+
+Code blocks and lists have dedicated presentation, but this is not a complete Markdown renderer. The 11 illustrations animate through transforms and pose changes rather than rigged facial lip-sync. Subjective sound tuning and broader end-to-end streaming compatibility welcome feedback.
+
+### Development
+
+Use Node.js 22.18+ or 24+ for the TypeScript test runner. Install dependencies with `npm install` or `pnpm install`, then run:
+
+```sh
+npm run build
+npm run typecheck
+npm test
+node --check lib/client.js
+```
+
+The build compiles the views, state, host adapter, CSS and all 11 PNGs into `lib/client.js` for DSH's `__ModuleLoader__`. Edit source and rebuild; no second manual UI implementation is needed. Current automated suite: **30 tests**.
+
+### Contributors and acknowledgements
+
+- **[Ewigkeit1203](https://github.com/Ewigkeit1203)** — creator, character concept, product direction and acceptance testing.
+- **Antigravity (Google DeepMind)** — AI-assisted architecture and initial implementation.
+- **Codex (OpenAI)** — AI-assisted v0.3.0 engineering, interaction design, stability work, tests and release documentation.
+
+Contributions and reports are welcome through [Issues](https://github.com/Ewigkeit1203/dsh-whale-pet/issues) and pull requests. Include your DSH version and reproduction steps; omit private conversations and credentials.
 
 ### License
 
-This project is licensed under the [MIT License](LICENSE). Character illustrations copyright belongs to their respective creator.
+[MIT](LICENSE). Character artwork belongs to its respective creator.
+
+[Back to top](#top) | [中文说明](#chinese)
 
 ---
 
-<a name="chinese"></a>
+<a id="chinese"></a>
 ## 中文说明
 
-DeepSeek 小鲸女（"大肥鱼"）是专为 [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) 官方客户端打造的高互动性活体桌宠与 Visual Novel / GalGame 沉浸式对话插件。
+大肥鱼是专为官方 [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) 开发的桌宠与 GalGame 对话剧场。她生活在 DSH 界面内，会随着思考与回答切换动作，陪你一起工作。
 
-### 核心特性
+### v0.3.0 新体验
 
-- **双形态自由切换**：支持「少女女仆立绘」（`Maid.png`）与「迷你Q版」（`DaFeiYu.png`）双形态，在悬停工具栏中一键切换。
-- **独立漫画思考气泡**：深度推理全过程（Chain-of-Thought）装载于角色头旁的独立漫画气泡中，支持上下平滑滚动回看完整思路，绝不遮挡角色与对话框。
-- **随机多姿态动态思考**：推理期间随机轮换 5 个思考姿态（`Think1.png` 至 `Think5.png`）与灵光一闪灯泡动作（`getit.png`），时间与顺序完全不固定（2.0s - 3.8s 随机节奏），生动自然。
-- **专属回答输出姿态**：模型输出回复期间，切换为专注且元气的回答姿态（`Answering.png`），并配合口型呼吸律动。
-- **干饭动画联动**：输出完毕后立即切换为大口吃白米饭（`baifan.png`）补充体力；在平时游荡漫步停下后也会停下来吃两口。输出流传输期间绝不播放干饭图，逻辑层次分明。
-- **GalGame 剧场文字分页推进**：底部大对话框装载正式回复文本，智能分页排版，点击文本框即可如视觉小说一般逐段翻页推进。
-- **实时双额度常驻展示**：头顶横条常驻读取并显示当前账号真实的【充值余额（Topped-up balance）】与【赠金余额（Granted balance）】。
-- **点击撒娇互动与长时间闲置陪伴**：点击角色触发果冻跳动与撒娇表情（`sajiao.png`，2秒后自动恢复原状态，绝不打断思考或回答）。长时间不互动（60秒闲置）会自动触发长时间撒娇并呼唤主人陪陪她，任何交互均可立即唤醒复原。
-- **零依赖一键安装**：随包提供 `install.bat` 与 `uninstall.bat`，所有素材 Base64 本地内嵌编译，不依赖外部网络与独立环境。
+- **外观随你设置**：中英文菜单、独立明暗毛玻璃主题、透明度和五档吸附大小滑条。只缩放角色，菜单大小固定；设置和位置自动保存在本地。
+- **人物合成音效**：回答输出和逐字显示期间持续发出轻柔短音，搭配顿悟、点击和干饭音效。原生 Web Audio，无需下载音频；默认静音，可单独开启并调节音量。
+- **更舒服的剧场阅读**：逐字显示、上一段、完整阅读、读完后自动显示下一段、已加载问答回顾、隐藏界面及代码卡片复制。顶部收简为回顾、自动、更多、退出。
+- **更多陪伴互动**：摸头爱心、晃动眩晕、有限惯性、浮力回弹，以及可关闭的午饭和熬夜提醒。
+- **更可靠的操作**：完善状态衔接、中文输入法、草稿保留、窗口边界、计时器清理和宿主页面监听。
 
-### 快速安装与使用
+保留两种角色形态与现役 11 张插画：五套随机思考姿态、顿悟、回答、撒娇和干饭。推理过程独立显示在可滚动气泡中；回答期间使用回答图，输出完毕或散步结束后再吃饭。
 
-#### 方式一：一键自动安装（推荐）
-1. 从 [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) 下载 `dsh-whale-pet.zip` 并完整解压到本地文件夹（例如 `D:\dsh-whale-pet`）。
-2. 双击运行文件夹内的 `install.bat`。
-3. 打开 DeepSeek Harness 客户端（若已打开，在软件内按 `Ctrl + R` 刷新），桌宠即可就绪。
+### 安装或升级
 
-#### 方式二：手动配置
-用记事本打开 `C:\Users\<你的用户名>\.dsh\profiles\desktop\cordis.patch.yml`，在文件末尾追加：
+1. 从 [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) 下载 **dsh-whale-pet-v0.3.0.zip**。
+2. 完整解压到固定文件夹，例如 `D:\dsh-whale-pet`。
+3. 双击 `install.bat`，再打开 DSH，或在已打开的窗口中按 **Ctrl + R** 刷新。
+4. 升级时覆盖同一目录中的插件文件；若换了目录，请重新运行安装脚本。解压后的文件需要保留。
+
+React 与 Cordis 由 DSH 提供，普通用户无需 Node.js、npm 或额外素材。所有角色图片都内嵌在运行包中。Windows 一键脚本适配 desktop 配置；兼容的 DSH 宿主配置也可加载网页客户端。
+
+手动安装时，可在 `~/.dsh/profiles/desktop/cordis.patch.yml` 追加以下内容，替换为实际路径：
+
 ```yaml
 - insert:
     - id: dsh-whale-pet
-      name: "file:///D:/你的实际路径/dsh-whale-pet/lib/index.js"
+      name: "file:///D:/dsh-whale-pet/lib/index.js"
 ```
-保存后在 DSH 中按下 `Ctrl + R` 刷新生效。
 
-#### 卸载方式
-运行文件夹内的 `uninstall.bat`，在 DSH 中按 `Ctrl + R` 刷新即可无残留恢复原版。
+卸载时运行 `uninstall.bat` 并刷新 DSH。已保存的本地偏好会保留。
 
-### 交互操作速查
+### 怎么操作
 
-| 操作 | 触发效果 | 说明 |
-| :--- | :--- | :--- |
-| **鼠标悬停** | 展开状态工具条 | 显示当前实时充值余额、赠金余额，呼出形态切换与对话模式入口 |
-| **鼠标点击/戳戳** | 撒娇互动 | 触发 Q 弹果冻动效与撒娇表情（`sajiao.png`），2秒后自动恢复当前进行中的状态 |
-| **长时间未互动（60秒）** | 孤单撒娇唤醒 | 触发长时间撒娇动作与撒娇台词，用户进行任何点击或输入即可解除 |
-| **鼠标按住拖拽** | 自由移动位置 | 随心停靠在屏幕边缘任意角落，拖拽期间锁定游荡定时器防止瞬移冲突 |
-| **点击输入框 / 对话模式** | 进入 GalGame 剧场模式 | 角色舞台居中，展开独立思考气泡与大容量剧场对话框，点击空白处即可退出 |
+- 悬停显示工具栏；点击角色可互动和打开设置；拖拽可移动。操作菜单时暂停游荡。
+- 在角色头部来回移动鼠标会触发摸头反应；快速、大幅拖动会短暂眩晕。
+- 点击原生聊天输入框或“对话模式”进入剧场；点击空白处或按 Escape 退出。
+- 文字未显示完时，第一次点击补全当前段，第二次点击才翻页。“上一段”可回看，“更多”里可切换完整阅读。
+- “回顾”显示页面已加载问答；“自动”等待后推进；“隐藏界面”可欣赏立绘，点击背景或恢复按钮返回。
+- 设置中可开启人物音效并调节音量，选择午饭和熬夜提醒，或隐藏闲聊并关闭音效。大小滑条中间加粗圆点是默认档。
 
-### 本地开发与编译
+### 兼容性与隐私
 
-```bash
-# 安装开发依赖
-npm install
+偏好保存在本地。插件不持久化聊天历史，也不会把聊天内容发送给额外服务；回顾只读取当前页面已加载消息。界面语言不会翻译问题、回答或推理原文。
 
-# 编译 TypeScript 并将 assets/ 转换为 Base64 内嵌至 lib/client.js
-node build.js
+余额读取和输出识别依赖 DSH 页面结构。低余额提醒只在读取到账户余额后启用。耗时从检测到生成开始计算；仅在 DSH 明确提供时显示 token 速度，不会用字符数冒充 tokens/s。
 
-# 运行自动化测试套件
-node --test tests/whale-pet.test.ts
+代码块和列表有专用排版，但并非完整 Markdown 渲染器。动画由 11 张插画、姿态切换与变换实现，没有骨骼绑定的真实口型。欢迎反馈音色和更广泛的完整流式兼容性。
 
-# 类型检查
-npx tsc --noEmit
+### 本地开发
+
+运行 TypeScript 测试建议使用 Node.js 22.18+ 或 24+。通过 `npm install` 或 `pnpm install` 安装开发依赖，然后执行：
+
+```sh
+npm run build
+npm run typecheck
+npm test
+node --check lib/client.js
 ```
+
+构建会把界面、状态机、宿主适配器、CSS 和 11 张 PNG 编入 DSH `__ModuleLoader__` 使用的 `lib/client.js`。修改源码后重新构建即可，无需再手工维护第二份界面。目前共有 **30 项自动测试**。
 
 ### 贡献者与致谢
 
-- **Ewigkeit1203** - 项目发起人、人设原案与产品设计
-- **Antigravity (Google DeepMind)** - AI 结对编程、架构实现与工程调优
+- **[Ewigkeit1203](https://github.com/Ewigkeit1203)**：项目发起人、人设原案、产品方向与体验验收。
+- **Antigravity (Google DeepMind)**：AI 辅助架构设计与初期实现。
+- **Codex (OpenAI)**：AI 辅助 v0.3.0 工程、交互设计、稳定性修复、测试与发布文档。
+
+欢迎通过 [Issues](https://github.com/Ewigkeit1203/dsh-whale-pet/issues) 和 Pull Request 反馈问题或贡献代码。请提供 DSH 版本和复现步骤，避免上传私人对话与账户凭据。
 
 ### 开源许可证
 
-本项目基于 [MIT License](LICENSE) 开源。插画版权归原作者所有。
+[MIT License](LICENSE)。角色插画版权归原作者所有。
+
+[返回顶部](#top) | [English](#english)

@@ -1,59 +1,27 @@
-====================================================================
-      DeepSeek 小鲸女「大肥鱼」桌宠插件 (dsh-whale-pet) 使用说明
-====================================================================
+DeepSeek Little Whale Maid / 大肥鱼 — v0.3.0
 
-专为 DeepSeek Harness (DSH) 客户端打造的专属桌宠与 GalGame 剧场对话插件。
-包含全新模块化动作表情系统、呼吸眼动微跟随、独立漫画思考气泡、专属回答姿态、大口吃白米饭干饭动画、双余额常驻等特性。
+English / 中文
+README: https://github.com/Ewigkeit1203/dsh-whale-pet#readme
+Changelog / 更新日志: https://github.com/Ewigkeit1203/dsh-whale-pet/blob/main/CHANGELOG.md
+Release notes / 发布说明: https://github.com/Ewigkeit1203/dsh-whale-pet/blob/main/RELEASE_v0.3.0.md
 
---------------------------------------------------------------------
-【极速安装（推荐）】
---------------------------------------------------------------------
-1. 将本压缩包解压到本地任意固定目录（例如 D:\dsh-whale-pet）。
-   注意：请解压后再运行，不要直接在压缩包内打开。
-2. 双击运行文件夹内的 install.bat。
-3. 提示安装成功后：
-   - 若 DeepSeek Harness 已经打开，在窗口内按下快捷键 Ctrl + R 刷新；
-   - 若尚未打开，启动 DeepSeek Harness 即可在右下角看到大肥鱼。
+ENGLISH
+Extract the whole ZIP into a permanent folder. Run install.bat, then refresh DSH with Ctrl + R. End users do not need Node.js. Keep the extracted files in place; rerun the installer after moving folders. Run uninstall.bat to remove the plugin configuration. Local preferences remain saved.
 
---------------------------------------------------------------------
-【手动安装方法】
---------------------------------------------------------------------
-1. 打开路径：C:\Users\<你的Windows用户名>\.dsh\profiles\desktop\cordis.patch.yml
-   （如果该文件不存在，新建一个名为 cordis.patch.yml 的文本文件）
-2. 用记事本打开，在文件最末尾添加以下内容（将路径替换为本文件夹中 lib\index.js 的实际路径，反斜杠改为正斜杠）：
+Hover for the toolbar; click for Settings; drag to move. Enable Character sounds in Settings (muted by default). Size uses five snapping stops; the stronger middle dot is the default. Theatre clicks finish text reveal before advancing. Log shows loaded messages; Auto advances after reading; More contains Hide, sounds, reading mode, theme and language.
 
-- insert:
-    - id: dsh-whale-pet
-      name: "file:///D:/你的路径/dsh-whale-pet/lib/index.js"
+New: Chinese/English UI, independent glass themes, character sounds, typewriter reading, history, code copying, head pats and buoyancy. History reads only loaded messages. Native token speed appears only when exposed by DSH. The pet lives inside DSH, not as a separate OS-wide window.
 
-3. 保存文件，在 DSH 中按 Ctrl + R 刷新生效。
+中文
+完整解压到固定目录，运行 install.bat，再在 DSH 中按 Ctrl + R 刷新。普通用户无需 Node.js。解压文件需要保留，移动目录后请重新安装。卸载时运行 uninstall.bat，已保存的本地偏好会保留。
 
---------------------------------------------------------------------
-【v0.2.0 全新动作与表情规则】
---------------------------------------------------------------------
-1. Maid.png：少女女仆完整立绘形态。
-2. DaFeiYu.png：可爱迷你 Q 版形态。
-3. Answering.png：专属回答姿态，在模型正式输出回答时播放，伴随活体呼吸与口型律动。
-4. baifan.png：大铁盆大口吃白米饭插画。在回答输出完毕后播放约 4.5 秒补充能量，在平时游荡漫步停下后也会停下来吃两口（输出过程中严格不播放干饭图）。
-5. getit.png：灵光一闪灯泡顿悟动作，在思考末期以及思考过程中偶尔短暂穿插呈现。
-6. sajiao.png：托腮鼓腮撒娇动作。点击大肥鱼触发短撒娇（2秒后自动恢复原状态，不干扰思考或回答）；60秒长时间未与大肥鱼互动时触发长撒娇并呼唤主人陪陪她，任何点击或输入即可恢复。
-7. Think1.png - Think5.png：五套思考动作，在思考推理全过程中以不固定随机时间（2.0秒 - 3.8秒）和不固定随机顺序轮番呈现。
+悬停显示工具栏，点击角色打开设置，拖拽移动。设置可开启人物音效（默认静音）；大小滑条中间加粗圆点为默认档。剧场第一次点击补全文字，第二次点击才翻页。回顾查看已加载问答，自动在读完后推进，更多提供隐藏界面、音效、阅读方式、主题和语言。
 
---------------------------------------------------------------------
-【交互指南】
---------------------------------------------------------------------
-1. 鼠标悬停大肥鱼：
-   - 头顶自动显示当前账户的【实时充值余额】与【赠金余额】；
-   - 弹出控制按钮，可快捷切换形态、剧场对话模式、设置面板。
-2. 鼠标点击/戳戳大肥鱼：
-   - 触发果冻跳动与撒娇表情（2秒后自动恢复原状态，不干扰正在进行的思考或输出）。
-3. 鼠标按住拖拽：
-   - 可随意拖拽停靠在屏幕边缘任意位置。
-4. 剧场对话模式（GalGame Mode）：
-   - 点击底部输入框或大肥鱼菜单上的“对话模式”即可进入；
-   - 思考阶段：独立漫画思考气泡呈现完整思考脉络并支持滚动回看，角色同步呈现思考动作随机轮播；
-   - 输出阶段：角色切换为专属回答姿态（Answering.png），下方大容量剧场框舒适装载回复文本，点击剧场框即可逐段推进翻页；
-   - 输出结束：自动切换为干饭插画（baifan.png）补充体力；
-   - 点击空白处即可随时退出对话模式回到桌宠挂件。
-5. 卸载说明：
-   - 双击 uninstall.bat 并按 Ctrl + R 刷新即可无残留恢复原版。
+新增中英文、独立毛玻璃主题、人物音效、逐字阅读、历史回顾、代码复制、摸头和浮力回弹。历史只读取已加载消息，宿主未提供指标时不显示 token 速度。桌宠在 DSH 内运行，并非独立系统悬浮窗口。
+
+Contributors / 贡献者
+Ewigkeit1203 — Creator & product direction / 项目发起与产品方向
+Antigravity (Google DeepMind) — AI-assisted initial engineering / AI 辅助初期工程
+Codex (OpenAI) — AI-assisted v0.3.0 engineering & documentation / AI 辅助 v0.3.0 工程与文档
+
+MIT License; artwork belongs to its creator / 插画版权归原作者。
