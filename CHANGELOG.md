@@ -13,6 +13,8 @@ _Nothing yet._
 
 ### [v0.5.0] - 2026-10-31
 
+- Added real DSH screenshots of the companion and independent light/dark settings to the bilingual README.
+
 - **Balance without opening settings.** When DSH provides its account service, 大肥鱼 reads the balance the same way DSH's own account card does: on start, every minute, when you return to the window and after each answer. It clears at once when you sign out. The plugin never touches credentials. Unread amounts show as —, never ¥0.00, and older values are marked “not live”.
 - **梁文峰 / 梁文谷 time.** A chip above her head shows the current DeepSeek API pricing period and when it ends, in your local time. She tells you “现在是梁文峰时间！” or “现在是梁文谷时间！” when DSH opens and at every switch. Peak: Beijing time, weekdays 09:00–12:00 and 14:00–18:00; weekends and Chinese public holidays are off-peak at half price. You can turn this off in Settings › Companionship.
 - **Settings never cover her.** The panel stays beside the character with a fixed gap, switches sides smoothly at screen edges, and opens as a separate panel in very narrow windows. Wandering pauses while it is open.
@@ -113,6 +115,8 @@ _Nothing yet._
 _暂无。_
 
 ### [v0.5.0] - 2026-10-31
+
+- 双语 README 新增桌宠与独立明暗设置的 DSH 实拍截图。
 
 - **不用打开设置也能看到余额。** DSH 提供账户服务时，大肥鱼按 DSH 自带账户卡片的方式读取余额：启动时一次，之后每分钟、回到窗口时和每次回答结束后各刷新一次；退出登录后立即清空。插件不接触任何凭据。未读取显示 —，不会显示成 ¥0.00；旧数据会标注“非实时”。
 - **梁文峰 / 梁文谷时间。** 头顶小标签显示当前 DeepSeek API 计费时段和结束时间（按本机时间）。打开 DSH 时和每次时段切换时，她会告诉你“现在是梁文峰时间！”或“现在是梁文谷时间！”。高峰：北京时间工作日 9:00–12:00、14:00–18:00；周末和法定节假日为空闲时段，价格减半。可在 设置 › 陪伴行为 中关闭。

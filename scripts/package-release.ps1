@@ -21,7 +21,10 @@ Get-ChildItem -LiteralPath (Join-Path $projectRoot 'docs') | Where-Object { $_.N
 }
 $zip = Join-Path $distRoot ('dsh-whale-pet-v' + $version + '.zip')
 Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -Force
-$hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+$hasher = [Security.Cryptography.SHA256]::Create()
+$zipStream = [IO.File]::OpenRead($zip)
+try { $hash = ([BitConverter]::ToString($hasher.ComputeHash($zipStream))).Replace('-', '').ToLowerInvariant() }
+finally { $zipStream.Dispose(); $hasher.Dispose() }
 [IO.File]::WriteAllText($zip + '.sha256', $hash + '  ' + (Split-Path -Leaf $zip) + "`n", [Text.UTF8Encoding]::new($false))
 # Delete only the verified staging directory created within this project's dist/.
 $resolvedStage = [IO.Path]::GetFullPath($stage)

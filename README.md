@@ -1,7 +1,26 @@
 <a id="top"></a>
 # 大肥鱼 — dsh-whale-pet
 
-[English](#english) | [中文说明](#chinese) | [Releases / 下载](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) | [Changelog / 更新日志](CHANGELOG.md) | [v0.5.0 notes / 发布说明](docs/releases/v0.5.0.md) | [Docs / 文档](docs/README.md)
+[Screenshots / 使用截图](#screenshots) | [English](#english) | [中文说明](#chinese) | [Releases / 下载](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) | [Changelog / 更新日志](CHANGELOG.md) | [v0.5.0 notes / 发布说明](docs/releases/v0.5.0.md) | [Docs / 文档](docs/README.md)
+
+
+<a id="screenshots"></a>
+## 使用截图 / Screenshots
+
+Actual v0.5.0 screenshots in DSH, using an empty session. / 以下为 v0.5.0 在 DSH 空白会话中的实拍截图。
+
+![大肥鱼桌宠与计费时段提示 / Companion and pricing-period chip](docs/screenshots/v0.5.0-companion.png)
+
+<details>
+<summary>明暗主题设置 / Light and dark settings</summary>
+
+![深色设置 / Dark settings](docs/screenshots/v0.5.0-settings-dark.png)
+
+![浅色设置 / Light settings](docs/screenshots/v0.5.0-settings-light.png)
+
+</details>
+
+The host in these screenshots does not expose the account service, so balance correctly shows “—”. Theme controls affect only the companion. / 截图中的宿主未提供账户服务，余额如实显示“—”；插件主题不会改变 DSH 主题。
 
 <a id="english"></a>
 ## English
@@ -14,7 +33,7 @@ The product name is **大肥鱼** in both languages; `dsh-whale-pet` remains the
 
 ### New in v0.5.0
 
-- **Balance at a glance.** When you are signed in to a DeepSeek account, your balance appears above her head and in Settings without opening DSH's account page. It refreshes every minute and after each answer. The plugin never touches credentials.
+- **Balance at a glance.** On compatible hosts with the account service, when you are signed in to a DeepSeek account, your balance appears above her head and in Settings without opening DSH's account page. It refreshes every minute and after each answer. The plugin never touches credentials.
 - **梁文峰 / 梁文谷 time.** A chip shows the current DeepSeek API pricing period and when it ends. She tells you “现在是梁文峰时间！” (peak) or “现在是梁文谷时间！” (off-peak, half price) when DSH opens and whenever it switches.
 - **Settings never cover her.** The panel stays beside the character, slides to the other side at screen edges and becomes a separate panel in very narrow windows.
 - **Consistent portraits.** All poses share one head size and foot line; 撒娇 no longer looks smaller.
@@ -57,7 +76,7 @@ Preferences stay in local storage. Chat history is never stored or sent to any e
 
 **Balance:** read through DSH's own account service, the same one its account card uses. It needs a signed-in DeepSeek account; with an API key only, DSH has no balance to show. On DSH versions without that service, opening DSH's account settings still lets her read it from the page. Unread values show as —, and values that have not refreshed recently are marked “not live”. “Bowls left” and low-balance hints use fresh CNY data only.
 
-**Pricing period:** follows DeepSeek's official rule. Peak is Beijing time, weekdays 09:00–12:00 and 14:00–18:00; other hours, weekends and Chinese public holidays are off-peak at half price. The holiday table covers 2026 and is updated yearly.
+**Pricing period:** follows [DeepSeek's official rule](https://api-docs.deepseek.com/zh-cn/quick_start/pricing/). Peak is Beijing time, weekdays 09:00–12:00 and 14:00–18:00; other hours, weekends and Chinese public holidays are off-peak at half price. The holiday table covers 2026 and is updated yearly.
 
 Response detection depends on DSH's page structure. Token speed appears only when DSH exposes it; character counts are never shown as tokens/s. Code blocks and lists get dedicated formatting, but this is not a full Markdown renderer. The illustrations animate through pose changes rather than lip-sync.
 
