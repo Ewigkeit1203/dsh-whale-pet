@@ -1,26 +1,7 @@
 <a id="top"></a>
 # 大肥鱼 — dsh-whale-pet
 
-[Screenshots / 使用截图](#screenshots) | [English](#english) | [中文说明](#chinese) | [Releases / 下载](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) | [Changelog / 更新日志](CHANGELOG.md) | [v0.5.0 notes / 发布说明](docs/releases/v0.5.0.md) | [Docs / 文档](docs/README.md)
-
-
-<a id="screenshots"></a>
-## 使用截图 / Screenshots
-
-Actual v0.5.0 screenshots in DSH, using an empty session. / 以下为 v0.5.0 在 DSH 空白会话中的实拍截图。
-
-![大肥鱼桌宠与计费时段提示 / Companion and pricing-period chip](docs/screenshots/v0.5.0-companion.png)
-
-<details>
-<summary>明暗主题设置 / Light and dark settings</summary>
-
-![深色设置 / Dark settings](docs/screenshots/v0.5.0-settings-dark.png)
-
-![浅色设置 / Light settings](docs/screenshots/v0.5.0-settings-light.png)
-
-</details>
-
-The host in these screenshots does not expose the account service, so balance correctly shows “—”. Theme controls affect only the companion. / 截图中的宿主未提供账户服务，余额如实显示“—”；插件主题不会改变 DSH 主题。
+[English](#english) | [中文说明](#chinese) | [Releases / 下载](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) | [Changelog / 更新日志](CHANGELOG.md) | [v0.5.0 notes / 发布说明](docs/releases/v0.5.0.md) | [Docs / 文档](docs/README.md)
 
 <a id="english"></a>
 ## English
