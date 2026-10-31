@@ -1,17 +1,23 @@
-﻿$ErrorActionPreference = 'Stop'
+﻿param([string]$OutputDirectory = 'dist')
+$ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $package = Get-Content -LiteralPath (Join-Path $projectRoot 'package.json') -Raw | ConvertFrom-Json
 $version = $package.version
-$distRoot = Join-Path $projectRoot 'dist'
+$distRoot = Join-Path $projectRoot $OutputDirectory
 New-Item -ItemType Directory -Path $distRoot -Force | Out-Null
 $stage = Join-Path $distRoot ('stage-' + $version + '-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $stage | Out-Null
 foreach ($directory in @('lib', 'assets')) {
     Copy-Item -LiteralPath (Join-Path $projectRoot $directory) -Destination $stage -Recurse
 }
-$files = @('package.json', 'cordis.yml', 'install.bat', 'uninstall.bat', '一键安装.bat', '一键卸载.bat', 'README.md', 'README.txt', '使用说明.txt', 'CHANGELOG.md', ('RELEASE_v' + $version + '.md'), 'LICENSE')
+$files = @('package.json', 'cordis.yml', 'install.bat', 'uninstall.bat', 'README.md', 'CHANGELOG.md', 'ASSETS_LICENSE.md', 'CONTRIBUTING.md', 'LICENSE')
 foreach ($file in $files) {
     Copy-Item -LiteralPath (Join-Path $projectRoot $file) -Destination $stage
+}
+$docsDestination = Join-Path $stage 'docs'
+New-Item -ItemType Directory -Path $docsDestination -Force | Out-Null
+Get-ChildItem -LiteralPath (Join-Path $projectRoot 'docs') | Where-Object { $_.Name -ne 'handover' } | ForEach-Object {
+    Copy-Item -LiteralPath $_.FullName -Destination $docsDestination -Recurse
 }
 $zip = Join-Path $distRoot ('dsh-whale-pet-v' + $version + '.zip')
 Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -Force

@@ -1,4 +1,16 @@
 export interface Preferences {
+    userName: string;
+    petName: string;
+    fontSize: number;
+    speed: 'slow' | 'medium' | 'fast' | 'instant';
+    docked: boolean;
+    onboardingDone: boolean;
+    notifications: boolean;
+    ricePrice: number;
+    quietBackup?: {
+        wandering: boolean;
+        muted: boolean;
+    };
     language: 'zh' | 'en';
     theme: 'light' | 'dark';
     wandering: boolean;
@@ -17,6 +29,8 @@ export interface Preferences {
     y?: number;
 }
 export declare const PREFERENCES_KEY = "dsh-whale-pet.preferences.v1";
+export declare function defaultPreferences(): Preferences;
 export declare function readPreferences(): Preferences;
 export declare function savePreferences(preferences: Preferences): void;
+export declare function quietPreset(p: Preferences): Preferences;
 //# sourceMappingURL=preferences.d.ts.map

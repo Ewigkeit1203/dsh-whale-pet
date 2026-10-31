@@ -67,6 +67,8 @@ export function parseBalance(value: string): number | null {
 export function messageText(container: Element): string {
   const clone = container.cloneNode(true) as Element
   clone.querySelectorAll('[data-variant="think"], [data-turn-process-inline], details.think, [class*="reasoning"], [class*="thought"], .summary, [class*="thinkBody"], button, [data-whale-pet]').forEach(el => el.remove())
+  clone.querySelectorAll('strong, b').forEach(node => { if (!node.closest('pre')) node.replaceWith(document.createTextNode('**' + (node.textContent || '') + '**')) })
+  clone.querySelectorAll('h1,h2,h3,h4').forEach(node => node.prepend(document.createTextNode('### ')))
   clone.querySelectorAll('pre').forEach(pre => {
     const code = pre.querySelector('code')
     const language = code?.className.match(/language-([\w+-]+)/)?.[1] || ''

@@ -26,7 +26,7 @@ for (const exprDir of expressionDirs) {
     const files = [
       'Maid.png', 'DaFeiYu.png', 'Answering.png', 'baifan.png',
       'getit.png', 'sajiao.png', 'Think1.png', 'Think2.png',
-      'Think3.png', 'Think4.png', 'Think5.png'
+      'Think3.png', 'Think4.png', 'Think5.png', 'Dizzy.png'
     ]
     for (const file of files) {
       const src = join(exprDir, file)
@@ -48,6 +48,8 @@ const think1B64 = readFileSync(join(srcAssetsDir, 'Think1.png')).toString('base6
 const think2B64 = readFileSync(join(srcAssetsDir, 'Think2.png')).toString('base64')
 const think3B64 = readFileSync(join(srcAssetsDir, 'Think3.png')).toString('base64')
 const think4B64 = readFileSync(join(srcAssetsDir, 'Think4.png')).toString('base64')
+const dizzyB64 = readFileSync(join(srcAssetsDir, 'Dizzy.png')).toString('base64')
+const dizzyDataUri = 'data:image/png;base64,' + dizzyB64
 const think5B64 = readFileSync(join(srcAssetsDir, 'Think5.png')).toString('base64')
 
 const maidDataUri = `data:image/png;base64,${maidB64}`
@@ -80,6 +82,7 @@ export const THINK2_DATA_URI = ${JSON.stringify(think2DataUri)}
 export const THINK3_DATA_URI = ${JSON.stringify(think3DataUri)}
 export const THINK4_DATA_URI = ${JSON.stringify(think4DataUri)}
 export const THINK5_DATA_URI = ${JSON.stringify(think5DataUri)}
+export const DIZZY_DATA_URI = ${JSON.stringify(dizzyDataUri)}
 `
 const generatedAssetsPath = join(__dirname, 'src', 'client', 'assets-data.ts')
 if (!existsSync(generatedAssetsPath) || readFileSync(generatedAssetsPath, 'utf-8') !== assetsDataTs) writeFileSync(generatedAssetsPath, assetsDataTs, 'utf-8')
@@ -132,8 +135,11 @@ function compileView(file, component) {
   const code = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, jsx: ts.JsxEmit.React } }).outputText.replace(/^export /gm, '')
   return 'const ' + component + ' = (() => { const styles = new Proxy({}, { get: (_, key) => key });\n' + code + '\nreturn ' + component + '; })();'
 }
+const hitAreaSource = readFileSync(join(__dirname, 'lib/client/hitareas.js'), 'utf-8').replace(/^export /gm, '')
+const usabilitySource = readFileSync(join(__dirname, 'lib/client/usability.js'), 'utf-8').replace(/^export /gm, '')
 const experienceSource = readFileSync(join(__dirname, 'lib/client/experience.js'), 'utf-8').replace(/^export /gm, '')
 const dialogueView = compileView('DialogueContent.tsx', 'DialogueContent')
+const settingsView = compileView('SettingsPanel.tsx', 'SettingsPanel')
 const puppetView = compileView('LivingPuppet.tsx', 'LivingPuppet')
 const overlayView = compileView('PetOverlay.tsx', 'PetOverlay')
 const preferencesSource = readFileSync(join(__dirname, 'lib/client/preferences.js'), 'utf-8').replace(/^export /gm, '')
@@ -179,6 +185,7 @@ const clientBundleSource = `/**
       const THINK2_PATH = ${JSON.stringify(think2DataUri)};
       const THINK3_PATH = ${JSON.stringify(think3DataUri)};
       const THINK4_PATH = ${JSON.stringify(think4DataUri)};
+      const DIZZY_DATA_URI = ${JSON.stringify(dizzyDataUri)};
       const THINK5_PATH = ${JSON.stringify(think5DataUri)};
 
 const MAID_DATA_URI = MAIDEN_PATH;
@@ -194,7 +201,10 @@ const THINK4_DATA_URI = THINK4_PATH;
 const THINK5_DATA_URI = THINK5_PATH;
       ${preferencesSource}
       ${experienceSource}
+      ${usabilitySource}
+      ${hitAreaSource}
       ${dialogueView}
+      ${settingsView}
       ${puppetView}
       ${overlayView}
       ${clientAdapterSource}
@@ -213,5 +223,8 @@ const THINK5_DATA_URI = THINK5_PATH;
 const libClientPath = join(__dirname, 'lib', 'client.js')
 const bundleTemporaryPath = libClientPath + '.tmp'
 writeFileSync(bundleTemporaryPath, clientBundleSource.replace(/^[ \t]+$/gm, ''), 'utf-8')
-renameSync(bundleTemporaryPath, libClientPath)
+for (let attempt = 0; ; attempt++) {
+  try { renameSync(bundleTemporaryPath, libClientPath); break }
+  catch (error) { if (attempt >= 5) throw error; await new Promise(resolve => setTimeout(resolve, 150)) }
+}
 console.log(`[build] Successfully generated ${libClientPath}`)

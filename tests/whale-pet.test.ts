@@ -1,8 +1,9 @@
 import { test, describe } from 'node:test'
 import assert from 'node:assert'
-import { existsSync, statSync } from 'node:fs'
+import { existsSync, statSync, readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { DIZZY_DATA_URI } from '../lib/client/assets-data.js'
 import { PetStateMachine } from '../lib/client/state-machine.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -11,6 +12,7 @@ const rootDir = join(__dirname, '..')
 describe('dsh-whale-pet: Assets Integrity', () => {
   test('all character pose illustrations from 大肥鱼表情 exist with valid sizes', () => {
     const assets = [
+      'assets/Dizzy.png',
       'assets/Maid.png',
       'assets/DaFeiYu.png',
       'assets/Answering.png',
@@ -22,6 +24,7 @@ describe('dsh-whale-pet: Assets Integrity', () => {
       'assets/Think3.png',
       'assets/Think4.png',
       'assets/Think5.png',
+      'lib/assets/Dizzy.png',
       'lib/assets/Maid.png',
       'lib/assets/DaFeiYu.png',
       'lib/assets/Answering.png',
@@ -34,6 +37,7 @@ describe('dsh-whale-pet: Assets Integrity', () => {
       'lib/assets/Think4.png',
       'lib/assets/Think5.png',
     ]
+    assert.ok(readFileSync(join(rootDir, 'assets/Dizzy.png')).equals(Buffer.from(DIZZY_DATA_URI.split(',')[1], 'base64')), 'Dizzy illustration is embedded without image edits')
 
     for (const asset of assets) {
       const fullPath = join(rootDir, asset)

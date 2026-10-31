@@ -3,6 +3,8 @@ export interface StateMachineListener {
     (status: PetStatusInfo): void;
 }
 export declare class PetStateMachine {
+    private paused;
+    setPaused(paused: boolean): void;
     private disposed;
     private blinkStepTimer;
     private state;

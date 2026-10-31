@@ -7,6 +7,20 @@
 <a name="english"></a>
 ## English
 
+### [v0.4.0] - 2026-10-31
+
+- Restored borderless size dots, added a live-value continuous text-size slider, roomier settings and clearer light-theme selections.
+- Repositioned the portrait in expanded reading and removed the rectangular stage halo. Added the original Dizzy.png as the twelfth embedded illustration for shake reactions.
+
+- Fixed faded pet interaction and tethered settings during dragging; added explicit Alt click-through and Alt+W/T shortcuts.
+- Expanded/full-width theatre, measured line wrapping, upward More menu, separate settings scrolling, themed scrollbars, clickable size dots and inline code.
+- Moved guides, release notes and handover under docs/, removed duplicate installers and unused source artwork, and updated packaging and contributor credits.
+
+- Grouped settings, reversible quiet mode, text/size labels, names, optional completion notifications and local Doctor diagnostics.
+- Compact theatre, single page count, keyboard controls, adaptive page capacity, emphasis, reveal speed and punctuation pauses.
+- Approximate alpha hit regions, reading fade, docked peek and reduced-motion/visibility handling.
+- Added unofficial declaration, artwork-permission clarification and contribution templates. See docs/PM_REVIEW_IMPLEMENTATION.md for partial items and remaining roadmap.
+
 ### [v0.3.0] - 2026-10-30
 
 #### Added
@@ -75,6 +89,20 @@
 
 <a name="chinese"></a>
 ## 中文版本
+
+### [v0.4.0] - 2026-10-31
+
+- 恢复无框大小圆点，字号改为带实时数值的连续滑条，放宽设置间距并加强浅色选中态。
+- 大屏模式重新布置立绘，移除矩形分层光晕；加入原始 Dizzy.png，成为第 12 张内嵌角色图，用于摇晃眩晕反馈。
+
+- 修复淡化后无法操作和拖拽时菜单分离；增加明确的 Alt 穿透与 Alt+W/T 快捷键。
+- 扩容/全宽剧场、按测量行宽分页、向上更多菜单、独立设置滚动、主题滚动条、可点击档位圆点与行内代码。
+- 指南、发布说明、交接迁入 docs/，移除重复安装脚本与未引用旧图，同步打包与贡献者。
+
+- 设置分组、安静模式恢复、字号、称呼、完成通知和本地 Doctor。
+- 缩矮剧场、单页码、快捷键、按容量分页、粗体、速度与标点停顿。
+- 近似透明轮廓、阅读淡化、贴边探头与减少动画。
+- 非官方声明、授权说明与投稿模板；剩余事项参见 docs/PM_REVIEW_IMPLEMENTATION.md。
 
 ### [v0.3.0] - 2026-10-30
 

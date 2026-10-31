@@ -1,6 +1,8 @@
+import { SettingsPanel } from './SettingsPanel.js'
+import { viewportPanel, paginateText, revealDelay, diagnosticReport } from './usability.js'
 import { PetAudio, dialogueBlocks, readConversationLog, parseBalance, type HistoryEntry } from './experience.js'
 import { DialogueContent } from './DialogueContent.js'
-import { readPreferences, savePreferences, type Preferences } from './preferences.js'
+import { readPreferences, savePreferences, quietPreset, defaultPreferences, type Preferences } from './preferences.js'
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import type { PetStateMachine } from './state-machine.js'
 import type { PetStatusInfo, PetPosition } from './types.js'
@@ -17,6 +19,7 @@ import {
   THINK3_DATA_URI,
   THINK4_DATA_URI,
   THINK5_DATA_URI,
+  DIZZY_DATA_URI,
 } from './assets-data.js'
 import styles from './PetOverlay.module.css'
 
@@ -28,43 +31,14 @@ export interface PetOverlayProps {
  * Splits dialogue text into complete-sentence pages that comfortably fill the GalGame dialogue box.
  * Ensures complete sentences without abrupt mid-sentence cutoffs.
  */
-function paginateDialogue(text: string, targetLength: number = 180): string[] {
-  const trimmed = text.trim()
-  if (!trimmed) return ['……']
-  const blocks = dialogueBlocks(trimmed)
-  if (blocks.some(block => block.kind === 'code')) return blocks.flatMap(block => block.kind === 'code' ? ['```' + (block.language || '') + '\n' + block.text + '\n```'] : paginateDialogue(block.text, targetLength))
-  if (trimmed.length <= targetLength) return [trimmed]
-
-  const pages: string[] = []
-  let remaining = trimmed
-
-  while (remaining.length > 0) {
-    if (remaining.length <= targetLength) {
-      pages.push(remaining)
-      break
-    }
-
-    const searchSlice = remaining.slice(0, Math.min(remaining.length, Math.round(targetLength * 1.25)))
-    const sentenceMatch = searchSlice.match(/([。！？\n!?]+)(?=[^。！？\n!?]*$)/)
-    let cutIndex = -1
-
-    if (sentenceMatch && sentenceMatch.index !== undefined && sentenceMatch.index >= Math.round(targetLength * 0.45)) {
-      cutIndex = sentenceMatch.index + sentenceMatch[1].length
-    } else {
-      const commaMatch = searchSlice.match(/([，；,;]+)(?=[^，；,;]*$)/)
-      if (commaMatch && commaMatch.index !== undefined && commaMatch.index >= Math.round(targetLength * 0.5)) {
-        cutIndex = commaMatch.index + commaMatch[1].length
-      } else {
-        cutIndex = targetLength
-      }
-    }
-
-    const page = remaining.slice(0, cutIndex).trim()
-    if (page) pages.push(page)
-    remaining = remaining.slice(cutIndex).trim()
-  }
-
-  return pages.length > 0 ? pages : [trimmed]
+function paginateDialogue(text: string, width: number, height: number, font: number): string[] {
+ const blocks=dialogueBlocks(text)
+ let measure: ((text:string)=>number) | undefined
+ if(typeof document.createElement === 'function') {
+   const context=document.createElement('canvas').getContext('2d')
+   if(context) { context.font = font + 'px "Microsoft YaHei", sans-serif'; measure = value=>context.measureText(value).width }
+ }
+ return blocks.flatMap(block=>block.kind==='code'?['```'+(block.language||'')+'\n'+block.text+'\n```']:paginateText(block.text,width,height,font,measure))
 }
 
 export function PetOverlay({ stateMachine }: PetOverlayProps) {
@@ -93,6 +67,18 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const startedAt = useRef(0)
   const lunchDay = useRef('')
   const headPat = useRef({ x: 0, direction: 0, turns: 0, time: 0, cooldown: 0 })
+  const [pageBox, setPageBox] = useState({ width: 760, height: 140 })
+  const [doctor, setDoctor] = useState('')
+  const [ghost, setGhost] = useState(false)
+  const [petHidden, setPetHidden] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [bubbleHidden, setBubbleHidden] = useState(false)
+  const panelTether = useRef(position)
+  const wheelTime = useRef(0)
+  const [dimmed, setDimmed] = useState(false)
+  const [foreground, setForeground] = useState(true)
+  const [reduceMotion, setReduceMotion] = useState(false)
+  const previousStream = useRef(false)
   const [isDragging, setIsDragging] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
@@ -142,13 +128,39 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
 
   useEffect(() => {
     if (!isSettingsOpen) return
-    setSettingsAnchor({ x: Math.max(12, Math.min(window.innerWidth - 302, position.x > window.innerWidth / 2 ? position.x - 304 : position.x + 180)), y: Math.max(12, Math.min(position.y, window.innerHeight - 540)) })
+    const place = () => {
+      const composer = document.querySelector('[data-composer-card], [data-composer-seat]')?.getBoundingClientRect()
+      const panel = viewportPanel(window.innerWidth, window.innerHeight, position.x, position.y, composer?.top)
+      setSettingsAnchor({ x: panel.x, y: panel.y })
+    }
+    place()
+    window.addEventListener('resize', place)
     const dismiss = (event: PointerEvent) => { if (event.target instanceof Element && !event.target.closest('[data-whale-pet]')) setIsSettingsOpen(false) }
     const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') setIsSettingsOpen(false) }
     window.addEventListener('pointerdown', dismiss, true)
     window.addEventListener('keydown', escape)
-    return () => { window.removeEventListener('pointerdown', dismiss, true); window.removeEventListener('keydown', escape) }
+    return () => { window.removeEventListener('resize', place); window.removeEventListener('pointerdown', dismiss, true); window.removeEventListener('keydown', escape) }
   }, [isSettingsOpen])
+
+  useEffect(() => {
+    const previous = panelTether.current
+    panelTether.current = position
+    if (!isSettingsOpen || (!isDragging && affection !== 'float' && affection !== 'dizzy')) return
+    const composerTop = document.querySelector('[data-composer-card], [data-composer-seat]')?.getBoundingClientRect().top ?? window.innerHeight
+    setSettingsAnchor(anchor => ({ x: Math.max(16, Math.min(window.innerWidth - 356, anchor.x + position.x - previous.x)), y: Math.max(16, Math.min(Math.max(16, composerTop - 180), anchor.y + position.y - previous.y)) }))
+  }, [position.x, position.y, isSettingsOpen, isDragging, affection])
+  useEffect(() => {
+    const down = (event: KeyboardEvent) => {
+      if (event.key === 'Alt') setGhost(true)
+      if (event.isComposing || !event.altKey || event.ctrlKey || event.metaKey) return
+      if (event.key.toLowerCase() === 'w') { event.preventDefault(); setPetHidden(hidden => !hidden) }
+      if (event.key.toLowerCase() === 't') { event.preventDefault(); stateMachine.toggleGalGameMode() }
+    }
+    const up = (event: KeyboardEvent) => { if (event.key === 'Alt') setGhost(false) }
+    const reset = () => setGhost(false)
+    window.addEventListener('keydown', down); window.addEventListener('keyup', up); window.addEventListener('blur', reset)
+    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', reset) }
+  }, [stateMachine])
 
   // Subscribe to state machine
   useEffect(() => {
@@ -185,6 +197,42 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     return () => document.removeEventListener('visibilitychange', pause)
   }, [])
 
+  useEffect(() => {
+    const measure = () => {
+      const box = textScrollRef.current
+      if (box) setPageBox(previous => previous.width === box.clientWidth - 52 && previous.height === box.clientHeight - 12 ? previous : { width: box.clientWidth - 52, height: box.clientHeight - 12 })
+    }
+    measure()
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null
+    if(textScrollRef.current)observer?.observe(textScrollRef.current)
+    window.addEventListener('resize', measure)
+    return () => { observer?.disconnect(); window.removeEventListener('resize', measure) }
+  }, [status.isGalGameMode, preferences.fontSize, preferences.reading, expanded])
+  useEffect(() => {
+    const media = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    const motion = () => setReduceMotion(media?.matches ?? false)
+    const visibility = () => { const active = !document.hidden && document.hasFocus(); setForeground(active); stateMachine.setPaused(!active); if (!active) audioRef.current?.silence() }
+    motion(); visibility()
+    media?.addEventListener('change', motion)
+    window.addEventListener('focus', visibility); window.addEventListener('blur', visibility); document.addEventListener('visibilitychange', visibility)
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const reading = (event: Event) => {
+      if (!(event.target instanceof Element) || event.target.closest('[data-whale-pet]')) return
+      if (event.type === 'wheel' || event.target.closest('[data-chat-node-key], [data-composer-card], [data-composer-seat]')) {
+        setDimmed(true); if (timer) clearTimeout(timer); timer = setTimeout(() => setDimmed(false), 1200)
+      } else setDimmed(false)
+    }
+    window.addEventListener('pointermove', reading, { passive: true }); window.addEventListener('wheel', reading, { passive: true })
+    return () => { if(timer) clearTimeout(timer); stateMachine.setPaused(false); media?.removeEventListener('change', motion); window.removeEventListener('focus', visibility); window.removeEventListener('blur', visibility); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pointermove', reading); window.removeEventListener('wheel', reading) }
+  }, [stateMachine])
+  useEffect(() => {
+    if (previousStream.current && !status.isStreaming && !status.isReasoning && !foreground && preferences.notifications && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      const notification = new Notification('大肥鱼 · Little Whale', { body: t('回答完成啦，回来看看吧。', 'Your answer is ready.'), tag: 'whale-finished' })
+      notification.onclick = () => { window.focus(); notification.close() }
+    }
+    previousStream.current = status.isStreaming
+  }, [status.isStreaming, status.isReasoning, foreground, preferences.notifications])
+
   // Sync GalGame mode class to document.body
   useEffect(() => {
     if (status.isGalGameMode) {
@@ -200,8 +248,8 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   // Paginate reply text for Visual Novel paragraph progression
   // 目标字数与剧场框尺寸匹配：框加大后尽量放满每一段
   const dialoguePages = useMemo(() => {
-    return paginateDialogue(status.latestDialogue || companionSpeech, 260)
-  }, [status.latestDialogue, companionSpeech])
+    return paginateDialogue(status.latestDialogue || companionSpeech, pageBox.width, pageBox.height, preferences.fontSize)
+  }, [status.latestDialogue, companionSpeech, pageBox, preferences.fontSize])
 
   // Reset pagination when a new response starts
   useEffect(() => {
@@ -217,11 +265,25 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   useEffect(() => {
     if (!status.isGalGameMode) return
     const close = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      if (event.isComposing || event.ctrlKey || event.metaKey || event.altKey || target?.closest('input, textarea, select, button, summary, [contenteditable="true"]')) return
+      if (event.key !== 'Escape' && event.key !== 'Enter' && event.key !== ' ' && event.key !== 'ArrowRight' && event.key !== 'ArrowLeft' && !['l','a','h','m'].includes(event.key.toLowerCase())) return
+      if (event.key !== 'Escape') {
+        if (target?.closest('[role="button"], [role="log"]')) return
+        event.preventDefault()
+        if (event.key === 'ArrowLeft') setCurrentPageIndex(i => Math.max(0, i - 1))
+        else if (event.key.toLowerCase() === 'a') update({ autoAdvance: !preferences.autoAdvance })
+        else if (event.key.toLowerCase() === 'l') { setHistory(readConversationLog()); setLogOpen(true) }
+        else if (event.key.toLowerCase() === 'm') toggleMute()
+        else if (event.key.toLowerCase() === 'h') setUiHidden(value => !value)
+        else handleAdvancePage()
+        return
+      }
       if (event.key === 'Escape' && !event.isComposing) { const more = document.querySelector('[data-whale-pet] details[open]'); if (more) { more.removeAttribute('open'); return }; if (uiHidden) setUiHidden(false); else if (logOpen) setLogOpen(false); else stateMachine.setGalGameMode(false) }
     }
     window.addEventListener('keydown', close)
     return () => window.removeEventListener('keydown', close)
-  }, [status.isGalGameMode, stateMachine, uiHidden, logOpen])
+  }, [status.isGalGameMode, stateMachine, uiHidden, logOpen, revealed, currentPageIndex, dialoguePages, preferences.autoAdvance, preferences.reading])
 
   // Re-open thought bubble when new reasoning begins
   useEffect(() => {
@@ -247,7 +309,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
 
 
   useEffect(() => {
-    const timer = setInterval(() => setClock(Date.now()), 1000)
+    const timer = setInterval(() => { if (!document.hidden) setClock(Date.now()) }, 1000)
     return () => { clearInterval(timer); audioRef.current?.dispose() }
   }, [])
   useEffect(() => {
@@ -281,6 +343,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       clearTimeout(menuTimerRef.current)
       menuTimerRef.current = null
     }
+    setDimmed(false)
     setIsMenuOpen(true)
   }, [])
 
@@ -310,7 +373,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
 
   // Wandering Logic (Pauses on dragging)
   useEffect(() => {
-    if (!wanderingEnabled || status.isGalGameMode) {
+    if (petHidden || !wanderingEnabled || status.isGalGameMode || reduceMotion || !foreground || preferences.docked) {
       if (wanderTimerRef.current !== null) {
         clearInterval(wanderTimerRef.current)
         wanderTimerRef.current = null
@@ -351,11 +414,11 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       clearInterval(interval)
       wanderTimerRef.current = null
     }
-  }, [wanderingEnabled, status.form, status.isGalGameMode, isMenuOpen, isSettingsOpen, stateMachine])
+  }, [wanderingEnabled, status.form, status.isGalGameMode, isMenuOpen, isSettingsOpen, stateMachine, reduceMotion, foreground, preferences.docked, petHidden])
 
   // Dragging and click handlers for floating widget (Double-click shrunk state completely removed)
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (status.isGalGameMode || e.button !== 0) return
+    if (status.isGalGameMode || preferences.docked || e.button !== 0) return
     stateMachine.resetActivity()
     isDraggingRef.current = true
     setIsDragging(true)
@@ -370,7 +433,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       maxDistance: 0,
       distance: 0, lastX: e.clientX, lastY: e.clientY, lastMove: Date.now(), vx: 0, vy: 0,
     }
-  }, [position, status.isGalGameMode, stateMachine])
+  }, [position, status.isGalGameMode, stateMachine, preferences.docked])
 
   useEffect(() => {
     if (!isDragging) return
@@ -552,11 +615,13 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   }
 
   const isMaiden = status.form === 'maiden'
-  const currentImgSrc = affection === 'pat' ? SAJIAO_DATA_URI : affection === 'dizzy' && !status.isStreaming ? THINK2_DATA_URI : resolveCharacterImage()
+  const currentImgSrc = affection === 'pat' ? SAJIAO_DATA_URI : affection === 'dizzy' && !status.isStreaming ? DIZZY_DATA_URI : resolveCharacterImage()
+  const hitPose = [[DIZZY_DATA_URI,'Dizzy'],[MAID_DATA_URI,'Maid'],[CHIBI_DATA_URI,'DaFeiYu'],[BAIFAN_DATA_URI,'baifan'],[ANSWERING_DATA_URI,'Answering'],[SAJIAO_DATA_URI,'sajiao'],[GETIT_DATA_URI,'getit'],[THINK1_DATA_URI,'Think1'],[THINK2_DATA_URI,'Think2'],[THINK3_DATA_URI,'Think3'],[THINK4_DATA_URI,'Think4'],[THINK5_DATA_URI,'Think5']].find(([src]) => src === currentImgSrc)?.[1] || 'Maid'
   const displayDialogue = preferences.reading === 'scroll' ? status.latestDialogue || companionSpeech : dialoguePages[currentPageIndex] || dialoguePages[0] || ''
 
   const characters = useMemo(() => Array.from(displayDialogue), [displayDialogue])
-  const isRevealing = preferences.typewriter && preferences.reading === 'pages' && revealed < characters.length
+  const canReveal = preferences.typewriter && preferences.speed !== 'instant' && !reduceMotion && status.latestDialogue.length <= 600 && !/```|\|.*\|/.test(displayDialogue)
+  const isRevealing = canReveal && preferences.reading === 'pages' && revealed < characters.length
   const visibleText = isRevealing ? characters.slice(0, revealed).join('') : displayDialogue
   useEffect(() => {
     const previous = revealIdentity.current
@@ -564,20 +629,20 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     revealIdentity.current = { page: currentPageIndex, text: displayDialogue }
   }, [currentPageIndex, displayDialogue])
   useEffect(() => {
-    if (revealed >= characters.length || !status.isGalGameMode || uiHidden || logOpen || !preferences.typewriter || preferences.reading !== 'pages') return
+    if (!canReveal || revealed >= characters.length || !foreground || !status.isGalGameMode || uiHidden || logOpen || !preferences.typewriter || preferences.reading !== 'pages') return
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { setRevealed(characters.length); return }
-    const timer = setInterval(() => {
+    const timer = setTimeout(() => {
       setRevealed(count => Math.min(count + 1, characters.length))
-    }, 42)
-    return () => clearInterval(timer)
-  }, [status.isGalGameMode, uiHidden, logOpen, preferences.typewriter, preferences.reading, preferences.muted, preferences.quiet, preferences.volume, characters.length, revealed])
+    }, revealDelay(characters[Math.max(0, revealed - 1)] || '', preferences.speed))
+    return () => clearTimeout(timer)
+  }, [status.isGalGameMode, uiHidden, logOpen, preferences.typewriter, preferences.reading, preferences.muted, preferences.quiet, preferences.volume, characters.length, revealed, canReveal, foreground, preferences.speed])
   useEffect(() => {
     if (!preferences.autoAdvance || preferences.reading !== 'pages' || !status.isGalGameMode || status.isStreaming || isRevealing || uiHidden || logOpen || currentPageIndex >= dialoguePages.length - 1) return
     const timer = setTimeout(() => setCurrentPageIndex(i => Math.min(i + 1, dialoguePages.length - 1)), Math.min(4000, Math.max(2000, characters.length * 15)))
     return () => clearTimeout(timer)
   }, [preferences.autoAdvance, preferences.reading, status.isGalGameMode, status.isStreaming, isRevealing, uiHidden, logOpen, currentPageIndex, dialoguePages, characters.length])
   useEffect(() => {
-    if (preferences.muted || preferences.quiet || uiHidden || logOpen || !(status.isStreaming || (status.isGalGameMode && isRevealing))) return
+    if (!foreground || preferences.muted || preferences.quiet || uiHidden || logOpen || !(status.isStreaming || (status.isGalGameMode && isRevealing))) return
     let syllable = 0
     const timer = setInterval(() => {
       // Short phrases with breathing spaces keep the voice gentle rather than a continuous beep.
@@ -585,7 +650,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       if (syllable++ % 7 < 5) audioRef.current?.play('blip', preferences.volume)
     }, 105)
     return () => clearInterval(timer)
-  }, [preferences.muted, preferences.quiet, preferences.volume, uiHidden, logOpen, status.isStreaming, status.isGalGameMode, isRevealing])
+  }, [preferences.muted, preferences.quiet, preferences.volume, uiHidden, logOpen, status.isStreaming, status.isGalGameMode, isRevealing, foreground])
 
   const copyCode = async (text: string) => {
     try { await navigator.clipboard.writeText(text); setToast(t('代码已复制', 'Code copied')) }
@@ -600,7 +665,8 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     return value && Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : null
   }, [clock])
   const elapsed = startedAt.current ? Math.max(0, (clock - startedAt.current) / 1000).toFixed(1) : null
-  const balance = status.balancesKnown ? (parseBalance(status.toppedUpBalance) ?? 0) + (parseBalance(status.grantedBalance) ?? 0) : null
+  const sameCurrency = (status.toppedUpBalance.match(/[$¥￥€£]/)?.[0]?.replace('￥','¥') ?? '') === (status.grantedBalance.match(/[$¥￥€£]/)?.[0]?.replace('￥','¥') ?? '')
+  const balance = status.balancesKnown && sameCurrency ? (parseBalance(status.toppedUpBalance) ?? 0) + (parseBalance(status.grantedBalance) ?? 0) : null
   const lowBalance = balance !== null && balance < 2
   const hour = new Date(clock).getHours()
   const contextualSpeech = affection === 'pat' ? t('嘿嘿……最喜欢你摸摸头啦～', 'Hehe… I love head pats!') : affection === 'dizzy' ? t('头好晕……深海漩涡出现啦！', 'Whoa… a deep-sea whirlpool!') : preferences.reminders && status.state === 'IDLE' && hour >= 1 && hour < 5 ? t('呼啊……夜深啦，记得休息，我陪着你。', 'It’s late… remember to rest. I’m right here.') : preferences.reminders && status.state === 'EATING' && hour === 12 ? t('午饭时间到！你也要按时吃饭哦～', 'Lunch time! Remember to have something to eat.') : lowBalance && status.state === 'IDLE' ? t('深海算力快见底啦，记得看看余额哦。', 'Our deep-sea credit is getting low. Check your balance.') : companionSpeech
@@ -671,7 +737,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
               </button>
             </div>
 
-            <div className="thoughtBubbleContent" ref={thoughtScrollRef} onScroll={e => { const node = e.currentTarget; followThoughtRef.current = node.scrollHeight - node.scrollTop - node.clientHeight < 36 }}>
+            <div className="thoughtBubbleContent" style={{ '--pet-text-size': preferences.fontSize + 'px' } as React.CSSProperties} ref={thoughtScrollRef} onScroll={e => { const node = e.currentTarget; followThoughtRef.current = node.scrollHeight - node.scrollTop - node.clientHeight < 36 }}>
               {status.reasoningText || t('正在整理思路……', 'Thinking things through…')}
             </div>
 
@@ -683,9 +749,10 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
         )}
 
         {/* Character Stage: Centered on screen */}
-        <div data-whale-pet="stage" data-pet-theme={preferences.theme} lang={preferences.language === 'zh' ? 'zh-CN' : 'en'} className={`galgameCharacterCentered ${isMaiden ? 'galgameCharacterMaiden' : 'galgameCharacterChibi'}`}>
+        <div data-expanded={expanded} data-theatre-hidden={uiHidden} data-whale-pet="stage" data-pet-theme={preferences.theme} lang={preferences.language === 'zh' ? 'zh-CN' : 'en'} className={`galgameCharacterCentered ${isMaiden ? 'galgameCharacterMaiden' : 'galgameCharacterChibi'}`}>
           <LivingPuppet
-            imgSrc={currentImgSrc}
+            poseName={hitPose}
+          imgSrc={currentImgSrc}
             isMaiden={isMaiden}
             isGalGameMode={true}
             mouthOpenRatio={status.mouthOpenRatio}
@@ -695,26 +762,27 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
         </div>
 
         {/* Spacious Visual Novel Dialogue Box (Z-Index 999999, Direct Reply, Click to Advance) */}
-        {!uiHidden && <div onPointerDownCapture={event => { unlockAudio(); if (!(event.target as Element).closest('details')) event.currentTarget.querySelector('details[open]')?.removeAttribute('open') }} data-whale-pet="dialogue" data-pet-theme={preferences.theme} lang={preferences.language === 'zh' ? 'zh-CN' : 'en'} className="galgameTheatreBox">
+        {!uiHidden && <div onPointerDownCapture={event => { unlockAudio(); if (!(event.target as Element).closest('details')) event.currentTarget.querySelector('details[open]')?.removeAttribute('open') }} data-whale-pet="dialogue" data-pet-theme={preferences.theme} lang={preferences.language === 'zh' ? 'zh-CN' : 'en'} className="galgameTheatreBox" data-expanded={expanded}>
           {/* Header Bar: Clean & Minimal (Only NameTag and Exit button) */}
           <div className="galgameHeaderBar">
             <div className="galgameNameTag">
               <span>🐟</span>
-              <span>{t("大肥鱼", "Little Whale")}</span>
+              <span>{preferences.petName === '大肥鱼' ? t("大肥鱼", "Little Whale") : preferences.petName}</span>
             </div>
 
             <div className="galgameTopControls">
               {(status.isStreaming || status.isReasoning) && <span className="petPhase" role="status">{phaseLabel}{elapsed !== null ? ' · ' + elapsed + 's' : ''}{nativeSpeed !== null ? ' · ' + nativeSpeed.toFixed(1) + ' tokens/s' : ''}</span>}
+              <button className="galgameCloseBtn" aria-pressed={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? t('标准剧场','Standard') : t('大屏阅读','Expand')}</button>
               <button className="galgameCloseBtn" title={t('查看已加载的问答', 'Review loaded messages')} onClick={() => { setHistory(readConversationLog()); setLogOpen(true) }}>{t('回顾', 'Log')}</button>
-              <button className="galgameCloseBtn" title={t('读完后自动显示下一段', 'Show the next page automatically after reading')} aria-pressed={preferences.autoAdvance} onClick={() => update({ autoAdvance: !preferences.autoAdvance })}>{t('自动', 'Auto')}{preferences.autoAdvance ? ' ●' : ''}</button>
+              <button className="galgameCloseBtn" title={t('读完后自动显示下一段', 'Show the next page automatically after reading')} aria-pressed={preferences.autoAdvance} onClick={() => update({ autoAdvance: !preferences.autoAdvance })}>{preferences.autoAdvance ? t('自动：开', 'Auto: On') : t('自动：关', 'Auto: Off')}</button>
               <details className="petTheatreMore">
                 <summary aria-label={t('更多选项', 'More options')} title={t('更多选项', 'More options')}>•••</summary>
                 <div className="petMorePanel" onClick={e => { if ((e.target as Element).closest('button')) e.currentTarget.closest('details')?.removeAttribute('open') }}>
-                  <button onClick={() => setUiHidden(true)}>{t('隐藏界面，欣赏立绘', 'Hide interface')}</button>
-                  <button onClick={toggleMute}>{preferences.muted ? t('开启人物音效', 'Enable character sounds') : t('关闭人物音效', 'Mute character sounds')}</button>
-                  <button onClick={() => update({ reading: preferences.reading === 'pages' ? 'scroll' : 'pages' })}>{preferences.reading === 'pages' ? t('切换为完整阅读', 'Read full response') : t('切换为分页阅读', 'Read in pages')}</button>
-                  <button onClick={() => update({ theme: preferences.theme === 'light' ? 'dark' : 'light' })}>{preferences.theme === 'light' ? t('☾ 深色主题', '☾ Dark theme') : t('☀ 浅色主题', '☀ Light theme')}</button>
-                  <button onClick={() => update({ language: preferences.language === 'zh' ? 'en' : 'zh' })}>{preferences.language === 'zh' ? 'English' : '中文'}</button>
+                  <button onClick={() => setUiHidden(true)}><span aria-hidden="true">◉</span>{t('隐藏界面，欣赏立绘', 'Hide interface')}<kbd>H</kbd></button>
+                  <button onClick={toggleMute}><span aria-hidden="true">♫</span>{preferences.muted ? t('开启人物音效', 'Enable character sounds') : t('关闭人物音效', 'Mute character sounds')}</button>
+                  <button onClick={() => update({ reading: preferences.reading === 'pages' ? 'scroll' : 'pages' })}><span aria-hidden="true">▤</span>{preferences.reading === 'pages' ? t('切换为完整阅读', 'Read full response') : t('切换为分页阅读', 'Read in pages')}</button>
+                  <hr/><button onClick={() => update({ theme: preferences.theme === 'light' ? 'dark' : 'light' })}>{preferences.theme === 'light' ? t('☾ 深色主题', '☾ Dark theme') : t('☀ 浅色主题', '☀ Light theme')}</button>
+                  <button onClick={() => update({ language: preferences.language === 'zh' ? 'en' : 'zh' })}><span aria-hidden="true">◎</span>{preferences.language === 'zh' ? 'English' : '中文'}</button>
                 </div>
               </details>
               <button className="galgameCloseBtn" onClick={() => stateMachine.setGalGameMode(false)} title={t('退出对话模式 (Escape)', 'Exit dialogue (Escape)')}>{t('✕ 退出', '✕ Exit')}</button>
@@ -724,10 +792,16 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
           {/* Dialogue Text Area: Direct character response, click to switch to next paragraph */}
           <div
             className="galgameTextBody"
+            onWheel={event => {
+              if (preferences.reading !== 'pages' || (event.target as Element).closest('pre') || Math.abs(event.deltaY) < 15 || Date.now() - wheelTime.current < 400) return
+              event.preventDefault(); wheelTime.current = Date.now()
+              if (event.deltaY > 0) handleAdvancePage(); else setCurrentPageIndex(index => Math.max(0, index - 1))
+            }}
+            data-reading={preferences.reading} style={{ '--pet-text-size': preferences.fontSize + 'px' } as React.CSSProperties}
             onPointerDown={unlockAudio}
             ref={textScrollRef}
             onClick={handleAdvancePage}
-            role="button"
+            role="log" aria-live="polite" aria-atomic="false"
             tabIndex={0}
             onKeyDown={e => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleAdvancePage() } }}
             title={dialoguePages.length > 1 ? t("点击切换下一段话", "Next page") : undefined}
@@ -740,24 +814,10 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
 
           {preferences.reading === 'pages' && dialoguePages.length > 1 && <div className="petReadingNav">
             <button disabled={currentPageIndex === 0} onClick={() => setCurrentPageIndex(i => Math.max(0, i - 1))}>{t('← 上一段', '← Previous')}</button>
-            <span>{currentPageIndex + 1} / {dialoguePages.length}</span>
+            <span className="petSinglePage">{currentPageIndex + 1} / {dialoguePages.length}</span>
           </div>}
-          {/* GalGame Click to Continue Indicator */}
-          {preferences.reading === 'pages' && dialoguePages.length > 1 && (
-            <button className="galgamePagePrompt" onClick={handleAdvancePage}>
-              {currentPageIndex < dialoguePages.length - 1 ? (
-                <>
-                  <span>{isRevealing ? t('点击显示全部', 'Show full page') : t('▼ 点击下一段', '▼ Next page')}</span>
-                  <span>({currentPageIndex + 1}/{dialoguePages.length})</span>
-                </>
-              ) : (
-                <>
-                  <span>{t("● 点击回开头", "● Back to start")}</span>
-                  <span>({dialoguePages.length}/{dialoguePages.length})</span>
-                </>
-              )}
-            </button>
-          )}
+          {!isRevealing && preferences.reading === 'pages' && currentPageIndex < dialoguePages.length - 1 && <span className="petNextTriangle" aria-hidden="true">▼</span>}
+          {isRevealing && <button className="petSkipReveal" onClick={() => setRevealed(characters.length)}>{t('跳过本段动画', 'Reveal this page')}</button>}
 
           {/* Integrated Composer Box */}
           <div className="galgameComposerArea">
@@ -781,7 +841,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
         {logOpen && !uiHidden && <aside data-whale-pet="log" data-pet-theme={preferences.theme} className="petLog" role="dialog" aria-label={t('历史回顾', 'Conversation log')}>
           <header><strong>{t('历史回顾', 'Conversation log')}</strong><button onClick={() => setLogOpen(false)}>{t('关闭', 'Close')}</button></header>
           <p>{t('显示当前页面已加载的问答，切换会话后重新打开即可更新。', 'Showing messages loaded on this page. Reopen after switching conversations.')}</p>
-          {history.length ? history.map((entry, index) => <article key={index}><strong>{entry.role === 'user' ? t('你', 'You') : t('大肥鱼', 'Little Whale')}</strong><DialogueContent text={entry.text} copy={copyCode} copyLabel={t('复制', 'Copy')} /></article>) : <p>{t('当前页面暂无已加载记录。', 'No loaded messages on this page.')}</p>}
+          {history.length ? history.map((entry, index) => <article key={index}><strong>{entry.role === 'user' ? t('你', 'You') : t('大肥鱼', 'Little Whale')}</strong><button onClick={() => void copyCode(entry.text)}>{t('复制','Copy')}</button><DialogueContent text={entry.text} copy={copyCode} copyLabel={t('复制', 'Copy')} /></article>) : <p>{t('当前页面暂无已加载记录。', 'No loaded messages on this page.')}</p>}
         </aside>}
         {toast && <div data-whale-pet="toast" className="petToast" role="status">{toast}</div>}
       </>
@@ -793,6 +853,8 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   // -------------------------------------------------------------
   return (
     <div
+      data-ghost={ghost && !isSettingsOpen} data-hidden={petHidden}
+      data-paused={!foreground || reduceMotion} data-dimmed={dimmed && !isSettingsOpen} data-docked={preferences.docked}
       data-whale-pet="widget" data-pet-theme={preferences.theme} lang={preferences.language === 'zh' ? 'zh-CN' : 'en'}
       className={`${styles.overlayContainer} ${
         isDragging ? styles.dragging : affection === 'float' || affection === 'dizzy' ? 'petSettling' : status.state === 'WANDERING' ? styles.wandering : ''
@@ -805,24 +867,28 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       onMouseEnter={handleMouseEnterPet}
       onMouseLeave={handleMouseLeavePet}
     >
+      {doctor && <aside data-whale-pet="doctor" data-pet-theme={preferences.theme} className="petLog" role="dialog" aria-label="Doctor"><button onClick={() => setDoctor('')}>{t('关闭','Close')}</button><h2>Doctor</h2><p>{t('仅含选择器和匹配数量，不含聊天内容；空闲时生成标记可能缺失。','Selectors and counts only; no chat content. Generation markers can be absent while idle.')}</p><pre>{doctor}</pre><button onClick={() => void copyCode(doctor)}>{t('复制诊断信息','Copy diagnostics')}</button></aside>}
+      {!preferences.onboardingDone && !isSettingsOpen && <aside className="petOnboarding"><strong>{t('认识一下大肥鱼','Meet Little Whale')}</strong><p>{t('在头顶来回移动鼠标，试试摸头。','Move the pointer over my head for a head pat.')}</p><p>{t('点击聊天输入框，进入剧场模式。','Click the composer to enter the theatre.')}</p><p>{t('按住角色拖动，带我换个位置。','Drag me to a new spot.')}</p><button onClick={() => update({onboardingDone: true})}>{t('知道了 / 跳过','Got it / Skip')}</button></aside>}
       {toast && <div className="petToast" role="status">{toast}</div>}
       <div className={`${styles.characterWrapper} ${stateClass}`}>
         {/* Floating Action Toolbar */}
         <div
-          className={`${styles.toolbar} ${isMenuOpen ? styles.toolbarVisible : ''}`}
+          data-settings-open={isSettingsOpen}
+          className={`${styles.toolbar} ${isMenuOpen && !isSettingsOpen ? styles.toolbarVisible : ''}`}
           onMouseEnter={handleMouseEnterPet}
           onMouseLeave={handleMouseLeavePet}
         >
           {/* Balance display directly on top of the toolbar */}
-          <div data-low={lowBalance} className={styles.balanceHeaderBar} title={t("当前账户实时余额", "Account balance")}>
+          {status.balancesKnown && <div data-low={lowBalance} className={styles.balanceHeaderBar} title={t("当前账户实时余额", "Account balance")}>
             <span className={styles.balanceTag}>{t("充值:", "Paid:")}</span>
             <span className={styles.balanceVal}>{status.toppedUpBalance || '¥0.00'}</span>
             <span className={styles.balanceDivider}>|</span>
             <span className={styles.balanceTag}>{t("赠金:", "Bonus:")}</span>
             <span className={styles.balanceVal}>{status.grantedBalance || '¥0.00'}</span>
-          </div>
+            {balance !== null && <span title={t('每碗额度可在设置调整；不估算今日用量', 'Credit per bowl is configurable; daily usage is not estimated')}> · {t('还能吃', 'Bowls left')} {Math.floor(balance / preferences.ricePrice)}</span>}
+          </div>}
 
-          <div className={styles.toolbarButtons}>
+          <div className={styles.toolbarButtons}><button className={styles.toolBtn} aria-pressed={preferences.quiet} onClick={() => setPreferences(previous => quietPreset(previous))}>{preferences.quiet ? t('恢复陪伴', 'Resume') : t('安静模式', 'Quiet')}</button><button className={styles.toolBtn} aria-pressed={preferences.docked} onClick={() => update({docked: !preferences.docked})}>{t('贴边', 'Dock')}</button>
             {codeText && <button className={styles.toolBtn} onClick={() => void copyCode(codeText)}>{t('复制代码', 'Copy code')}</button>}
             <button
               className={styles.toolBtn}
@@ -835,7 +901,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
               className={styles.toolBtn}
               onClick={() => stateMachine.setGalGameMode(true)}
               title={t("切换进入对话模式", "Open dialogue")}
-            >{t('对话模式', 'Dialogue')}</button>
+            >{t('剧场模式', 'Theatre')}</button>
             <button
               className={styles.toolBtn}
               onClick={() => setIsSettingsOpen(!isSettingsOpen)}
@@ -848,7 +914,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
         {isSettingsOpen && (
           <div
             className={styles.settingsDrawer}
-            style={{ position: 'fixed', left: settingsAnchor.x, top: settingsAnchor.y, maxWidth: 'calc(100vw - 24px)', maxHeight: 'calc(100vh - 24px)' }}
+            style={{ position: 'fixed', left: settingsAnchor.x, top: settingsAnchor.y, maxWidth: 'calc(100vw - 32px)', maxHeight: Math.max(96, Math.min(window.innerHeight - 16, document.querySelector('[data-composer-card], [data-composer-seat]')?.getBoundingClientRect().top ?? window.innerHeight - 16) - settingsAnchor.y - 16) }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className={styles.drawerHeader}>
@@ -862,78 +928,29 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
               </button>
             </div>
 
-            <div className="petPreferenceGrid">
-              <span>{t('外观', 'Appearance')}</span>
-              <div className="petThemeSwitch" role="group" aria-label={t('主题', 'Theme')}>
-                {(['light', 'dark'] as const).map(theme => <button key={theme} className={preferences.theme === theme ? 'selected' : ''} aria-pressed={preferences.theme === theme} aria-label={theme === 'light' ? t('浅色主题', 'Light theme') : t('深色主题', 'Dark theme')} onClick={() => update({ theme })}>{theme === 'light' ? '☀' : '☾'}</button>)}
-              </div>
-              <span>Language / 语言</span>
-              <div className="petThemeSwitch">{(['zh', 'en'] as const).map(language => <button key={language} aria-pressed={preferences.language === language} className={preferences.language === language ? 'selected' : ''} onClick={() => update({ language })}>{language === 'zh' ? '中文' : 'English'}</button>)}</div>
-              <span id="pet-scale-label">{t('大小', 'Size')}</span>
-              <div className="petSizeSlider">
-                <input type="range" min="0" max="4" step="1" aria-labelledby="pet-scale-label" aria-valuetext={Math.round(selectedSize * 100) + '%'} value={sizeSteps.indexOf(selectedSize)} onChange={e => update({ scale: sizeSteps[Number(e.target.value)] })} />
-                <div className="petSizeDots" aria-hidden="true">{sizeSteps.map((scale, index) => <i key={scale} className={index === 2 ? 'default' : ''} />)}</div>
-              </div>
-              <label htmlFor="pet-opacity">{t('透明度', 'Opacity')}</label><input id="pet-opacity" type="range" min="0.35" max="1" step="0.05" value={preferences.opacity} onChange={e => update({ opacity: Number(e.target.value) })} />
-              <label title={t('回答时持续发出轻柔的人物说话音，也包含互动音效', 'Soft speech-like sounds during answers and interactions')}><input type="checkbox" checked={!preferences.muted} onChange={toggleMute} /> {t('人物音效', 'Character sounds')}</label>
-              <label><input type="checkbox" checked={preferences.typewriter} onChange={e => update({ typewriter: e.target.checked })} /> {t('逐字显示文字', 'Reveal text gradually')}</label>
-              <label htmlFor="pet-volume">{t('人物音效音量', 'Character volume')}</label><input id="pet-volume" type="range" min="0" max="1" step="0.05" value={preferences.volume} onChange={e => update({ volume: Number(e.target.value) })} />
-              <label><input type="checkbox" checked={preferences.reminders} onChange={e => update({ reminders: e.target.checked })} /> {t('午饭和熬夜提醒', 'Lunch & late-night reminders')}</label>
-              <label><input type="checkbox" checked={preferences.quiet} onChange={e => update({ quiet: e.target.checked })} /> {t('隐藏闲聊并关闭音效', 'Hide chatter & mute sounds')}</label>
-              <label><input type="checkbox" checked={preferences.autoAdvance} onChange={e => update({ autoAdvance: e.target.checked })} /> {t('读完后自动显示下一段', 'Show the next page automatically')}</label>
-            </div>
-            {/* Character Form */}
-            <div className={styles.drawerItem}>
-              <span className={styles.drawerLabel}>{t("角色形态", "Character")}</span>
-              <div className={styles.drawerBtnGroup}>
-                <button
-                  className={`${styles.drawerBtn} ${status.form === 'chibi' ? styles.drawerBtnActive : ''}`}
-                  onClick={() => stateMachine.setForm('chibi')}
-                >{t('迷你Q版', 'Chibi')}</button>
-                <button
-                  className={`${styles.drawerBtn} ${status.form === 'maiden' ? styles.drawerBtnActive : ''}`}
-                  onClick={() => stateMachine.setForm('maiden')}
-                >{t('少女立绘', 'Portrait')}</button>
-              </div>
-            </div>
-
-            {/* Launch Dialogue Theatre */}
-            <div className={styles.drawerItem}>
-              <button
-                className={styles.drawerFullBtn}
-                onClick={() => {
-                  setIsSettingsOpen(false)
-                  stateMachine.setGalGameMode(true)
-                }}
-              >{t('展开剧场对话模式', 'Open dialogue theatre')}</button>
-            </div>
-
-            {/* Auto Open on Chat */}
-            <div className={styles.drawerItem}>
-              <button
-                className={`${styles.drawerFullBtn} ${status.autoGalGameOnChat ? styles.drawerBtnActive : ''}`}
-                onClick={() => stateMachine.toggleAutoGalGameOnChat()}
-              >
-                {status.autoGalGameOnChat ? t("点击输入框自动展开: 开", "Open on composer click: On") : t("点击输入框自动展开: 关", "Open on composer click: Off")}
-              </button>
-            </div>
-
-            {/* Wandering Stroll */}
-            <div className={styles.drawerItem}>
-              <button
-                className={`${styles.drawerFullBtn} ${wanderingEnabled ? styles.drawerBtnActive : ''}`}
-                onClick={() => setWanderingEnabled(!wanderingEnabled)}
-              >
-                {wanderingEnabled ? t("闲置随机散步: 开", "Wandering: On") : t("闲置随机散步: 关", "Wandering: Off")}
-              </button>
+            <div className="petSettingsBody">
+            {SettingsPanel({ p: { ...preferences, form: status.form, autoGalGame: status.autoGalGameOnChat }, update: patch => { update(patch); if (patch.autoGalGame !== undefined) stateMachine.setAutoGalGameOnChat(patch.autoGalGame) }, toggleMute,
+              quiet: () => setPreferences(previous => quietPreset(previous)),
+              reset: () => { setPreferences({ ...defaultPreferences(), onboardingDone: true }); stateMachine.setForm('maiden'); stateMachine.setAutoGalGameOnChat(true); setPosition({ x: Math.max(16, window.innerWidth - 300), y: 100, side: 'right' }) },
+              doctor: () => setDoctor(diagnosticReport()),
+              notify: async () => {
+                if (preferences.notifications) { update({ notifications: false }); return }
+                if (typeof Notification === 'undefined') { setToast(t('当前环境不支持系统通知', 'Notifications are not available')); return }
+                const permission = await Notification.requestPermission()
+                update({ notifications: permission === 'granted' })
+                if (permission !== 'granted') setToast(t('未获得通知权限，已保持关闭', 'Permission not granted; notifications remain off'))
+              }
+            })}
+            <div className={styles.drawerBtnGroup}><button className={styles.drawerBtn} onClick={() => stateMachine.toggleForm()}>{t('切换角色形态', 'Switch character form')}</button><button className={styles.drawerBtn} onClick={() => { setIsSettingsOpen(false); stateMachine.setGalGameMode(true) }}>{t('剧场模式', 'Theatre')}</button></div>
             </div>
           </div>
         )}
 
         {/* Speech Dialogue Bubble */}
-        {!preferences.quiet && status.speech && !isSettingsOpen && (
-          <div className={styles.speechBubble} data-side={position.x < window.innerWidth / 2 ? 'right' : 'left'}>
-            {contextualSpeech}
+        {!preferences.quiet && !bubbleHidden && status.speech && !isSettingsOpen && (
+          <div style={{ fontSize: preferences.fontSize - 3 }} className={styles.speechBubble} onClick={() => stateMachine.setGalGameMode(true)} role="button" tabIndex={0} onKeyDown={event => { if(event.key === 'Enter' || event.key === ' ') {event.preventDefault(); stateMachine.setGalGameMode(true)} }} data-side={position.x < window.innerWidth / 2 ? 'right' : 'left'}>
+            <button className="petBubbleClose" aria-label={t('隐藏闲聊气泡','Hide chatter bubble')} onClick={event => {event.stopPropagation();setBubbleHidden(true)}}>×</button>
+            {contextualSpeech.replaceAll('主人', preferences.userName).replaceAll('大肥鱼', preferences.petName)}
           </div>
         )}
 
@@ -951,13 +968,14 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
         {/* Living Puppet (Double click switch to chibi removed) */}
         <div data-sleepy={preferences.reminders && hour >= 1 && hour < 5 && status.state === 'IDLE'} onMouseMove={patHead} className={`petSpriteSize ${isBouncing ? styles.qBounce : ''} petReaction-${affection}`} style={{ zoom: preferences.scale }}>
         <LivingPuppet
+          poseName={hitPose}
           imgSrc={currentImgSrc}
           isMaiden={isMaiden}
           isGalGameMode={false}
           mouthOpenRatio={status.mouthOpenRatio}
           gazeOffset={status.gazeOffset}
           state={status.state}
-          opacity={preferences.opacity}
+          opacity={ghost && !isSettingsOpen ? Math.min(0.25, preferences.opacity) : dimmed && !isSettingsOpen ? Math.min(0.4, preferences.opacity) : preferences.opacity}
           onMouseDown={handleMouseDown}
         />
         </div>

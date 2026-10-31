@@ -1,3 +1,4 @@
+import { HIT_AREAS } from './hitareas.js'
 import React from 'react'
 import type { PetState, GazeOffset } from './types.js'
 import styles from './LivingPuppet.module.css'
@@ -9,6 +10,7 @@ export interface LivingPuppetProps {
   mouthOpenRatio: number
   gazeOffset: GazeOffset
   state: PetState
+  poseName?: string
   opacity?: number
   onMouseDown?: (e: React.MouseEvent) => void
 }
@@ -22,6 +24,7 @@ export function LivingPuppet({
   state,
   onMouseDown,
   opacity = 1,
+  poseName = 'Maid',
 }: LivingPuppetProps) {
   // 3D Parallax Tilt based on Gaze: Smooth head tracking with perspective
   const rotY = gazeOffset.x * 5.0
@@ -51,6 +54,7 @@ export function LivingPuppet({
         {/* Base Character Illustration with High Precision 2.5D Shading */}
         <img
           src={imgSrc}
+          style={{ clipPath: HIT_AREAS[poseName], pointerEvents: isGalGameMode ? 'none' : undefined }}
           alt="DeepSeek Whale Maid"
           className={`${styles.characterBase} ${
             isMaiden

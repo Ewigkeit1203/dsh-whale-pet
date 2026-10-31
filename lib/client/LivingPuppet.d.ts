@@ -7,8 +7,9 @@ export interface LivingPuppetProps {
     mouthOpenRatio: number;
     gazeOffset: GazeOffset;
     state: PetState;
+    poseName?: string;
     opacity?: number;
     onMouseDown?: (e: React.MouseEvent) => void;
 }
-export declare function LivingPuppet({ imgSrc, isMaiden, isGalGameMode, mouthOpenRatio, gazeOffset, state, onMouseDown, opacity, }: LivingPuppetProps): React.JSX.Element;
+export declare function LivingPuppet({ imgSrc, isMaiden, isGalGameMode, mouthOpenRatio, gazeOffset, state, onMouseDown, opacity, poseName, }: LivingPuppetProps): React.JSX.Element;
 //# sourceMappingURL=LivingPuppet.d.ts.map

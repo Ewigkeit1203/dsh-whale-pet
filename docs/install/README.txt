@@ -1,9 +1,9 @@
-DeepSeek Little Whale Maid / 大肥鱼 — v0.3.0
+DeepSeek Little Whale Maid / 大肥鱼 — v0.4.0
 
 English / 中文
 README: https://github.com/Ewigkeit1203/dsh-whale-pet#readme
 Changelog / 更新日志: https://github.com/Ewigkeit1203/dsh-whale-pet/blob/main/CHANGELOG.md
-Release notes / 发布说明: https://github.com/Ewigkeit1203/dsh-whale-pet/blob/main/RELEASE_v0.3.0.md
+Release notes / 发布说明: https://github.com/Ewigkeit1203/dsh-whale-pet/blob/main/docs/releases/v0.4.0.md
 
 ENGLISH
 Extract the whole ZIP into a permanent folder. Run install.bat, then refresh DSH with Ctrl + R. End users do not need Node.js. Keep the extracted files in place; rerun the installer after moving folders. Run uninstall.bat to remove the plugin configuration. Local preferences remain saved.
@@ -22,6 +22,6 @@ New: Chinese/English UI, independent glass themes, character sounds, typewriter 
 Contributors / 贡献者
 Ewigkeit1203 — Creator & product direction / 项目发起与产品方向
 Antigravity (Google DeepMind) — AI-assisted initial engineering / AI 辅助初期工程
-Codex (OpenAI) — AI-assisted v0.3.0 engineering & documentation / AI 辅助 v0.3.0 工程与文档
+Codex (OpenAI) — AI-assisted v0.4.0 engineering & documentation / AI 辅助 v0.4.0 工程与文档
 
 MIT License; artwork belongs to its creator / 插画版权归原作者。

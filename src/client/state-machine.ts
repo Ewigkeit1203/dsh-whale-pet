@@ -42,10 +42,10 @@ const DIALOGUES: Record<PetState, string[]> = {
 }
 
 const SAJIAO_CLICK_DIALOGUES = [
-  '哼！不许随便戳大肥鱼，大肥鱼也是有脾气的！',
+  '嘿嘿，被你发现啦，摸摸头也可以哦～',
   '（鼓起腮帮子）主人坏心眼，就知道逗我玩~',
-  '撒娇中……必须补偿一碗热腾腾的白米饭才能哄好！',
-  '气鼓鼓！再戳我就要把你的消息吞进肚子里啦！',
+  '撒娇中……能陪你待一会儿就很开心啦～',
+  '收到你的戳戳啦，我会在这里陪着你。',
 ]
 
 const SAJIAO_LONELY_DIALOGUES = [
@@ -56,6 +56,8 @@ const SAJIAO_LONELY_DIALOGUES = [
 ]
 
 export class PetStateMachine {
+  private paused = false
+  public setPaused(paused: boolean): void { this.paused = paused }
   private disposed = false
   private blinkStepTimer: ReturnType<typeof setTimeout> | null = null
   private state: PetState = 'IDLE'
@@ -150,6 +152,7 @@ export class PetStateMachine {
   private startLivingAnimationLoops(): void {
     let mouthPhase = 0
     this.animationTimer = setInterval(() => {
+      if (this.paused) return
       if (this.isStreaming || this.state === 'ANSWERING' || this.state === 'EATING') {
         mouthPhase += 0.35
         const raw = (Math.sin(mouthPhase) + 1) / 2
@@ -181,6 +184,7 @@ export class PetStateMachine {
 
   private performBlinkCycle(onComplete: () => void): void {
     if (this.disposed) return
+    if (this.paused) { this.blinkStepTimer = setTimeout(onComplete, 1000); return }
     if (this.isReasoning) {
       this.blinkRatio = 0.5
       this.notify()

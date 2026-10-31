@@ -23,12 +23,17 @@ function loadBundle() {
     useCallback: (fn: any) => fn,
     useEffect(callback: any) { viewEffects.push(callback) },
   }
+  const listeners = new Map<string, Set<any>>()
+  const listen = (name: string, callback: any) => { if (!listeners.has(name)) listeners.set(name, new Set()); listeners.get(name)!.add(callback) }
+  const unlisten = (name: string, callback: any) => listeners.get(name)?.delete(callback)
+  class FakeElement { closest(selector: string) { return selector.includes('data-chat-node-key') ? this : null } }
   const context: any = {
+    Element: FakeElement,
     console, setTimeout, clearTimeout, setInterval, clearInterval,
-    window: { innerWidth: 1280, innerHeight: 800, __ModuleLoader__: {
+    window: { addEventListener: listen, removeEventListener: unlisten, innerWidth: 1280, innerHeight: 800, __ModuleLoader__: {
       load(module: any) { plugin = module.factory(() => React) },
     } },
-    document: { getElementById: () => ({}), querySelector: () => null, querySelectorAll: () => [] },
+    document: { hidden: false, hasFocus: () => true, addEventListener: listen, removeEventListener: unlisten, getElementById: () => ({}), querySelector: () => null, querySelectorAll: () => [] },
   }
   const bundle = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
     .replace('const DialogueContent =', 'globalThis.BundleAudio = PetAudio; const DialogueContent =')
@@ -43,7 +48,7 @@ function loadBundle() {
     }, effect(callback: any) { effects.push(callback) } })
     return overlay.props.stateMachine
   }
-  return { StateMachine: context.BundleStateMachine, Audio: context.BundleAudio, viewEffects, mount,
+  return { FakeElement, dispatch(name: string, event: any) { for(const callback of listeners.get(name) || [])callback(event) }, StateMachine: context.BundleStateMachine, Audio: context.BundleAudio, viewEffects, mount,
     render() { hookIndex = 0; viewEffects.length = 0; return overlay.type(overlay.props) }, effects }
 }
 
@@ -162,7 +167,7 @@ test('browser bundle: settings switch language and theme on pet roots only', t =
   dark.props.onClick()
   tree = runtime.render()
   assert.equal(tree.props['data-pet-theme'], 'dark')
-  assert.ok(walk(tree).some(node => node.children.includes('Character')))
+  assert.ok(walk(tree).some(node => node.children.includes('Companionship')))
 })
 
 test('browser bundle: snapped range resizes only the sprite and leaves controls unscaled', t => {
@@ -228,4 +233,64 @@ test('browser bundle: character voice repeats during streaming and stops with ef
   stop()
   t.mock.timers.tick(1000)
   assert.equal(sounds, 5, 'stream completion or mute cleanup cancels the voice loop')
+})
+
+test('browser bundle: reading fade recovers on pet hover, Alt alone controls click-through', t => {
+ const runtime=loadBundle(); const sm=runtime.mount();t.after(()=>sm.dispose())
+ runtime.render()
+ const reading=runtime.viewEffects.find(fn=>String(fn).includes('const reading'))
+ const cleanup=reading();t.after(cleanup)
+ runtime.dispatch('pointermove',{type:'pointermove',target:new runtime.FakeElement()})
+ let tree=runtime.render();assert.equal(tree.props['data-dimmed'],true)
+ tree.props.onMouseEnter()
+ tree=runtime.render();assert.equal(tree.props['data-dimmed'],false)
+ const shortcuts=runtime.viewEffects.find(fn=>String(fn).includes('const down'))
+ const remove=shortcuts();t.after(remove)
+ runtime.dispatch('keydown',{key:'Alt',altKey:false})
+ tree=runtime.render();assert.equal(tree.props['data-ghost'],true)
+ runtime.dispatch('keyup',{key:'Alt'})
+ tree=runtime.render();assert.equal(tree.props['data-ghost'],false)
+})
+
+test('browser bundle: an open settings panel follows a pet drag without being re-opened', t=>{
+ const runtime=loadBundle();const sm=runtime.mount();t.after(()=>sm.dispose())
+ let tree=runtime.render()
+ walk(tree).find(node=>node.children.includes('设置')).props.onClick()
+ runtime.render()
+ const place=runtime.viewEffects.find(fn=>String(fn).includes('const place'))
+ const removePlace=place();t.after(removePlace)
+ tree=runtime.render()
+ const before=walk(tree).find(node=>node.props.className==='settingsDrawer').props.style
+ walk(tree).find(node=>node.props.imgSrc).props.onMouseDown({button:0,clientX:1000,clientY:400})
+ runtime.render()
+ runtime.viewEffects.find(fn=>String(fn).includes('panelTether.current'))()
+ const drag=runtime.viewEffects.find(fn=>String(fn).includes('const cancelDrag'))
+ const removeDrag=drag();t.after(removeDrag)
+ runtime.dispatch('mousemove',{clientX:900,clientY:350})
+ runtime.render()
+ runtime.viewEffects.find(fn=>String(fn).includes('panelTether.current'))()
+ tree=runtime.render()
+ const after=walk(tree).find(node=>node.props.className==='settingsDrawer').props.style
+ assert.equal(after.left,before.left-100)
+ assert.equal(after.top,before.top-50)
+})
+
+test('browser bundle: font size is continuously adjustable with a live numeric label', t=>{
+ const runtime=loadBundle();const sm=runtime.mount();t.after(()=>sm.dispose());let tree=runtime.render()
+ walk(tree).find(node=>node.children.includes('设置')).props.onClick();tree=runtime.render()
+ const slider=walk(tree).find(node=>node.props.id==='pet-font')
+ assert.equal(slider.props.type,'range');assert.equal(slider.props.step,'0.1')
+ slider.props.onChange({target:{value:'18.6'}});tree=runtime.render()
+ assert.ok(walk(tree).some(node=>node.type==='output' && node.children.includes(18.6)))
+})
+test('browser bundle: shaking uses the new Dizzy asset and returns to the normal portrait',t=>{
+ t.mock.timers.enable({apis:['setTimeout']})
+ const runtime=loadBundle();const sm=runtime.mount();t.after(()=>sm.dispose());let tree=runtime.render()
+ walk(tree).find(node=>node.props.imgSrc).props.onMouseDown({button:0,clientX:900,clientY:400});runtime.render()
+ const remove=runtime.viewEffects.find(fn=>String(fn).includes('const cancelDrag'))();t.after(remove)
+ for(const x of [1200,700,1200,700])runtime.dispatch('mousemove',{clientX:x,clientY:400})
+ runtime.dispatch('mouseup',{clientX:700,clientY:400});tree=runtime.render()
+ assert.equal(walk(tree).find(node=>node.props.imgSrc).props.poseName,'Dizzy')
+ t.mock.timers.tick(2500);tree=runtime.render()
+ assert.equal(walk(tree).find(node=>node.props.imgSrc).props.poseName,'Maid')
 })
