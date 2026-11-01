@@ -1,7 +1,51 @@
 <a id="top"></a>
 # 大肥鱼 — dsh-whale-pet
 
-[English](#english) | [中文说明](#chinese) | [Releases / 下载](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) | [Changelog / 更新日志](CHANGELOG.md) | [v0.5.2 notes / 发布说明](docs/releases/v0.5.2.md) | [Docs / 文档](docs/README.md)
+[使用截图 / Screenshots](#screenshots) | [English](#english) | [中文说明](#chinese) | [Releases / 下载](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) | [Changelog / 更新日志](CHANGELOG.md) | [v0.5.2 notes / 发布说明](docs/releases/v0.5.2.md) | [Docs / 文档](docs/README.md)
+
+<a id="screenshots"></a>
+## 使用截图 / Screenshots
+
+**她就住在 DSH 里。** 头顶小标签显示当前的梁文峰 / 梁文谷时段和账户余额；鼠标悬停时出现快捷操作；时段切换时她会告诉你。<br>
+**She lives inside DSH.** Chips above her head show the DeepSeek pricing period (梁文峰 = peak, 梁文谷 = off-peak) and your balance; hovering reveals quick actions, and she announces each period switch.
+
+![大肥鱼在 DSH 中：计费时段、余额与快捷操作 / The companion in DSH with pricing period, balance and quick actions](docs/screenshots/companion.jpg)
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/settings-dark.jpg" alt="深色设置：余额与梁文峰时间 / Dark settings with balance and peak period"></td>
+    <td width="50%"><img src="docs/screenshots/settings-light.jpg" alt="浅色设置：周末全天梁文谷 / Light settings, off-peak all weekend"></td>
+  </tr>
+  <tr>
+    <td>设置面板贴在她身旁，不会挡住她：余额卡片、计费时段，以及到几点结束。<br>Settings sit beside her, never on top: balance, pricing period and when it ends.</td>
+    <td>浅色主题，周末全天梁文谷（半价）。主题只影响插件本身。<br>Light theme; weekends are off-peak all day. Themes affect only the companion.</td>
+  </tr>
+</table>
+
+**GalGame 对话剧场：** 点击输入框即可进入。思考过程显示在独立气泡里，回答逐字出现，代码有专门的卡片，还能一键复制。<br>
+**Visual-novel theatre:** click the chat box to enter. Reasoning gets its own bubble, answers appear as dialogue, and code gets copyable cards.
+
+![剧场：思考气泡与回答 / Theatre with reasoning bubble and answer](docs/screenshots/theatre.jpg)
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/head-pat.jpg" alt="摸摸头 / Head pat"></td>
+    <td width="50%"><img src="docs/screenshots/dizzy.jpg" alt="晃晕了 / Dizzy after shaking"></td>
+  </tr>
+  <tr>
+    <td>在她头上来回移动鼠标：摸摸头，她会叫出你设置的称呼。<br>Move the pointer over her head for a head pat; she uses the name you set.</td>
+    <td>拖着她快速晃一晃，她就晕了。<br>Shake her quickly while dragging and she gets dizzy.</td>
+  </tr>
+</table>
+
+<details>
+<summary>代码卡片与回答结束后的干饭时间 / Code card and rice break after the answer</summary>
+
+![剧场代码页 / Theatre code page](docs/screenshots/theatre-code.jpg)
+
+</details>
+
+<sub>截图使用模拟的 DSH 页面和演示余额，插件本身就是当前 v0.5.2 的真实代码。 / Screenshots use a simulated DSH page and sample balance; the plugin is the actual v0.5.2 build.</sub>
 
 <a id="english"></a>
 ## English
