@@ -64,7 +64,8 @@ export function TheatreView(v: TheatreViewProps) {
     on.unlock()
     if (!(event.target as Element).closest('details')) event.currentTarget.querySelector('details[open]')?.removeAttribute('open')
   }
-  return <>
+  // Distinct roots prevent React from reusing the centred backdrop as the widget.
+  return <React.Fragment key="theatre">
     <div {...common} data-whale-pet="backdrop" className="galgameBackdrop" onClick={on.backdrop} onPointerDown={on.unlock} title={t('点击空白处退出剧场', 'Click the background to exit')} />
 
     {!v.uiHidden && v.showThoughts && <div {...common} data-whale-pet="thought" data-expanded={v.expanded} className="comicThoughtBubble" role="complementary" aria-label={t('思考过程', 'Thoughts')}>
@@ -164,5 +165,5 @@ export function TheatreView(v: TheatreViewProps) {
     </aside>}
 
     {v.toast && <div data-whale-pet="toast" data-pet-theme={p.theme} className="petToast" role="status">{v.toast}</div>}
-  </>
+  </React.Fragment>
 }

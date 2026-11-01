@@ -172,13 +172,11 @@ export function apply(ctx: Context): void {
   // 2. User Input & Composer Interaction Listener
   ctx.effect(() => {
     const isComposerElement = (el: EventTarget | null): boolean => {
-      if (!(el instanceof HTMLElement) || el.closest('[data-whale-pet]')) return false
-      return (
-        el.tagName === 'TEXTAREA' ||
-        el.hasAttribute('data-composer-input') ||
-        el.isContentEditable ||
-        el.closest('[data-composer-seat]') !== null
-      )
+      if (!(el instanceof Element) || el.closest('[data-whale-pet]')) return false
+      // Composer controls and their nested SVG/labels must keep their native actions.
+      if (el.closest('button, [role="button"], a, input, select, [role="menuitem"], [contenteditable="false"]')) return false
+      const editor = el.closest('[data-composer-input], textarea, [contenteditable="true"], [contenteditable="plaintext-only"], [role="textbox"]')
+      return !!editor?.closest('[data-composer-card], [data-composer-seat], [data-slot="conversation.composer.bar"]')
     }
 
     const handleFocusIn = (e: FocusEvent) => {
@@ -208,21 +206,8 @@ export function apply(ctx: Context): void {
       stateMachine.resetActivity()
       const status = stateMachine.getStatus()
       if (!status.autoGalGameOnChat) return
-      const target = e.target as HTMLElement | null
-      if (!target || target.closest('[data-whale-pet]')) return
-      if (
-        (target.closest && (
-          target.closest('[data-composer-card]') ||
-          target.closest('[data-composer-seat]') ||
-          target.closest('[data-composer-input]') ||
-          target.closest('[data-slot="conversation.composer.bar"]')
-        )) ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable
-      ) {
-        if (!status.isGalGameMode) {
-          stateMachine.setGalGameMode(true)
-        }
+      if (isComposerElement(e.target) && !status.isGalGameMode) {
+        stateMachine.setGalGameMode(true)
       }
     }
 

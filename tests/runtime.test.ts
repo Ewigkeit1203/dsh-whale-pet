@@ -369,3 +369,55 @@ test('browser bundle: announces 梁文峰 / 梁文谷 time and shows the period 
   const chip = walk(tree).find((n: any) => n.props.className === 'petTierChip')
   assert.ok(['peak', 'valley'].includes(chip.props['data-tier']))
 })
+
+
+test('hotfix: only composer text clicks enter theatre; controls and nested icons keep native actions', t => {
+  const runtime = loadBundle(); const sm = runtime.mount(); t.after(() => sm.dispose())
+  const cleanup = runtime.effects.find(fn => String(fn).includes('const isComposerElement'))()
+  t.after(cleanup)
+  const card = new runtime.FakeElement()
+  const editor = new runtime.FakeElement()
+  editor.closest = () => card
+  const target = (kind: string) => {
+    const node = new runtime.FakeElement()
+    node.closest = (selector: string) => {
+      if (selector === '[data-whale-pet]') return kind === 'pet' ? node : null
+      if (selector.startsWith('button,')) return ['file', 'permission', 'model', 'svg', 'send'].includes(kind) ? node : null
+      if (selector.startsWith('[data-composer-input]')) return ['editor', 'editor-child'].includes(kind) ? editor : null
+      return null
+    }
+    return node
+  }
+  for (const kind of ['file', 'permission', 'model', 'svg', 'send', 'card', 'pet', 'unrelated']) {
+    runtime.dispatch('click', { isTrusted: true, target: target(kind), preventDefault() { assert.fail('native action intercepted') } })
+    assert.equal(sm.getStatus().isGalGameMode, false, kind)
+    runtime.dispatch('focusin', { target: target(kind) })
+    assert.equal(sm.getStatus().isInputFocused, false, kind + ' focus')
+  }
+  for (const kind of ['editor', 'editor-child']) {
+    runtime.dispatch('click', { isTrusted: true, target: target(kind) })
+    assert.equal(sm.getStatus().isGalGameMode, true, kind)
+    sm.setGalGameMode(false)
+  }
+  runtime.dispatch('click', { isTrusted: false, target: target('editor') })
+  assert.equal(sm.getStatus().isGalGameMode, false, 'synthetic clicks do not enter')
+  sm.setAutoGalGameOnChat(false)
+  runtime.dispatch('click', { isTrusted: true, target: target('editor') })
+  assert.equal(sm.getStatus().isGalGameMode, false, 'auto entry preference respected')
+})
+
+test('hotfix: leaving theatre mounts a distinct widget root at its saved position', t => {
+  const runtime = loadBundle(); const sm = runtime.mount(); t.after(() => sm.dispose())
+  const widget = runtime.render()
+  const unsubscribe = runtime.viewEffects.find(fn => String(fn).includes('stateMachine.subscribe'))()
+  t.after(unsubscribe)
+  sm.setGalGameMode(true)
+  const theatre = runtime.render()
+  assert.notEqual(theatre.props.key, widget.props.key, 'centred theatre nodes cannot be reconciled into the positioned widget')
+  assert.equal(widget.props.key, 'widget')
+  sm.setGalGameMode(false)
+  const restored = runtime.render()
+  assert.equal(restored.props.key, 'widget')
+  assert.equal(restored.props.style.left, widget.props.style.left)
+  assert.equal(restored.props.style.top, widget.props.style.top)
+})

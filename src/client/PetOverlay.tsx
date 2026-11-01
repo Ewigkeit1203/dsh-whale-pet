@@ -824,6 +824,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
 
   return (
     <div
+      key="widget"
       data-ghost={ghost && !isSettingsOpen} data-hidden={petHidden}
       data-paused={!foreground || reduceMotion} data-dimmed={dimmed && !isSettingsOpen} data-docked={docked}
       data-dragging={isDragging || undefined} data-settling={affection === 'float' || affection === 'dizzy' || undefined}
