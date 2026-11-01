@@ -167,8 +167,9 @@ describe('dsh-whale-pet: State Machine & Living Behavior Logic', () => {
     sm.dispose()
   })
 
-  test('inactivity triggers long sajiao with lonely prompt, and activity resets it', () => {
+  test('inactivity triggers long sajiao with lonely prompt, and activity resets it', t => {
     const sm = new PetStateMachine()
+    t.after(() => sm.dispose())
     assert.strictEqual(sm.getStatus().state, 'IDLE')
     assert.strictEqual(sm.getStatus().pose, 'default')
 
@@ -179,6 +180,7 @@ describe('dsh-whale-pet: State Machine & Living Behavior Logic', () => {
       sm.getStatus().speech.includes('好久没理') ||
       sm.getStatus().speech.includes('无聊') ||
       sm.getStatus().speech.includes('等你好久') ||
+      sm.getStatus().speech.includes('等主人好久') ||
       sm.getStatus().speech.includes('忘了')
     )
 

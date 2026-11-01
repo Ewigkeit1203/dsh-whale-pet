@@ -5,7 +5,7 @@ import vm from 'node:vm'
 import { PetStateMachine } from '../lib/client/state-machine.js'
 
 // Exercise the real browser artifact as well as the TypeScript compiler output.
-function loadBundle(storage?: { getItem(key: string): string | null; setItem(key: string, value: string): void }) {
+function loadBundle(storage?: { getItem(key: string): string | null; setItem(key: string, value: string): void }, frames?: Array<() => void>) {
   let plugin: any
   let hookIndex = 0
   const hooks: any[] = []
@@ -28,6 +28,7 @@ function loadBundle(storage?: { getItem(key: string): string | null; setItem(key
   const unlisten = (name: string, callback: any) => listeners.get(name)?.delete(callback)
   class FakeElement { closest(selector: string) { return selector.includes('data-chat-node-key') ? this : null } }
   const context: any = {
+    requestAnimationFrame: frames ? (callback: () => void) => frames.push(callback) : undefined,
     Element: FakeElement,
     console, setTimeout, clearTimeout, setInterval, clearInterval, localStorage: storage,
     window: { addEventListener: listen, removeEventListener: unlisten, innerWidth: 1280, innerHeight: 800, __ModuleLoader__: {
@@ -420,4 +421,26 @@ test('hotfix: leaving theatre mounts a distinct widget root at its saved positio
   assert.equal(restored.props.key, 'widget')
   assert.equal(restored.props.style.left, widget.props.style.left)
   assert.equal(restored.props.style.top, widget.props.style.top)
+})
+
+
+test('wandering: frame-batched status reaches walking mode before a visible position change', t => {
+  t.mock.timers.enable({ apis: ['setInterval', 'setTimeout'] })
+  const frames: Array<() => void> = []
+  const runtime = loadBundle(undefined, frames); const sm = runtime.mount(); t.after(() => sm.dispose())
+  const before = runtime.render()
+  const unsubscribe = runtime.viewEffects.find(fn => String(fn).includes('stateMachine.subscribe'))(); t.after(unsubscribe)
+  const cleanup = runtime.viewEffects.find(fn => String(fn).includes('wanderDestination'))(); t.after(cleanup)
+  t.mock.timers.tick(14000)
+  assert.equal(sm.getStatus().state, 'WANDERING')
+  assert.equal(runtime.render().props.style.left, before.props.style.left, 'wait for the frame-batched walking render')
+  while (frames.length) frames.shift()!()
+  const walking = runtime.render()
+  assert.equal(walking.props['data-wandering'], true)
+  runtime.viewEffects.find(fn => String(fn).includes("status.state !== 'WANDERING'"))()
+  const moved = runtime.render()
+  assert.ok(Math.abs(parseFloat(moved.props.style.left) - parseFloat(before.props.style.left)) >= 100, 'walk really changes screen position')
+  assert.equal(moved.props.style.top, before.props.style.top, 'no jump to the bottom of the window')
+  t.mock.timers.tick(3300)
+  assert.equal(sm.getStatus().state, 'EATING', 'rest only after the slow walk finishes')
 })

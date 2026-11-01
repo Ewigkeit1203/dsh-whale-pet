@@ -82,4 +82,9 @@ export declare function placeGroupX(x: number, petWidth: number, viewportWidth: 
     fits: boolean;
 };
 export declare function layoutGroup(input: GroupInput): GroupLayout;
+/** Choose a visible stroll from the current position, never a near-identical right-edge target. */
+export declare function wanderDestination(x: number, y: number, width: number, height: number, vw: number, vh: number, random?: number): {
+    x: number;
+    y: number;
+} | null;
 //# sourceMappingURL=layout.d.ts.map

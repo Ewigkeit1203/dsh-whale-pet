@@ -13,9 +13,11 @@ _Nothing yet._
 
 ### [v0.5.1] - 2026-10-31
 
+- Follow-up: restore visible wandering travel with frame-synchronized movement and destinations relative to the current position.
+
 - Limit automatic theatre entry to the composer text editor; attachment, permission, model and other composer controls keep their native actions.
 - Give theatre and widget distinct React root identities so exiting restores the pet in place rather than animating the backdrop into the widget.
-- Added two browser-bundle regression tests; 86 tests pass.
+- Added regression coverage for composer controls, mode restoration, wandering routes and frame scheduling; 88 tests pass.
 
 ### [v0.5.0] - 2026-10-31
 
@@ -124,7 +126,7 @@ _暂无。_
 
 - 自动进入剧场仅响应文字输入区；添加文件、权限、模型等控件保留原生操作。
 - 剧场与桌宠使用独立 React 根节点标识，退出时原地恢复，不再从屏幕中央滑回。
-- 新增两项运行包回归测试，共 86 项测试通过。
+- 新增控件触发、模式恢复、散步路线与分帧调度回归检查，共 88 项测试通过。
 
 ### [v0.5.0] - 2026-10-31
 

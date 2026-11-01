@@ -5,7 +5,7 @@ import { dialogueBlocks, readConversationLog, type HistoryEntry } from './experi
 import { readPreferences, savePreferences, quietPreset, defaultPreferences, type Preferences } from './preferences.js'
 import { FEATURES, effectiveForm } from './features.js'
 import { POSE_META, spriteGeometry } from './poses.js'
-import { LAYOUT, layoutGroup, clampPet, placeGroupX, groupFits, type PanelSide } from './layout.js'
+import { LAYOUT, layoutGroup, clampPet, wanderDestination, placeGroupX, groupFits, type PanelSide } from './layout.js'
 import { walletView } from './wallet.js'
 import { PetVoice, appendedSpeech, speakableText } from './voice.js'
 import { tariffAt, type Tier } from './peak.js'
@@ -121,6 +121,10 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const previousTierRef = useRef<Tier | null>(null)
   const isDraggingRef = useRef(false)
   const dragStartRef = useRef<{ startX: number; startY: number; petX: number; petY: number; startTime: number; maxDistance: number; distance: number; lastX: number; lastY: number; lastMove: number; vx: number; vy: number } | null>(null)
+  const wanderPositionRef = useRef(position)
+  wanderPositionRef.current = position
+  const [wanderRequest, setWanderRequest] = useState(0)
+  const pendingWanderRef = useRef<{ x: number; y: number } | null>(null)
   const wanderTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const delayedTimers = useRef(new Set<ReturnType<typeof setTimeout>>())
   const menuTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -484,6 +488,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   // Wandering pauses while dragging, hovering, docked, in the theatre or with settings open.
   useEffect(() => {
     if (petHidden || !preferences.wandering || status.isGalGameMode || reduceMotion || !foreground || docked || isSettingsOpen) {
+      pendingWanderRef.current = null
       if (wanderTimerRef.current !== null) { clearInterval(wanderTimerRef.current); wanderTimerRef.current = null }
       return
     }
@@ -491,15 +496,26 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       if (isDraggingRef.current || isMenuOpen) return
       const current = stateMachine.getStatus()
       if (current.state !== 'IDLE' && current.state !== 'WANDERING') return
+      const from = wanderPositionRef.current
+      const target = wanderDestination(from.x, from.y, stageW, stageH, window.innerWidth, window.innerHeight)
+      if (!target) return
+      pendingWanderRef.current = target
       stateMachine.setWandering(true)
-      const maxX = Math.max(LAYOUT.margin, window.innerWidth - stageW - 40)
-      const minX = Math.max(LAYOUT.margin, window.innerWidth - stageW - 180)
-      setPosition(clampPet(Math.floor(minX + Math.random() * (maxX - minX)), window.innerHeight - stageH - 40, stageW, stageH, window.innerWidth, window.innerHeight))
-      later(() => stateMachine.finishWanderingWithEating(3500), 3300)
+      setWanderRequest(request => request + 1)
     }, 14000)
     wanderTimerRef.current = interval
     return () => { clearInterval(interval); wanderTimerRef.current = null }
   }, [preferences.wandering, status.isGalGameMode, isMenuOpen, isSettingsOpen, stateMachine, reduceMotion, foreground, docked, petHidden, stageW, stageH])
+
+  // Move only after the WANDERING render installs its slow position transition.
+  // The model subscription is frame-batched; moving in the interval used the idle transition.
+  useEffect(() => {
+    if (status.state !== 'WANDERING' || !pendingWanderRef.current) return
+    const target = pendingWanderRef.current
+    pendingWanderRef.current = null
+    setPosition(target)
+    later(() => stateMachine.finishWanderingWithEating(3500), 3300)
+  }, [status.state, wanderRequest, stateMachine])
 
   // ---- Drag, click, inertia --------------------------------------------------
   const handleMouseDown = useCallback((e: React.MouseEvent) => {

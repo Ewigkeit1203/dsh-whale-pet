@@ -14,6 +14,8 @@ The product name is **大肥鱼** in both languages; `dsh-whale-pet` remains the
 
 ### v0.5.1 hotfix
 
+- Wandering now travels visibly from the current position with the intended slow transition.
+
 - Composer attachment, permission and model buttons no longer trigger theatre mode. Only clicking the text editor opens it automatically.
 - Leaving theatre restores the companion at its saved position without sliding across the screen.
 
@@ -77,7 +79,7 @@ npm test
 node --check lib/client.js
 ```
 
-The build compiles the views, state, host adapter, CSS and all 12 PNGs into `lib/client.js` for DSH's `__ModuleLoader__`. Edit the source and rebuild; do not edit `lib/client.js` by hand. Current automated suite: **86 tests**.
+The build compiles the views, state, host adapter, CSS and all 12 PNGs into `lib/client.js` for DSH's `__ModuleLoader__`. Edit the source and rebuild; do not edit `lib/client.js` by hand. Current automated suite: **88 tests**.
 
 ### Contributors and acknowledgements
 
@@ -108,6 +110,8 @@ Contributions and reports are welcome through [Issues](https://github.com/Ewigke
 中英文统一使用产品名 **大肥鱼**；仓库与包标识继续使用 `dsh-whale-pet`。
 
 ### v0.5.1 快速修复
+
+- 散步恢复真实位移，按当前位置选择路线，并使用慢速过渡。
 
 - 添加文件、权限及模型按钮不再误触剧场；仅点击文字输入区自动进入。
 - 退出剧场直接在保存的位置恢复桌宠，消除横穿屏幕的滑动。
@@ -172,7 +176,7 @@ npm test
 node --check lib/client.js
 ```
 
-构建会把界面、状态机、宿主适配器、CSS 和 12 张 PNG 编入 DSH `__ModuleLoader__` 使用的 `lib/client.js`。请修改源码后重新构建，不要手动编辑 `lib/client.js`。当前共有 **86 项自动测试**。
+构建会把界面、状态机、宿主适配器、CSS 和 12 张 PNG 编入 DSH `__ModuleLoader__` 使用的 `lib/client.js`。请修改源码后重新构建，不要手动编辑 `lib/client.js`。当前共有 **88 项自动测试**。
 
 ### 贡献者与致谢
 

@@ -88,3 +88,18 @@ test('a docked (pinned) pet is never moved; the panel goes to the free side or d
 test('long English panels and large text only grow the scroll body, never push the header off screen', () => {
   for (const panelHeight of [300, 900, 4000]) check('tall content ' + panelHeight, { viewportWidth: 1280, viewportHeight: 720, composerTop: 600, pet: { x: 1000, y: 200, width: 307, height: 432 }, panelHeight })
 })
+
+
+test('wandering destinations have visible travel, remain in bounds and handle tiny viewports', async () => {
+  const { wanderDestination, clampPet } = await import('../lib/client/layout.js')
+  for (const [vw, vh, w, h] of [[1280,800,340,480], [1920,1080,440,600], [600,500,280,300]]) {
+    for (const x of [16, vw / 2, vw - w - 16]) for (const random of [0,0.5,1]) {
+      const from = clampPet(x,100,w,h,vw,vh)
+      const to = wanderDestination(from.x,from.y,w,h,vw,vh,random)!
+      assert.ok(Math.abs(to.x-from.x) >= Math.min(100,(vw-w-32)/2))
+      assert.deepEqual(clampPet(to.x,to.y,w,h,vw,vh),to)
+      assert.equal(to.y,from.y)
+    }
+  }
+  assert.equal(wanderDestination(16,90,400,300,420,500,0),null)
+})

@@ -159,3 +159,16 @@ export function layoutGroup(input: GroupInput): GroupLayout {
     panel: { x: Math.round(panelX), y: Math.round(panelY), width, maxHeight: Math.round(floor - panelY) },
   }
 }
+
+/** Choose a visible stroll from the current position, never a near-identical right-edge target. */
+export function wanderDestination(x: number, y: number, width: number, height: number, vw: number, vh: number, random = Math.random()): { x: number; y: number } | null {
+  const current = clampPet(x, y, width, height, vw, vh)
+  const left = LAYOUT.margin
+  const right = Math.max(left, vw - width - LAYOUT.margin)
+  const roomLeft = current.x - left, roomRight = right - current.x
+  const direction = roomRight >= roomLeft ? 1 : -1
+  const room = Math.max(roomLeft, roomRight)
+  if (room < 8) return null
+  const distance = Math.min(room, 100 + Math.max(0, Math.min(1, random)) * 120)
+  return clampPet(current.x + direction * distance, current.y, width, height, vw, vh)
+}
