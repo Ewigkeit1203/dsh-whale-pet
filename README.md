@@ -1,7 +1,7 @@
 <a id="top"></a>
 # 大肥鱼 — dsh-whale-pet
 
-[English](#english) | [中文说明](#chinese) | [Releases / 下载](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) | [Changelog / 更新日志](CHANGELOG.md) | [v0.5.1 notes / 发布说明](docs/releases/v0.5.1.md) | [Docs / 文档](docs/README.md)
+[English](#english) | [中文说明](#chinese) | [Releases / 下载](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) | [Changelog / 更新日志](CHANGELOG.md) | [v0.5.2 notes / 发布说明](docs/releases/v0.5.2.md) | [Docs / 文档](docs/README.md)
 
 <a id="english"></a>
 ## English
@@ -11,6 +11,12 @@
 An interactive desktop/web companion and visual-novel (GalGame) conversation theatre for the official [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness). 大肥鱼 lives inside DSH, reacts to reasoning and answers, and keeps you company while you work.
 
 The product name is **大肥鱼** in both languages; `dsh-whale-pet` remains the repository and package identifier.
+
+### v0.5.2 Hotfix
+
+- Settings retain a readable height when switching between windowed and maximized views.
+- Strolls cover the available DSH viewport, wait a random 8–20 seconds, and only occasionally end with a rice break.
+- Contributions require review and testing; releases require the creator’s approval. AI artwork must match the character and have clear provenance and permissions.
 
 ### v0.5.1 hotfix
 
@@ -27,11 +33,11 @@ The product name is **大肥鱼** in both languages; `dsh-whale-pet` remains the
 - **Consistent portraits.** All poses share one head size and foot line; 撒娇 no longer looks smaller.
 - **Your name in her lines**, a smoother drag, a new soft character voice, a regrouped theatre and rebuilt light/dark themes.
 
-Full notes: [v0.5.1](docs/releases/v0.5.1.md). Twelve illustrations are embedded: five random thinking poses, inspiration, answering, 撒娇, dizzy, rice breaks and more. Reasoning has its own scrollable bubble; she uses the answering pose while output streams and eats rice afterwards. Chibi form switching is paused for now (its artwork is kept).
+Full notes: [v0.5.2](docs/releases/v0.5.2.md). Twelve illustrations are embedded: five random thinking poses, inspiration, answering, 撒娇, dizzy, rice breaks and more. Reasoning has its own scrollable bubble; she uses the answering pose while output streams and eats rice afterwards. Chibi form switching is paused for now (its artwork is kept).
 
 ### Install or upgrade
 
-1. Download **dsh-whale-pet-v0.5.1.zip** from [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases).
+1. Download **dsh-whale-pet-v0.5.2.zip** from [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases).
 2. Extract the entire archive into a permanent folder, such as `D:\dsh-whale-pet`.
 3. Run `install.bat`, then open DSH or press **Ctrl + R** in its window.
 4. Upgrade in the same folder, or rerun the installer if you moved the plugin. Keep the extracted files in place.
@@ -79,7 +85,7 @@ npm test
 node --check lib/client.js
 ```
 
-The build compiles the views, state, host adapter, CSS and all 12 PNGs into `lib/client.js` for DSH's `__ModuleLoader__`. Edit the source and rebuild; do not edit `lib/client.js` by hand. Current automated suite: **88 tests**.
+The build compiles the views, state, host adapter, CSS and all 12 PNGs into `lib/client.js` for DSH's `__ModuleLoader__`. Edit the source and rebuild; do not edit `lib/client.js` by hand. Current automated suite: **94 tests**.
 
 ### Contributors and acknowledgements
 
@@ -90,7 +96,7 @@ The build compiles the views, state, host adapter, CSS and all 12 PNGs into `lib
 - **Gemini 4 Argon (Google)** — AI-assisted product review, theatre layout and visual interaction proposals; advisory contribution.
 - **Claude Opus 5.5 (Anthropic)** — AI-assisted v0.5.0 frontend: pet and settings group layout with edge handling, rebuilt settings panel and footer, per-pose portrait calibration, balance through DSH's account service with honest states, the 梁文峰 / 梁文谷 pricing-period announcements, render-performance work, theatre layout, a new Web Audio character voice, the design-token stylesheet rewrite and the related regression tests.
 
-Contributions and reports are welcome through [Issues](https://github.com/Ewigkeit1203/dsh-whale-pet/issues) and pull requests. Include your DSH version and reproduction steps; omit private conversations and credentials.
+See the [contribution guide](CONTRIBUTING.md) for PR review, release approval and AI-art requirements. Contributions and reports are welcome through [Issues](https://github.com/Ewigkeit1203/dsh-whale-pet/issues) and pull requests. Include your DSH version and reproduction steps; omit private conversations and credentials.
 
 ### License
 
@@ -109,6 +115,12 @@ Contributions and reports are welcome through [Issues](https://github.com/Ewigke
 
 中英文统一使用产品名 **大肥鱼**；仓库与包标识继续使用 `dsh-whale-pet`。
 
+### v0.5.2 快速更新
+
+- 设置在窗口与全屏间保持可读高度，内容内部滚动。
+- 散步目的地覆盖 DSH 可用区域，每次随机等待 8～20 秒，结束后仅偶尔吃饭。
+- 完善贡献审查及发布确认流程；接受形象统一、来源及授权清楚的 AI 美术。
+
 ### v0.5.1 快速修复
 
 - 散步恢复真实位移，按当前位置选择路线，并使用慢速过渡。
@@ -124,11 +136,11 @@ Contributions and reports are welcome through [Issues](https://github.com/Ewigke
 - **立绘大小一致。** 所有姿态的头部大小和脚底位置统一，撒娇不再显小。
 - **台词使用你的称呼**；另外拖动更流畅，人物音效更柔和，剧场重新整理，明暗主题重新设计。
 
-完整说明见 [v0.5.1 发布说明](docs/releases/v0.5.1.md)。内嵌 12 张插画：五套随机思考姿态、顿悟、回答、撒娇、眩晕、干饭等。推理过程显示在独立的可滚动气泡里；输出期间用回答姿态，输出结束后吃饭。Q 版切换暂时关闭，素材保留。
+完整说明见 [v0.5.2 发布说明](docs/releases/v0.5.2.md)。内嵌 12 张插画：五套随机思考姿态、顿悟、回答、撒娇、眩晕、干饭等。推理过程显示在独立的可滚动气泡里；输出期间用回答姿态，输出结束后吃饭。Q 版切换暂时关闭，素材保留。
 
 ### 安装或升级
 
-1. 从 [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) 下载 **dsh-whale-pet-v0.5.1.zip**。
+1. 从 [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) 下载 **dsh-whale-pet-v0.5.2.zip**。
 2. 完整解压到固定文件夹，例如 `D:\dsh-whale-pet`。
 3. 双击 `install.bat`，再打开 DSH，或在已打开的窗口中按 **Ctrl + R** 刷新。
 4. 升级时覆盖同一目录中的插件文件；若换了目录，请重新运行安装脚本。解压后的文件需要保留。
@@ -176,7 +188,7 @@ npm test
 node --check lib/client.js
 ```
 
-构建会把界面、状态机、宿主适配器、CSS 和 12 张 PNG 编入 DSH `__ModuleLoader__` 使用的 `lib/client.js`。请修改源码后重新构建，不要手动编辑 `lib/client.js`。当前共有 **88 项自动测试**。
+构建会把界面、状态机、宿主适配器、CSS 和 12 张 PNG 编入 DSH `__ModuleLoader__` 使用的 `lib/client.js`。请修改源码后重新构建，不要手动编辑 `lib/client.js`。当前共有 **94 项自动测试**。
 
 ### 贡献者与致谢
 
@@ -186,6 +198,8 @@ node --check lib/client.js
 - **Claude Sonnet 5.5（Anthropic）**：AI 辅助产品评审、界面审查及路线图建议；提供产品建议。
 - **Gemini 4 Argon（Google）**：AI 辅助产品评审、剧场布局与视觉交互方案；提供产品建议。
 - **Claude Opus 5.5（Anthropic）**：AI 辅助 v0.5.0 前端：角色与设置面板整体布局及贴边处理、设置面板与底部区域重做、逐姿态立绘校准、通过 DSH 账户服务读取余额并如实显示状态、梁文峰 / 梁文谷时段播报、渲染性能优化、剧场布局、新的 Web Audio 人物音效、基于设计变量的样式重写及相应回归测试。
+
+欢迎阅读[贡献指南](CONTRIBUTING.md)：代码经 PR 审查与测试后才可合并，发布须由项目负责人确认；接受形象统一、来源与授权清楚的 AI 美术。
 
 欢迎通过 [Issues](https://github.com/Ewigkeit1203/dsh-whale-pet/issues) 和 Pull Request 反馈问题或贡献代码。请提供 DSH 版本和复现步骤，避免上传私人对话与账户凭据。
 

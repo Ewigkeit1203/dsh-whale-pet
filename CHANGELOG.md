@@ -11,6 +11,11 @@
 
 _Nothing yet._
 
+### [v0.5.2] - 2026-10-31
+
+- Stabilize settings height and placement across window/fullscreen changes; randomize stroll waits (8–20s) and destinations across the host viewport; only occasionally eat after a stroll.
+- Clarify contribution review, owner-approved releases, consistent AI artwork and authorized sources.
+
 ### [v0.5.1] - 2026-10-31
 
 - Follow-up: restore visible wandering travel with frame-synchronized movement and destinations relative to the current position.
@@ -119,6 +124,13 @@ _Nothing yet._
 ## 中文版本
 
 ### 尚未发布
+
+_暂无。_
+
+### [v0.5.2] - 2026-10-31
+
+-稳定设置面板在窗口/全屏间的高度与位置；散步等待 8～20 秒随机、目的地覆盖宿主窗口可用区域，结束后仅偶尔吃饭。
+- 明确贡献审查、负责人确认发布、AI 美术形象统一与素材授权要求。
 
 _暂无。_
 

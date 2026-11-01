@@ -416,6 +416,17 @@ export class PetStateMachine {
     }, durationMs)
   }
 
+  /** End a stroll independently of the optional eating reaction. Busy model states keep priority. */
+  public finishWandering(eat: boolean = false): void {
+    if (this.disposed) return
+    if (eat && !this.isStreaming && !this.isReasoning && !this.isInputFocused && !this.isGalGameMode) {
+      this.finishWanderingWithEating(3500)
+      return
+    }
+    this.isWandering = false
+    this.recomputeState()
+  }
+
   public finishWanderingWithEating(durationMs: number = 3500): void {
     if (this.disposed || !this.isWandering || this.isStreaming || this.isReasoning || this.isInputFocused || this.isGalGameMode) return
     this.isWandering = false
@@ -540,7 +551,7 @@ export class PetStateMachine {
       this.speech = this.getRandomDialogue('WANDERING')
       this.notify()
     } else if (!wandering && this.state === 'WANDERING') {
-      this.finishWanderingWithEating(3500)
+      this.finishWandering(false)
     }
   }
 

@@ -5,7 +5,7 @@ import { dialogueBlocks, readConversationLog, type HistoryEntry } from './experi
 import { readPreferences, savePreferences, quietPreset, defaultPreferences, type Preferences } from './preferences.js'
 import { FEATURES, effectiveForm } from './features.js'
 import { POSE_META, spriteGeometry } from './poses.js'
-import { LAYOUT, layoutGroup, clampPet, wanderDestination, placeGroupX, groupFits, type PanelSide } from './layout.js'
+import { LAYOUT, layoutGroup, clampPet, wanderDestination, nextWanderDelay, placeGroupX, groupFits, type PanelSide } from './layout.js'
 import { walletView } from './wallet.js'
 import { PetVoice, appendedSpeech, speakableText } from './voice.js'
 import { tariffAt, type Tier } from './peak.js'
@@ -78,7 +78,6 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     preferences.y ?? window.innerHeight - initialStage.stageHeight - 30,
     initialStage.stageWidth, initialStage.stageHeight, window.innerWidth, window.innerHeight))
   const [composerTop, setComposerTop] = useState<number | undefined>(undefined)
-  const [panelHeight, setPanelHeight] = useState(0)
   const [uiHidden, setUiHidden] = useState(false)
   const [logOpen, setLogOpen] = useState(false)
   const [history, setHistory] = useState<HistoryEntry[]>([])
@@ -125,7 +124,8 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   wanderPositionRef.current = position
   const [wanderRequest, setWanderRequest] = useState(0)
   const pendingWanderRef = useRef<{ x: number; y: number } | null>(null)
-  const wanderTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const wanderFinishRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const wanderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const delayedTimers = useRef(new Set<ReturnType<typeof setTimeout>>())
   const menuTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const textScrollRef = useRef<HTMLDivElement>(null)
@@ -202,7 +202,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const group = isSettingsOpen ? layoutGroup({
     viewportWidth: viewport.width, viewportHeight: viewport.height, composerTop,
     pet: { x: petBox.x, y: petBox.y, width: stageW, height: stageH },
-    panelHeight, previousSide: sideRef.current, petPinned: docked,
+    previousSide: sideRef.current, petPinned: docked,
   }) : null
   const petPos = group && group.mode === 'tethered' ? group.pet : petBox
   const imageTop = stageH - geometry.imageHeight
@@ -250,20 +250,12 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     const place = () => {
       const top = document.querySelector(COMPOSER_SELECTOR)?.getBoundingClientRect().top
       setComposerTop(top !== undefined && Number.isFinite(top) && top > 0 ? Math.round(top) : undefined)
-      const panel = panelRef.current
-      if (panel) {
-        const header = panel.querySelector('.petPanelHeader') as HTMLElement | null
-        const body = panel.querySelector('.petSettingsBody') as HTMLElement | null
-        const footer = panel.querySelector('.petSettingsFooter') as HTMLElement | null
-        const natural = (header?.offsetHeight || 0) + (body?.scrollHeight || 0) + (footer?.offsetHeight || 0) + 2
-        setPanelHeight(previous => Math.abs(previous - natural) < 2 ? previous : natural)
-      }
+
     }
     place()
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(place) : null
-    const body = panelRef.current?.querySelector('.petSettingsBody')
-    if (body) observer?.observe(body)
-    panelRef.current?.addEventListener('toggle', place, true)
+    const composer = document.querySelector(COMPOSER_SELECTOR)
+    if (composer) observer?.observe(composer)
     window.addEventListener('resize', place)
     const dismiss = (event: PointerEvent) => { if (event.target instanceof Element && !event.target.closest('[data-whale-pet]')) setIsSettingsOpen(false) }
     const escape = (event: KeyboardEvent) => { if (event.key === 'Escape' && !event.isComposing) setIsSettingsOpen(false) }
@@ -271,7 +263,6 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     window.addEventListener('keydown', escape)
     return () => {
       observer?.disconnect()
-      panelRef.current?.removeEventListener('toggle', place, true)
       window.removeEventListener('resize', place); window.removeEventListener('pointerdown', dismiss, true); window.removeEventListener('keydown', escape)
     }
   }, [isSettingsOpen, preferences.language, preferences.fontSize])
@@ -485,27 +476,38 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     return () => window.removeEventListener('mousemove', handleMouseMove)
   }, [status.isInputFocused, stateMachine])
 
-  // Wandering pauses while dragging, hovering, docked, in the theatre or with settings open.
+  // Every idle wait is sampled afresh; paused/busy modes never accumulate a backlog.
   useEffect(() => {
-    if (petHidden || !preferences.wandering || status.isGalGameMode || reduceMotion || !foreground || docked || isSettingsOpen) {
+    const paused = petHidden || !preferences.wandering || status.isGalGameMode || status.isReasoning || status.isStreaming || status.isInputFocused || reduceMotion || !foreground || docked || isSettingsOpen || isMenuOpen
+    const stop = () => {
       pendingWanderRef.current = null
-      if (wanderTimerRef.current !== null) { clearInterval(wanderTimerRef.current); wanderTimerRef.current = null }
-      return
+      if (wanderTimerRef.current !== null) clearTimeout(wanderTimerRef.current)
+      if (wanderFinishRef.current !== null) clearTimeout(wanderFinishRef.current)
+      wanderTimerRef.current = null
+      wanderFinishRef.current = null
+      stateMachine.finishWandering(false)
     }
-    const interval = setInterval(() => {
-      if (isDraggingRef.current || isMenuOpen) return
-      const current = stateMachine.getStatus()
-      if (current.state !== 'IDLE' && current.state !== 'WANDERING') return
-      const from = wanderPositionRef.current
-      const target = wanderDestination(from.x, from.y, stageW, stageH, window.innerWidth, window.innerHeight)
-      if (!target) return
-      pendingWanderRef.current = target
-      stateMachine.setWandering(true)
-      setWanderRequest(request => request + 1)
-    }, 14000)
-    wanderTimerRef.current = interval
-    return () => { clearInterval(interval); wanderTimerRef.current = null }
-  }, [preferences.wandering, status.isGalGameMode, isMenuOpen, isSettingsOpen, stateMachine, reduceMotion, foreground, docked, petHidden, stageW, stageH])
+    if (paused) { stop(); return }
+    let cancelled = false
+    const schedule = () => {
+      wanderTimerRef.current = setTimeout(() => {
+        if (cancelled) return
+        const current = stateMachine.getStatus()
+        if (!isDraggingRef.current && current.state === 'IDLE') {
+          const from = wanderPositionRef.current
+          const target = wanderDestination(from.x, from.y, stageW, stageH, window.innerWidth, window.innerHeight)
+          if (target) {
+            pendingWanderRef.current = target
+            stateMachine.setWandering(true)
+            setWanderRequest(request => request + 1)
+          }
+        }
+        schedule()
+      }, nextWanderDelay())
+    }
+    schedule()
+    return () => { cancelled = true; stop() }
+  }, [preferences.wandering, status.isGalGameMode, status.isReasoning, status.isStreaming, status.isInputFocused, isMenuOpen, isSettingsOpen, stateMachine, reduceMotion, foreground, docked, petHidden, stageW, stageH])
 
   // Move only after the WANDERING render installs its slow position transition.
   // The model subscription is frame-batched; moving in the interval used the idle transition.
@@ -514,7 +516,10 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     const target = pendingWanderRef.current
     pendingWanderRef.current = null
     setPosition(target)
-    later(() => stateMachine.finishWanderingWithEating(3500), 3300)
+    wanderFinishRef.current = setTimeout(() => {
+      wanderFinishRef.current = null
+      stateMachine.finishWandering(Math.random() < 0.25)
+    }, 3300)
   }, [status.state, wanderRequest, stateMachine])
 
   // ---- Drag, click, inertia --------------------------------------------------
@@ -939,7 +944,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
           data-flipping={panelFlipping || undefined}
           role="dialog"
           aria-labelledby="pet-settings-title"
-          style={{ position: 'fixed', left: group.panel.x, top: group.panel.y, width: group.panel.width, maxHeight: group.panel.maxHeight }}
+          style={{ position: 'fixed', left: group.panel.x, top: group.panel.y, width: group.panel.width, height: group.panel.height, maxHeight: group.panel.maxHeight }}
           onClick={e => e.stopPropagation()}
           onMouseDown={e => e.stopPropagation()}
         >

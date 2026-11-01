@@ -24,7 +24,7 @@ export const LAYOUT = {
   panelWidth: 340,
   minPanelHeight: 260,
   /** Room needed above the composer before the panel prefers to stay above it. */
-  comfortablePanelHeight: 340,
+  comfortablePanelHeight: 600,
   petTop: 90,
   composerGap: 12,
 } as const
@@ -36,8 +36,8 @@ export interface GroupInput {
   composerTop?: number
   /** Current pet stage box. */
   pet: Box
-  /** Measured natural panel height; used for vertical placement only. */
-  panelHeight: number
+  /** Legacy input accepted for callers; content now scrolls in a stable panel. */
+  panelHeight?: number
   /** Side used in the previous frame (hysteresis). */
   previousSide?: PanelSide
   /** The pet cannot be moved (docked to the edge). */
@@ -48,7 +48,7 @@ export interface GroupLayout {
   mode: 'tethered' | 'detached'
   side: PanelSide
   pet: { x: number; y: number }
-  panel: { x: number; y: number; width: number; maxHeight: number }
+  panel: { x: number; y: number; width: number; maxHeight: number; height: number }
 }
 
 function within(value: number, min: number, max: number): number {
@@ -136,39 +136,44 @@ export function layoutGroup(input: GroupInput): GroupLayout {
     : null
 
   if (!placed || !placed.fits) {
-    // Detached: an independent sheet, horizontally centred, top-anchored.
-    const maxHeight = Math.max(160, floor - margin)
+    // Detached: a readable independent sheet centred within the available area.
+    const maxHeight = Math.min(640, Math.max(160, floor - margin))
     return {
       mode: 'detached',
       side: input.previousSide ?? 'left',
       pet: petPos,
-      panel: { x: Math.round((vw - width) / 2), y: margin, width, maxHeight },
+      panel: { x: Math.round((vw - width) / 2), y: Math.max(margin, Math.round((floor - maxHeight) / 2)), width, height: maxHeight, maxHeight },
     }
   }
 
   const petX = placed.x
   const panelX = placed.side === 'left' ? petX - gap - width : petX + pet.width + gap
-  // Align the panel's top with the head, then keep the whole panel above the floor.
-  const desiredHeight = Math.max(LAYOUT.minPanelHeight, Math.min(input.panelHeight || 0, floor - margin))
-  const headY = petPos.y + Math.round(pet.height * 0.06)
+  // Centre beside the character, using a stable height independent of scroll content.
+  const desiredHeight = Math.min(640, Math.max(160, floor - margin))
+  const headY = petPos.y + (pet.height - desiredHeight) / 2
   const panelY = within(headY, margin, floor - desiredHeight)
   return {
     mode: 'tethered',
     side: placed.side,
     pet: { x: petX, y: petPos.y },
-    panel: { x: Math.round(panelX), y: Math.round(panelY), width, maxHeight: Math.round(floor - panelY) },
+    panel: { x: Math.round(panelX), y: Math.round(panelY), width, height: desiredHeight, maxHeight: desiredHeight },
   }
 }
 
-/** Choose a visible stroll from the current position, never a near-identical right-edge target. */
-export function wanderDestination(x: number, y: number, width: number, height: number, vw: number, vh: number, random = Math.random()): { x: number; y: number } | null {
+/** Idle wait is bounded but independently sampled for every stroll. */
+export function nextWanderDelay(random = Math.random()): number {
+  return 8000 + Math.max(0, Math.min(1, random)) * 12000
+}
+
+/** Sample the entire usable host viewport. Avoid almost-stationary destinations. */
+export function wanderDestination(x: number, y: number, width: number, height: number, vw: number, vh: number, randomX = Math.random(), randomY = Math.random()): { x: number; y: number } | null {
   const current = clampPet(x, y, width, height, vw, vh)
-  const left = LAYOUT.margin
-  const right = Math.max(left, vw - width - LAYOUT.margin)
-  const roomLeft = current.x - left, roomRight = right - current.x
-  const direction = roomRight >= roomLeft ? 1 : -1
-  const room = Math.max(roomLeft, roomRight)
-  if (room < 8) return null
-  const distance = Math.min(room, 100 + Math.max(0, Math.min(1, random)) * 120)
-  return clampPet(current.x + direction * distance, current.y, width, height, vw, vh)
+  const first = clampPet(-Infinity, -Infinity, width, height, vw, vh)
+  const last = clampPet(Infinity, Infinity, width, height, vw, vh)
+  let target = { x: first.x + (last.x - first.x) * Math.max(0, Math.min(1, randomX)), y: first.y + (last.y - first.y) * Math.max(0, Math.min(1, randomY)) }
+  if (Math.hypot(target.x - current.x, target.y - current.y) < 80) {
+    const corners = [first, last, { x: first.x, y: last.y }, { x: last.x, y: first.y }]
+    target = corners.reduce((best, point) => Math.hypot(point.x-current.x,point.y-current.y) > Math.hypot(best.x-current.x,best.y-current.y) ? point : best)
+  }
+  return Math.hypot(target.x-current.x,target.y-current.y) < 8 ? null : target
 }

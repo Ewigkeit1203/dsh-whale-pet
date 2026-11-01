@@ -64,6 +64,8 @@ export declare class PetStateMachine {
     setStreaming(streaming: boolean): void;
     private cancelEatingAndWandering;
     triggerPostOutputEating(durationMs?: number): void;
+    /** End a stroll independently of the optional eating reaction. Busy model states keep priority. */
+    finishWandering(eat?: boolean): void;
     finishWanderingWithEating(durationMs?: number): void;
     triggerMad(): void;
     triggerSajiao(isLong?: boolean): void;

@@ -28,7 +28,7 @@ export declare const LAYOUT: {
     readonly panelWidth: 340;
     readonly minPanelHeight: 260;
     /** Room needed above the composer before the panel prefers to stay above it. */
-    readonly comfortablePanelHeight: 340;
+    readonly comfortablePanelHeight: 600;
     readonly petTop: 90;
     readonly composerGap: 12;
 };
@@ -39,8 +39,8 @@ export interface GroupInput {
     composerTop?: number;
     /** Current pet stage box. */
     pet: Box;
-    /** Measured natural panel height; used for vertical placement only. */
-    panelHeight: number;
+    /** Legacy input accepted for callers; content now scrolls in a stable panel. */
+    panelHeight?: number;
     /** Side used in the previous frame (hysteresis). */
     previousSide?: PanelSide;
     /** The pet cannot be moved (docked to the edge). */
@@ -58,6 +58,7 @@ export interface GroupLayout {
         y: number;
         width: number;
         maxHeight: number;
+        height: number;
     };
 }
 /** Lowest y the panel may reach. */
@@ -82,8 +83,10 @@ export declare function placeGroupX(x: number, petWidth: number, viewportWidth: 
     fits: boolean;
 };
 export declare function layoutGroup(input: GroupInput): GroupLayout;
-/** Choose a visible stroll from the current position, never a near-identical right-edge target. */
-export declare function wanderDestination(x: number, y: number, width: number, height: number, vw: number, vh: number, random?: number): {
+/** Idle wait is bounded but independently sampled for every stroll. */
+export declare function nextWanderDelay(random?: number): number;
+/** Sample the entire usable host viewport. Avoid almost-stationary destinations. */
+export declare function wanderDestination(x: number, y: number, width: number, height: number, vw: number, vh: number, randomX?: number, randomY?: number): {
     x: number;
     y: number;
 } | null;

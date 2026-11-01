@@ -90,16 +90,34 @@ test('long English panels and large text only grow the scroll body, never push t
 })
 
 
-test('wandering destinations have visible travel, remain in bounds and handle tiny viewports', async () => {
-  const { wanderDestination, clampPet } = await import('../lib/client/layout.js')
-  for (const [vw, vh, w, h] of [[1280,800,340,480], [1920,1080,440,600], [600,500,280,300]]) {
-    for (const x of [16, vw / 2, vw - w - 16]) for (const random of [0,0.5,1]) {
-      const from = clampPet(x,100,w,h,vw,vh)
-      const to = wanderDestination(from.x,from.y,w,h,vw,vh,random)!
-      assert.ok(Math.abs(to.x-from.x) >= Math.min(100,(vw-w-32)/2))
-      assert.deepEqual(clampPet(to.x,to.y,w,h,vw,vh),to)
-      assert.equal(to.y,from.y)
-    }
+
+test('wandering samples the full usable viewport, has visible travel and bounded random waits', async () => {
+ const {wanderDestination,clampPet,nextWanderDelay}=await import('../lib/client/layout.js')
+ for(const [vw,vh,w,h] of [[1280,800,340,480],[1920,1080,440,600],[600,500,280,300]]) {
+  const from=clampPet(vw/2,vh/2,w,h,vw,vh)
+  for(const rx of [0,.5,1]) for(const ry of [0,.5,1]) {
+   const target=wanderDestination(from.x,from.y,w,h,vw,vh,rx,ry)!
+   assert.deepEqual(clampPet(target.x,target.y,w,h,vw,vh),target)
+   assert.ok(Math.hypot(target.x-from.x,target.y-from.y)>=80)
   }
-  assert.equal(wanderDestination(16,90,400,300,420,500,0),null)
+  const low=wanderDestination(vw-w-16,vh-h-16,w,h,vw,vh,0,0)!
+  const high=wanderDestination(16,90,w,h,vw,vh,1,1)!
+  assert.ok(high.x>low.x && high.y>low.y,'all corners are reachable')
+ }
+ assert.equal(wanderDestination(16,16,400,300,420,320,0,0),null)
+ assert.equal(nextWanderDelay(0),8000);assert.equal(nextWanderDelay(1),20000)
+ assert.ok(nextWanderDelay(.2)!==nextWanderDelay(.8))
+})
+
+test('settings keep a readable bounded height through window/fullscreen changes and content changes',()=>{
+ for(const [width,height,composerTop] of [[1280,820,422],[1920,1080,560],[1024,640,400]]) {
+  for(const content of [0,300,900,4000]) {
+   const out=layoutGroup({viewportWidth:width,viewportHeight:height,composerTop,pet:{x:width-360,y:height-500,width:307,height:480},panelHeight:content})
+   assert.equal(out.panel.height,Math.min(640,height-32))
+   assert.ok(out.panel.y>=16 && out.panel.y+out.panel.height<=height-16)
+   assert.equal(out.panel.maxHeight,out.panel.height)
+  }
+ }
+ const detached=layoutGroup({viewportWidth:500,viewportHeight:1080,pet:{x:16,y:400,width:307,height:480},panelHeight:2000})
+ assert.equal(detached.mode,'detached');assert.ok(detached.panel.y>100,'independent sheet is vertically centred')
 })

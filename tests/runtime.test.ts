@@ -5,7 +5,7 @@ import vm from 'node:vm'
 import { PetStateMachine } from '../lib/client/state-machine.js'
 
 // Exercise the real browser artifact as well as the TypeScript compiler output.
-function loadBundle(storage?: { getItem(key: string): string | null; setItem(key: string, value: string): void }, frames?: Array<() => void>) {
+function loadBundle(storage?: { getItem(key: string): string | null; setItem(key: string, value: string): void }, frames?: Array<() => void>, random?: () => number) {
   let plugin: any
   let hookIndex = 0
   const hooks: any[] = []
@@ -27,7 +27,10 @@ function loadBundle(storage?: { getItem(key: string): string | null; setItem(key
   const listen = (name: string, callback: any) => { if (!listeners.has(name)) listeners.set(name, new Set()); listeners.get(name)!.add(callback) }
   const unlisten = (name: string, callback: any) => listeners.get(name)?.delete(callback)
   class FakeElement { closest(selector: string) { return selector.includes('data-chat-node-key') ? this : null } }
+  const vmMath = Object.create(Math)
+  if (random) vmMath.random = random
   const context: any = {
+    Math: vmMath,
     requestAnimationFrame: frames ? (callback: () => void) => frames.push(callback) : undefined,
     Element: FakeElement,
     console, setTimeout, clearTimeout, setInterval, clearInterval, localStorage: storage,
@@ -424,23 +427,42 @@ test('hotfix: leaving theatre mounts a distinct widget root at its saved positio
 })
 
 
-test('wandering: frame-batched status reaches walking mode before a visible position change', t => {
-  t.mock.timers.enable({ apis: ['setInterval', 'setTimeout'] })
-  const frames: Array<() => void> = []
-  const runtime = loadBundle(undefined, frames); const sm = runtime.mount(); t.after(() => sm.dispose())
-  const before = runtime.render()
-  const unsubscribe = runtime.viewEffects.find(fn => String(fn).includes('stateMachine.subscribe'))(); t.after(unsubscribe)
-  const cleanup = runtime.viewEffects.find(fn => String(fn).includes('wanderDestination'))(); t.after(cleanup)
-  t.mock.timers.tick(14000)
-  assert.equal(sm.getStatus().state, 'WANDERING')
-  assert.equal(runtime.render().props.style.left, before.props.style.left, 'wait for the frame-batched walking render')
-  while (frames.length) frames.shift()!()
-  const walking = runtime.render()
-  assert.equal(walking.props['data-wandering'], true)
-  runtime.viewEffects.find(fn => String(fn).includes("status.state !== 'WANDERING'"))()
-  const moved = runtime.render()
-  assert.ok(Math.abs(parseFloat(moved.props.style.left) - parseFloat(before.props.style.left)) >= 100, 'walk really changes screen position')
-  assert.equal(moved.props.style.top, before.props.style.top, 'no jump to the bottom of the window')
-  t.mock.timers.tick(3300)
-  assert.equal(sm.getStatus().state, 'EATING', 'rest only after the slow walk finishes')
+
+for(const random of [0,.5,.999]) test('wandering: random wait, frame scheduling and optional rest @'+random,t=>{
+ t.mock.timers.enable({apis:['setInterval','setTimeout']})
+ const frames: Array<()=>void>=[]
+ const runtime=loadBundle(undefined,frames,()=>random);const sm=runtime.mount();t.after(()=>sm.dispose())
+ const before=runtime.render()
+ const unsub=runtime.viewEffects.find(fn=>String(fn).includes('stateMachine.subscribe'))();t.after(unsub)
+ const cleanup=runtime.viewEffects.find(fn=>String(fn).includes('wanderDestination'))();t.after(cleanup)
+ const wait=8000+12000*random
+ t.mock.timers.tick(wait-1);assert.equal(sm.getStatus().state,'IDLE')
+ t.mock.timers.tick(1);assert.equal(sm.getStatus().state,'WANDERING')
+ assert.equal(runtime.render().props.style.left,before.props.style.left,'walking style must be committed first')
+ while(frames.length)frames.shift()!()
+ const walking=runtime.render();assert.equal(walking.props['data-wandering'],true)
+ runtime.viewEffects.find(fn=>String(fn).includes("status.state !== 'WANDERING'"))()
+ const moved=runtime.render()
+ assert.ok(Math.hypot(parseFloat(moved.props.style.left)-parseFloat(before.props.style.left),parseFloat(moved.props.style.top)-parseFloat(before.props.style.top))>=80)
+ t.mock.timers.tick(3300)
+ assert.equal(sm.getStatus().state,random<.25?'EATING':'IDLE')
+ cleanup();const after=sm.getStatus().state;t.mock.timers.tick(30000);assert.notEqual(sm.getStatus().state,'WANDERING','cleanup cancels future strolls')
 })
+
+test('wandering pauses while settings are open and never starts a pending walk after cleanup',t=>{
+ t.mock.timers.enable({apis:['setInterval','setTimeout']})
+ const runtime=loadBundle(undefined,undefined,()=>0);const sm=runtime.mount();t.after(()=>sm.dispose())
+ let tree=runtime.render();walk(tree).find(node=>node.children.includes('设置')).props.onClick();runtime.render()
+ const paused=runtime.viewEffects.find(fn=>String(fn).includes('wanderDestination'));paused()
+ t.mock.timers.tick(25000);assert.notEqual(sm.getStatus().state,'WANDERING')
+})
+
+for(const [label,make] of [['compiled',()=>PetStateMachine],['bundle',()=>loadBundle().StateMachine]] as const) {
+ test(label+': interrupted stroll completion cannot replace an active answer or reasoning',t=>{
+  const SM=make();const sm=new SM();t.after(()=>sm.dispose())
+  sm.setWandering(true);sm.setStreaming(true);sm.finishWandering(true)
+  assert.equal(sm.getStatus().state,'ANSWERING')
+  sm.setStreaming(false);sm.setReasoning(true);sm.finishWandering(false)
+  assert.equal(sm.getStatus().state,'REASONING')
+ })
+}
