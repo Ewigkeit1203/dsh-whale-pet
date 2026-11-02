@@ -1,5 +1,5 @@
 import { SettingsPanel } from './SettingsPanel.js'
-import { TheatreView } from './TheatreView.js'
+import { TheatreView, type TheatrePanel, type SceneLayers } from './TheatreView.js'
 import { paginateText, revealDelay, diagnosticReport } from './usability.js'
 import { dialogueBlocks, readConversationLog, type HistoryEntry } from './experience.js'
 import { readPreferences, savePreferences, quietPreset, defaultPreferences, type Preferences } from './preferences.js'
@@ -9,6 +9,9 @@ import { LAYOUT, layoutGroup, clampPet, wanderDestination, nextWanderDelay, plac
 import { walletView } from './wallet.js'
 import { PetVoice, appendedSpeech, speakableText } from './voice.js'
 import { tariffAt, type Tier } from './peak.js'
+import { SCENES, sceneMeta, sceneSvg, sceneUrl, shuffleScene, type SceneId } from './scenes.js'
+import { BgmPlayer, BGM_TRACKS, cycleBgmTrack, type BgmTrackId } from './bgm.js'
+import { checkMedia, saveMedia, loadMedia, deleteMedia } from './media-store.js'
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import type { PetStateMachine } from './state-machine.js'
 import type { PetStatusInfo } from './types.js'
@@ -112,6 +115,8 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const [isThoughtBubbleVisible, setIsThoughtBubbleVisible] = useState(true)
   const [tierAnnounce, setTierAnnounce] = useState<{ tier: Tier; until: number } | null>(null)
   const [panelFlipping, setPanelFlipping] = useState(false)
+  const [theatrePanel, setTheatrePanel] = useState<TheatrePanel>(null)
+  const [skipping, setSkipping] = useState(false)
 
   const sideRef = useRef<PanelSide | undefined>(undefined)
   const statusKeyRef = useRef('')
@@ -377,7 +382,9 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     if (!status.isGalGameMode) return
     const close = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null
-      if (event.isComposing || event.ctrlKey || event.metaKey || event.altKey || target?.closest('input, textarea, select, button, summary, [contenteditable="true"]')) return
+      // Escape always works (even from a focused button or slider); other keys leave form controls alone.
+      if (event.isComposing || event.ctrlKey || event.metaKey || event.altKey) return
+      if (event.key !== 'Escape' && target?.closest('input, textarea, select, button, summary, [contenteditable="true"]')) return
       if (event.key !== 'Escape' && event.key !== 'Enter' && event.key !== ' ' && event.key !== 'ArrowRight' && event.key !== 'ArrowLeft' && !['l', 'a', 'h', 'm'].includes(event.key.toLowerCase())) return
       if (event.key !== 'Escape') {
         if (target?.closest('[role="button"], [role="log"]')) return
@@ -392,11 +399,12 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       }
       const more = document.querySelector('[data-whale-pet] details[open]')
       if (more) { more.removeAttribute('open'); return }
+      if (theatrePanel) { setTheatrePanel(null); return }
       if (uiHidden) setUiHidden(false); else if (logOpen) setLogOpen(false); else stateMachine.setGalGameMode(false)
     }
     window.addEventListener('keydown', close)
     return () => window.removeEventListener('keydown', close)
-  }, [status.isGalGameMode, stateMachine, uiHidden, logOpen, revealed, currentPageIndex, dialoguePages, preferences.autoAdvance, preferences.reading, preferences.muted])
+  }, [status.isGalGameMode, stateMachine, uiHidden, logOpen, revealed, currentPageIndex, dialoguePages, preferences.autoAdvance, preferences.reading, preferences.muted, theatrePanel])
 
   useEffect(() => {
     if (status.isReasoning) { followThoughtRef.current = true; setIsThoughtBubbleVisible(true) }
@@ -420,6 +428,108 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   // ---- Voice ----------------------------------------------------------------
   const voiceAllowed = !preferences.muted && !preferences.quiet && preferences.volume > 0 && foreground && !uiHidden && !logOpen
   useEffect(() => { voiceRef.current?.setVolume(preferences.volume) }, [preferences.volume])
+
+  // ---- Theatre scene & music -------------------------------------------------
+  const bgmRef = useRef<BgmPlayer | null>(null)
+  if (!bgmRef.current) bgmRef.current = new BgmPlayer()
+  const [pageVisible, setPageVisible] = useState(true)
+  const [customScene, setCustomScene] = useState<{ url: string; name: string } | null>(null)
+  const [customSceneChecked, setCustomSceneChecked] = useState(false)
+  const [customBgmName, setCustomBgmName] = useState<string | null>(null)
+  const [customBgmVersion, setCustomBgmVersion] = useState(0)
+  const [bgmPlaying, setBgmPlaying] = useState(false)
+  const [sceneLayers, setSceneLayers] = useState<SceneLayers>({ a: '', b: '', front: 'a' })
+  const sceneUrlCache = useRef(new Map<string, string>())
+  const customSceneRef = useRef<string | null>(null)
+  customSceneRef.current = customScene?.url ?? null
+
+  const releaseUrl = (url: string | null | undefined) => {
+    if (!url || !url.startsWith('blob:')) return
+    try { URL.revokeObjectURL(url) } catch { /* not a blob URL here */ }
+  }
+  /** Painted scenes become short blob: URLs once, so re-renders never diff a 60 KB data URI. */
+  const paintedSceneUrl = (id: SceneId): string => {
+    const cached = sceneUrlCache.current.get(id)
+    if (cached !== undefined) return cached
+    let url = ''
+    try { url = URL.createObjectURL(new Blob([sceneSvg(id)], { type: 'image/svg+xml' })) } catch { url = sceneUrl(id, null) }
+    sceneUrlCache.current.set(id, url)
+    return url
+  }
+  const flash = (message: string) => { setToast(message); later(() => setToast(''), 2800) }
+
+  useEffect(() => {
+    let alive = true
+    void loadMedia('scene').then(record => {
+      if (!alive) return
+      if (record) {
+        try { setCustomScene({ url: URL.createObjectURL(record.blob), name: record.name }) } catch { /* object URLs unavailable */ }
+      }
+      setCustomSceneChecked(true)
+    })
+    void loadMedia('bgm').then(async record => {
+      if (!alive || !record) return
+      try { bgmRef.current?.setCustom(await record.blob.arrayBuffer()); setCustomBgmName(record.name) } catch { /* unreadable file */ }
+    })
+    // Page hide / unload: stop at once and release the audio device.
+    const hide = () => bgmRef.current?.stopNow()
+    const visibility = () => setPageVisible(!document.hidden)
+    window.addEventListener('pagehide', hide)
+    document.addEventListener('visibilitychange', visibility)
+    return () => {
+      alive = false
+      window.removeEventListener('pagehide', hide)
+      document.removeEventListener('visibilitychange', visibility)
+      bgmRef.current?.dispose()
+      sceneUrlCache.current.forEach(releaseUrl)
+      sceneUrlCache.current.clear()
+      releaseUrl(customSceneRef.current)
+    }
+  }, [])
+
+  // Leaving the theatre closes its menus and stops skipping; a shuffle picks a new scene on entry.
+  useEffect(() => {
+    if (!status.isGalGameMode) { setTheatrePanel(null); setSkipping(false); return }
+    if (preferences.sceneShuffle) update({ scene: shuffleScene(preferences.scene, Boolean(customScene)) })
+  }, [status.isGalGameMode])
+
+  const activeScene: SceneId = preferences.scene === 'custom' && !customScene && customSceneChecked ? 'study' : preferences.scene
+  const immersive = activeScene !== 'none'
+  useEffect(() => {
+    document.body?.classList?.toggle('dsh-galgame-immersive', status.isGalGameMode && immersive)
+    return () => { document.body?.classList?.remove('dsh-galgame-immersive') }
+  }, [status.isGalGameMode, immersive])
+  const sceneTarget = !status.isGalGameMode || !immersive ? '' : activeScene === 'custom' ? customScene?.url ?? '' : paintedSceneUrl(activeScene)
+  // Crossfade: decode the next picture first, then swap layers, so a switch never flashes white or half-loaded.
+  useEffect(() => {
+    if (!status.isGalGameMode) return
+    const frontUrl = sceneLayers.front === 'a' ? sceneLayers.a : sceneLayers.b
+    if (sceneTarget === frontUrl) return
+    let cancelled = false
+    const swap = () => { if (!cancelled) setSceneLayers(previous => previous.front === 'a' ? { ...previous, b: sceneTarget, front: 'b' } : { ...previous, a: sceneTarget, front: 'a' }) }
+    if (!sceneTarget || typeof Image !== 'function') { swap(); return }
+    const image = new Image()
+    image.src = sceneTarget
+    const ready = typeof image.decode === 'function' ? image.decode() : new Promise<void>(resolve => { image.onload = () => resolve(); image.onerror = () => resolve() })
+    ready.then(swap, swap)
+    return () => { cancelled = true }
+  }, [status.isGalGameMode, sceneTarget])
+
+  // Music follows the theatre: it fades in on entry and fades out on exit or when the page is hidden.
+  const wantBgm = status.isGalGameMode && preferences.bgmOn && pageVisible
+  useEffect(() => {
+    const bgm = bgmRef.current
+    if (!bgm) return
+    if (!wantBgm) { if (bgm.playing) bgm.fadeOut(); setBgmPlaying(false); return }
+    let alive = true
+    void bgm.play(preferences.bgmTrack, preferences.bgmVolume).then(ok => {
+      if (!alive) return
+      setBgmPlaying(ok)
+      if (!ok && preferences.bgmTrack === 'custom') { update({ bgmTrack: 'daily' }); flash(t('这首本地音乐无法播放，已换回内置曲目', 'That file could not be played; switched back to a built-in track')) }
+    })
+    return () => { alive = false }
+  }, [wantBgm, preferences.bgmTrack, customBgmVersion])
+  useEffect(() => { bgmRef.current?.setVolume(preferences.bgmVolume) }, [preferences.bgmVolume])
   useEffect(() => {
     if (preferences.muted || preferences.quiet) voiceRef.current?.silence()
     else if (!voiceAllowed) voiceRef.current?.cut()
@@ -673,6 +783,29 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     return () => clearTimeout(timer)
   }, [preferences.autoAdvance, preferences.reading, status.isGalGameMode, status.isStreaming, isRevealing, uiHidden, logOpen, currentPageIndex, dialoguePages, characters.length])
 
+  // Skip (快进): finish the current page at once, then flip pages quickly until the last one.
+  useEffect(() => {
+    if (!skipping || !status.isGalGameMode) return
+    if (isRevealing) { setRevealed(characters.length); voiceRef.current?.cut(); return }
+    if (preferences.reading !== 'pages' || currentPageIndex >= dialoguePages.length - 1) { if (!status.isStreaming) setSkipping(false); return }
+    const timer = setTimeout(() => setCurrentPageIndex(i => Math.min(i + 1, dialoguePages.length - 1)), 200)
+    return () => clearTimeout(timer)
+  }, [skipping, isRevealing, characters.length, currentPageIndex, dialoguePages.length, status.isGalGameMode, status.isStreaming, preferences.reading])
+  // Holding Ctrl skips, as in most visual novels; releasing it stops. Ignored while text is selected or typed.
+  useEffect(() => {
+    if (!status.isGalGameMode) return
+    const down = (event: KeyboardEvent) => {
+      if (event.key !== 'Control' || event.repeat) return
+      const target = event.target as HTMLElement | null
+      if (target?.closest?.('input, textarea, [contenteditable="true"]') || String(window.getSelection?.() ?? '')) return
+      setSkipping(true)
+    }
+    const up = (event: KeyboardEvent) => { if (event.key === 'Control') setSkipping(false) }
+    const stop = () => setSkipping(false)
+    window.addEventListener('keydown', down); window.addEventListener('keyup', up); window.addEventListener('blur', stop)
+    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', stop) }
+  }, [status.isGalGameMode])
+
   // One scheduler, two sources: the theatre's letter-by-letter reveal when it
   // is running, otherwise newly streamed text. Skips and bulk text are not voiced.
   useEffect(() => {
@@ -698,7 +831,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     catch { setToast(t('复制失败，请选中文字手动复制', 'Copy failed. Select the text and copy it manually.')) }
     later(() => setToast(''), 2500)
   }
-  const unlockAudio = () => { if (!preferences.muted && !preferences.quiet) voiceRef.current?.unlock() }
+  const unlockAudio = () => { if (!preferences.muted && !preferences.quiet) voiceRef.current?.unlock(); if (wantBgm) bgmRef.current?.unlock() }
   const toggleMute = () => { if (preferences.muted) voiceRef.current?.unlock(); else voiceRef.current?.silence(); update({ muted: !preferences.muted }) }
   const codeText = dialogueBlocks(status.latestDialogue).filter(block => block.kind === 'code').map(block => block.text).join('\n\n')
   const nativeSpeed = useMemo(() => {
@@ -782,6 +915,79 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const settingsPanel = useMemo(() => isSettingsOpen ? SettingsPanel(settingsProps()) : null,
     [isSettingsOpen, preferences, status.autoGalGameOnChat, JSON.stringify(wallet), tariff.tier, tierUntil, tariff.holidayDataMissing, group?.mode, viewport.width, viewport.height])
 
+  // ---- Theatre: background, music and upload handlers ----------------------------
+  const pickScene = (id: string) => {
+    const scene = sceneMeta(id).id
+    if (scene === 'custom' && !customScene) { flash(t('先上传一张图片作为「我的背景」', 'Upload a picture first to use “My picture”')); return }
+    update({ scene })
+  }
+  const uploadScene = async (file: File) => {
+    const check = checkMedia('scene', file)
+    if (!check.ok) { flash(check.reason === 'type' ? t('请选择图片（PNG / JPG / WebP / GIF）', 'Choose an image (PNG, JPG, WebP or GIF)') : t('图片需小于 15 MB', 'Pictures must be under 15 MB')); return }
+    let url = ''
+    try { url = URL.createObjectURL(file) } catch { flash(t('当前环境无法读取图片', 'Pictures cannot be read here')); return }
+    releaseUrl(customSceneRef.current)
+    setCustomScene({ url, name: file.name })
+    update({ scene: 'custom' })
+    const saved = await saveMedia('scene', file)
+    flash(saved ? t('已设为背景，下次进入剧场会自动恢复', 'Background set; it will be restored next time') : t('已设为背景（浏览器存储不可用，仅本次有效）', 'Background set for this session (browser storage unavailable)'))
+  }
+  const removeScene = async () => {
+    releaseUrl(customSceneRef.current)
+    setCustomScene(null)
+    if (preferences.scene === 'custom') update({ scene: 'study' })
+    await deleteMedia('scene')
+    flash(t('已移除我的背景', 'Your picture was removed'))
+  }
+  const startBgm = (track: BgmTrackId) => {
+    // Called inside the click, so browsers that require a gesture let audio start.
+    void bgmRef.current?.play(track, preferences.bgmVolume).then(ok => setBgmPlaying(ok))
+  }
+  const toggleBgm = () => {
+    if (preferences.bgmOn) { bgmRef.current?.fadeOut(); setBgmPlaying(false); update({ bgmOn: false }); return }
+    update({ bgmOn: true })
+    startBgm(preferences.bgmTrack)
+  }
+  const pickTrack = (id: string) => {
+    const track = BGM_TRACKS.find(item => item.id === id)?.id
+    if (!track) return
+    if (track === 'custom' && !customBgmName) { flash(t('先添加一首本地音乐', 'Add a music file first')); return }
+    update({ bgmTrack: track, bgmOn: true })
+    startBgm(track)
+  }
+  const uploadBgm = async (file: File) => {
+    const check = checkMedia('bgm', file)
+    if (!check.ok) { flash(check.reason === 'type' ? t('请选择音频文件（MP3 / OGG / WAV / M4A）', 'Choose an audio file (MP3, OGG, WAV or M4A)') : t('音乐文件需小于 40 MB', 'Music files must be under 40 MB')); return }
+    let bytes: ArrayBuffer
+    try { bytes = await file.arrayBuffer() } catch { flash(t('读取音乐文件失败', 'Could not read that file')); return }
+    bgmRef.current?.setCustom(bytes)
+    setCustomBgmName(file.name)
+    setCustomBgmVersion(version => version + 1)
+    update({ bgmTrack: 'custom', bgmOn: true })
+    const saved = await saveMedia('bgm', file)
+    flash(saved ? t('已添加，正在无缝循环播放', 'Added; now looping seamlessly') : t('已添加（浏览器存储不可用，仅本次有效）', 'Added for this session (browser storage unavailable)'))
+  }
+  const removeBgm = async () => {
+    bgmRef.current?.setCustom(null)
+    setCustomBgmName(null)
+    if (preferences.bgmTrack === 'custom') update({ bgmTrack: 'daily' })
+    await deleteMedia('bgm')
+    flash(t('已移除我的音乐', 'Your music was removed'))
+  }
+  const sceneLabel = (id: SceneId) => { const meta = sceneMeta(id); return t(meta.zh, meta.en) }
+  const sceneCards = SCENES.map(scene => ({
+    id: scene.id,
+    label: t(scene.zh, scene.en),
+    thumb: scene.id === 'none' ? '' : scene.id === 'custom' ? customScene?.url ?? '' : status.isGalGameMode && theatrePanel === 'scene' ? paintedSceneUrl(scene.id) : '',
+    active: scene.id === activeScene,
+    kind: scene.id === 'none' ? 'none' as const : scene.id === 'custom' ? 'custom' as const : 'painted' as const,
+  }))
+  const bgmTracks = BGM_TRACKS.filter(track => track.id !== 'custom' || customBgmName).map(track => ({
+    id: track.id,
+    label: track.id === 'custom' && customBgmName ? customBgmName.replace(/\.[^.]+$/, '') : t(track.zh, track.en),
+    mood: t(track.moodZh, track.moodEn),
+  }))
+
   // ---- Theatre ----------------------------------------------------------------
   if (status.isGalGameMode) {
     return TheatreView({
@@ -793,9 +999,15 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       showThoughts: isThoughtBubbleVisible && (status.isReasoning || Boolean(status.reasoningText)),
       visibleText, isRevealing, pageIndex: currentPageIndex, pageCount: dialoguePages.length,
       inputValue, toast, textRef: textScrollRef, thoughtRef: thoughtScrollRef,
+      scene: { id: activeScene, label: sceneLabel(activeScene), base: sceneMeta(activeScene).base, glow: sceneMeta(activeScene).glow, ambient: sceneMeta(activeScene).ambient, immersive, layers: sceneLayers },
+      sceneCards, customSceneName: customScene?.name ?? null,
+      panel: theatrePanel, skipping,
+      bgm: { on: preferences.bgmOn, playing: bgmPlaying, track: preferences.bgmTrack, volume: preferences.bgmVolume, customName: customBgmName, tracks: bgmTracks },
       on: {
         exit: () => stateMachine.setGalGameMode(false),
-        backdrop: () => uiHidden ? setUiHidden(false) : stateMachine.setGalGameMode(false),
+        // With a painted scene the background behaves like a visual novel: click to continue.
+        backdrop: () => theatrePanel ? setTheatrePanel(null) : uiHidden ? setUiHidden(false) : immersive ? handleAdvancePage() : stateMachine.setGalGameMode(false),
+        dismiss: () => setTheatrePanel(null),
         unlock: unlockAudio,
         hideUi: setUiHidden,
         toggleExpanded: () => setExpanded(value => !value),
@@ -817,9 +1029,25 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
           if (event.deltaY > 0) handleAdvancePage(); else setCurrentPageIndex(index => Math.max(0, index - 1))
         },
         skipReveal: () => { setRevealed(characters.length); voiceRef.current?.cut() },
+        toggleSkip: () => setSkipping(value => !value),
         input: setInputValue,
         send: handleSendMessage,
         copy: text => void copyCode(text),
+        panel: setTheatrePanel,
+        pickScene,
+        shuffleScene: () => update({ scene: shuffleScene(activeScene, Boolean(customScene)) }),
+        toggleShuffle: () => update({ sceneShuffle: !preferences.sceneShuffle }),
+        uploadScene: file => void uploadScene(file),
+        removeScene: () => void removeScene(),
+        bgmToggle: toggleBgm,
+        bgmPick: pickTrack,
+        bgmStep: direction => pickTrack(cycleBgmTrack(preferences.bgmTrack, direction, Boolean(customBgmName))),
+        bgmVolume: volume => update({ bgmVolume: Math.min(1, Math.max(0, volume)) }),
+        uploadBgm: file => void uploadBgm(file),
+        removeBgm: () => void removeBgm(),
+        setSpeed: speed => update({ speed }),
+        setFontSize: size => update({ fontSize: Math.min(24, Math.max(14, Math.round(size))) }),
+        toggleTypewriter: () => update({ typewriter: !preferences.typewriter }),
       },
     })
   }

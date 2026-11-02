@@ -10,7 +10,7 @@ Extract the whole ZIP into a permanent folder. Run install.bat, then press Ctrl 
 
 Hover over her for quick actions (Theatre, Settings, Quiet, Dock). Click her to open Settings; drag to move her. The chips above her head show the DeepSeek pricing period (梁文峰 = peak, 梁文谷 = off-peak) and your balance. The balance appears automatically when you are signed in to a DeepSeek account in DSH. Character sounds start muted; turn them on in Settings › Sound.
 
-Click the chat box to enter the theatre. Click the text once to finish revealing it, again for the next page. Log shows messages loaded on the page; Auto turns pages for you; the ⋯ menu has Hide, sounds, reading mode, theme and language. Press Escape to leave.
+Click the chat box to enter the theatre. Click the text once to finish revealing it, again for the next page. Log shows messages loaded on the page; Auto turns pages for you; Skip (or hold Ctrl) jumps to the last page; the ⋯ menu has sounds, reading mode, theme and language. The chips at the top left choose background music (or your own file), the background (four scenes, Transparent or your own picture) and theatre settings. Your picture and music stay in this browser. Press Escape to leave.
 
 The companion lives inside DSH, not as a separate window. Chat history is never stored or sent anywhere.
 
@@ -19,7 +19,7 @@ The companion lives inside DSH, not as a separate window. Chat history is never 
 
 鼠标悬停在她身上会出现快捷操作（剧场、设置、安静、贴边）。点击她打开设置，拖动可以移动她。头顶的小标签显示 DeepSeek 计费时段（梁文峰 = 高峰，梁文谷 = 空闲）和余额；在 DSH 中登录 DeepSeek 账号后余额会自动显示。人物音效默认静音，可在 设置 › 声音 中开启。
 
-点击聊天输入框进入剧场。第一次点击文字会显示完当前段，再点一次翻到下一页。“回顾”查看页面已加载的问答，“自动”帮你翻页，“⋯”菜单里有隐藏界面、音效、阅读方式、主题和语言。按 Escape 退出。
+点击聊天输入框进入剧场。第一次点击文字会显示完当前段，再点一次翻到下一页。“回顾”查看页面已加载的问答，“自动”帮你翻页，“快进”（或按住 Ctrl）直接跳到最后一段，“⋯”菜单里有音效、阅读方式、主题和语言。左上角的小按钮可以选择背景音乐（也能用自己的音乐）、背景（四套场景、透明或自己的图片）和剧场设置；你的图片和音乐只保存在本机浏览器。按 Escape 退出。
 
 桌宠运行在 DSH 窗口内，不是独立的系统窗口。聊天记录不会被保存或发送到任何地方。
 
