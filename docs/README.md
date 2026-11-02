@@ -9,7 +9,7 @@
 - [Release history](../CHANGELOG.md): [v0.6.0](releases/v0.6.0.md) · [v0.5.2](releases/v0.5.2.md), [v0.5.1](releases/v0.5.1.md), [v0.5.0](releases/v0.5.0.md), [v0.4.0](releases/v0.4.0.md), [v0.3.0](releases/v0.3.0.md), [v0.2.0](releases/v0.2.0.md), [v0.1.0](releases/v0.1.0.md)
 - [Contributing](../CONTRIBUTING.md) and [artwork permissions](../ASSETS_LICENSE.md)
 
-Use the root-level install.bat and uninstall.bat to install and remove the plugin. Maintainers can run `npm run package:release` to build the versioned archive.
+Use the root-level install.bat and uninstall.bat to install and remove the plugin. Maintainers can run `npm run package:release` to build the versioned archive. Pushing a version tag (for example `v0.6.0`) publishes the GitHub Release automatically with the same archive and the notes from `docs/releases/`.
 
 <a id="chinese"></a>
 ## 中文
@@ -18,4 +18,4 @@ Use the root-level install.bat and uninstall.bat to install and remove the plugi
 - [更新日志](../CHANGELOG.md)：[v0.6.0](releases/v0.6.0.md) · [v0.5.2](releases/v0.5.2.md), [v0.5.1](releases/v0.5.1.md)、[v0.5.0](releases/v0.5.0.md)、[v0.4.0](releases/v0.4.0.md)、[v0.3.0](releases/v0.3.0.md)、[v0.2.0](releases/v0.2.0.md)、[v0.1.0](releases/v0.1.0.md)
 - [贡献指南](../CONTRIBUTING.md)与[美术授权说明](../ASSETS_LICENSE.md)
 
-安装和卸载请使用根目录的 install.bat 与 uninstall.bat。维护者可运行 `npm run package:release` 生成当前版本的安装包。
+安装和卸载请使用根目录的 install.bat 与 uninstall.bat。维护者可运行 `npm run package:release` 生成当前版本的安装包。推送版本标签（例如 `v0.6.0`）后，GitHub 会自动用同样的安装包和 `docs/releases/` 中的说明发布 Release。
