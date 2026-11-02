@@ -243,7 +243,7 @@ function settingsPanel(v: TheatreViewProps) {
     {themeSwitch(p.typewriter, t('打字机效果', 'Typewriter text'), on.toggleTypewriter)}
     {themeSwitch(p.autoAdvance, t('读完自动翻页', 'Auto-advance pages'), on.toggleAuto, 'A')}
     {themeSwitch(!p.muted, t('人物音效', 'Character sounds'), on.toggleMute, 'M')}
-    {themeSwitch(p.liveMotion, t('动态立绘（Live2D 风格）', 'Live portrait (Live2D-style)'), on.toggleLive)}
+    {themeSwitch(p.liveMotion, t('裙摆飘动', 'Swaying clothes'), on.toggleLive)}
     <p className="theatreFootnote">{t('快捷键：Enter / 空格 继续 · 按住 Ctrl 快进 · H 隐藏界面 · L 回顾 · Esc 关闭', 'Keys: Enter / Space next · hold Ctrl to skip · H hide · L log · Esc close')}</p>
   </section>
 }

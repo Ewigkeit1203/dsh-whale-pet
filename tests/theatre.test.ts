@@ -173,30 +173,28 @@ test('emotion: each page picks an expression and a mood mark; code never sets th
   assert.equal(emoteFor('neutral'), null)
 })
 
-test('live rig: weights keep the face still, bend hair, plant the feet; blinks are short and spaced', async () => {
-  const { liveWeights, hairness, blinkAmount, nextBlinkDelay } = await import('../lib/client/live-rig.js')
+test('cloth sway: only the lower half moves; face, head and upper body are never deformed', async () => {
+  const { liveWeights, hairness } = await import('../lib/client/live-rig.js')
   const { POSE_RIG, poseRig } = await import('../lib/client/rig.js')
   const { POSE_META } = await import('../lib/client/poses.js')
-  for (const pose of Object.keys(POSE_META).filter(name => name !== 'DaFeiYu')) assert.ok(POSE_RIG[pose], `${pose} has rig anchors`)
+  for (const pose of Object.keys(POSE_META).filter(name => name !== 'DaFeiYu')) assert.ok(POSE_RIG[pose], `${pose} has anchors`)
   const rig = poseRig('Maid')
   const cols = 10, rows = 20
-  const data = liveWeights(rig, cols, rows, (u) => u < 0.2 ? 1 : 0)
-  const at = (x: number, y: number) => data.subarray((y * (cols + 1) + x) * 6, (y * (cols + 1) + x) * 6 + 6)
-  const [, , head0, hair0] = at(5, 1)
-  assert.equal(head0, 1, 'the head turns as one piece'); assert.equal(hair0, 0)
-  const [, , , hairLeft] = at(1, 12)
-  assert.equal(hairLeft, 1, 'hair found by colour sways')
-  const [, , headFeet, , , skirtFeet] = at(5, rows)
-  assert.equal(headFeet, 0); assert.ok(skirtFeet < 0.05, 'feet stay planted')
+  const data = liveWeights(rig, cols, rows, () => 1)
+  const at = (x: number, y: number) => data.subarray((y * (cols + 1) + x) * 4, (y * (cols + 1) + x) * 4 + 4)
+  for (let y = 0; y <= Math.floor(rows * 0.35); y++) for (let x = 0; x <= cols; x++) {
+    const [, , hair, skirt] = at(x, y)
+    assert.equal(hair, 0, 'nothing above the waist moves, even where everything looks like hair')
+    assert.equal(skirt, 0)
+  }
+  const [, , hairLow] = at(1, 16)
+  assert.ok(hairLow > 0.9, 'hair below the waist sways')
+  const [, , , skirtMid] = at(5, 14)
+  assert.ok(skirtMid > 0.3, 'the skirt swings')
+  const [, , , skirtFeet] = at(5, rows)
+  assert.ok(skirtFeet < 0.05, 'feet stay planted')
   assert.ok(hairness(140, 160, 210, 255) > 0.5, 'light blue-lavender hair')
   assert.equal(hairness(50, 55, 95, 255), 0, 'navy dress is not hair')
   assert.equal(hairness(245, 245, 250, 255), 0, 'white apron is not hair')
   assert.equal(hairness(250, 220, 210, 255), 0, 'skin is not hair')
-  assert.equal(blinkAmount(-1), 0); assert.equal(blinkAmount(60), 1); assert.equal(blinkAmount(200), 0)
-  assert.ok(blinkAmount(30) > 0 && blinkAmount(30) < 1)
-  for (let i = 0; i < 50; i++) { const d = nextBlinkDelay(); assert.ok(d >= 180 && d <= 6000) }
-  for (const [pose, data] of Object.entries(POSE_RIG)) for (const [x, y, w, h] of data.eyes) {
-    assert.ok(x > data.face[0] - 0.02 && x < data.face[2] + 0.02 && w < 0.1 && h < 0.04, `${pose} eye lies on the face`)
-    void y
-  }
 })

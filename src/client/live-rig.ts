@@ -1,20 +1,15 @@
 /**
- * Live portrait (Live2D-style motion) for the flat character artwork.
+ * Swaying clothes for the flat character artwork (WebGL).
  *
- * True Live2D needs artwork separated into dozens of layers and rigged in
- * Cubism. The plugin ships single PNG/WebP illustrations, so this renders each
- * one as a dense WebGL mesh and deforms it every frame:
- *  - breathing lifts the shoulders and head and widens the chest slightly;
- *  - the head tilts and leans toward the pointer around the neck, with a
- *    slow idle sway;
- *  - hair and the whale tail sway as a travelling wave (stronger at the tips);
- *  - the skirt swings a little, feet stay planted;
- *  - open eyes blink (the eye is squeezed onto the lower lid in the fragment
- *    shader and the lid is filled with sampled skin colour);
- *  - talking adds a light nod; expression changes crossfade.
+ * Each illustration is drawn as a dense WebGL mesh and only the lower half
+ * moves: the skirt and hem swing gently, and hair and the whale tail below
+ * the waist sway as a slow travelling wave. The face, head and upper body are
+ * never deformed (no blinking or pointer tracking); breathing stays the CSS
+ * animation that scales the whole picture. A future Live2D model can replace
+ * this layer.
  *
  * Hair is found from colour (blue-lavender, light enough not to be the navy
- * dress), weights are blurred so the mesh bends like cloth instead of tearing.
+ * dress); weights are blurred so the mesh bends like cloth instead of tearing.
  * Everything degrades safely: no WebGL, a lost context or reduced motion keep
  * the normal <img> (the caller keeps it in the DOM for hit testing anyway).
  */
@@ -28,9 +23,6 @@ const LIVE_SAMPLE_W = 112
 const LIVE_MAX_TEXTURE = 2048
 
 export interface LiveInput {
-  gazeX: number
-  gazeY: number
-  talking: boolean
   /** 0 = still (reduced motion), 1 = normal. */
   motion: number
 }
@@ -41,52 +33,29 @@ interface LiveSkin {
   indexCount: number
   rig: RigPose
   aspect: number
-  eyes: Float32Array
-  skins: Float32Array
-  eyeCount: number
   width: number
   height: number
 }
 
 const LIVE_VERTEX = `
 attribute vec2 aUV;
-attribute vec4 aW;
+attribute vec2 aW;
 uniform float uT;
-uniform vec2 uGaze;
-uniform float uTalk;
 uniform float uMotion;
 uniform vec4 uRig;
-uniform float uAspect;
 uniform float uPad;
 varying vec2 vUV;
 void main() {
   vec2 p = aUV;
-  float head = aW.x, hair = aW.y, chest = aW.z, skirt = aW.w;
-  float cx = uRig.x, chin = uRig.y, top = uRig.z, bottom = uRig.w;
+  float hair = aW.x, skirt = aW.y;
+  float top = uRig.z, bottom = uRig.w;
   float waist = top + 0.42 * (bottom - top);
   float m = uMotion;
-  // Breathing (3.6 s): everything above the waist rises, most at the shoulders.
-  float breath = sin(uT * 1.745);
-  float lift = clamp((waist - aUV.y) / max(0.001, waist - top), 0.0, 1.0);
-  p.y -= 0.0034 * m * breath * lift;
-  p.x += (aUV.x - cx) * 0.012 * m * breath * chest;
-  // Head: lean toward the pointer plus a slow idle sway, around the neck.
-  float angle = (uGaze.x * 0.055 + sin(uT * 0.63) * 0.02 + sin(uT * 0.29 + 1.3) * 0.012) * m * head;
-  vec2 pivot = vec2(cx, chin + 0.03);
-  vec2 d = p - pivot;
-  d.x *= uAspect;
-  float c = cos(angle), s = sin(angle);
-  d = vec2(c * d.x - s * d.y, s * d.x + c * d.y);
-  d.x /= uAspect;
-  p = pivot + d;
-  p.x += head * uGaze.x * 0.007 * m;
-  p.y += head * (uGaze.y * 0.004 - uTalk * 0.0028 * abs(sin(uT * 9.0))) * m;
-  // Hair and tail: a travelling wave that grows toward the tips.
-  float tips = smoothstep(chin - 0.05, bottom, aUV.y);
-  p.x += hair * tips * m * (0.011 * sin(uT * 1.25 - aUV.y * 7.0 + aUV.x * 2.0) + 0.004 * sin(uT * 2.7 - aUV.y * 13.0));
-  p.y += hair * tips * m * 0.002 * sin(uT * 1.9 - aUV.y * 9.0);
-  // Skirt swing.
-  p.x += skirt * (1.0 - hair) * m * 0.005 * sin(uT * 0.95 - aUV.y * 4.0);
+  // Hair and tail below the waist: a slow travelling wave, stronger toward the tips.
+  float tips = smoothstep(waist, bottom, aUV.y);
+  p.x += hair * tips * m * (0.009 * sin(uT * 1.1 - aUV.y * 6.0 + aUV.x * 2.0) + 0.003 * sin(uT * 2.3 - aUV.y * 11.0));
+  // Skirt and hem swing; the feet stay planted.
+  p.x += skirt * (1.0 - hair) * m * 0.006 * sin(uT * 0.9 - aUV.y * 4.0);
   vUV = aUV;
   vec2 q = (p + vec2(uPad)) / (1.0 + 2.0 * uPad);
   gl_Position = vec4(q.x * 2.0 - 1.0, 1.0 - q.y * 2.0, 0.0, 1.0);
@@ -96,36 +65,9 @@ const LIVE_FRAGMENT = `
 precision mediump float;
 uniform sampler2D uTex;
 uniform float uAlpha;
-uniform float uBlink;
-uniform vec4 uEye0;
-uniform vec4 uEye1;
-uniform vec3 uSkin0;
-uniform vec3 uSkin1;
 varying vec2 vUV;
-const float LID = 0.55;
-vec4 blinkEye(vec4 color, vec2 uv, vec4 eye, vec3 skin) {
-  if (eye.z <= 0.0 || uBlink <= 0.001) return color;
-  vec2 q = (uv - eye.xy) / eye.zw;
-  float edge = smoothstep(1.05, 0.7, abs(q.x));
-  if (edge <= 0.0 || q.y < -1.25 || q.y > LID) return color;
-  float k = uBlink * 0.94;
-  float lidTop = -1.0 + k * (LID + 1.0);
-  vec4 result;
-  if (q.y < lidTop) {
-    // Closed lid: skin colour, faded at the top so bangs over the eye stay soft.
-    float fade = smoothstep(-1.25, -0.95, q.y);
-    result = mix(color, vec4(skin * color.a, color.a), fade);
-  } else {
-    float src = -1.0 + (q.y - lidTop) / max(0.001, LID - lidTop) * (LID + 1.0);
-    result = texture2D(uTex, eye.xy + vec2(q.x, src) * eye.zw);
-  }
-  return mix(color, result, edge);
-}
 void main() {
-  vec4 color = texture2D(uTex, vUV);
-  color = blinkEye(color, vUV, uEye0, uSkin0);
-  color = blinkEye(color, vUV, uEye1, uSkin1);
-  gl_FragColor = color * uAlpha;
+  gl_FragColor = texture2D(uTex, vUV) * uAlpha;
 }`
 
 function liveCompile(gl: WebGLRenderingContext, type: number, source: string): WebGLShader | null {
@@ -149,28 +91,23 @@ export function hairness(r: number, g: number, b: number, a: number): number {
 }
 
 /**
- * Per-vertex deformation weights [head, hair, chest, skirt] for a pose.
+ * Per-vertex deformation weights [hair, skirt] for a pose; only the lower half moves.
  * `sample(u, v)` returns hairness at image coordinates (0..1).
  */
 export function liveWeights(rig: RigPose, cols: number, rows: number, sample: (u: number, v: number) => number): Float32Array {
-  const [fx0, fy0, fx1, chin] = rig.face
-  const cx = (fx0 + fx1) / 2
   const top = rig.top, bottom = rig.bottom
   const waist = top + 0.42 * (bottom - top)
   const hem = top + 0.86 * (bottom - top)
-  const data = new Float32Array((cols + 1) * (rows + 1) * 6)
+  const data = new Float32Array((cols + 1) * (rows + 1) * 4)
   let i = 0
   for (let y = 0; y <= rows; y++) {
     for (let x = 0; x <= cols; x++) {
       const u = x / cols, v = y / rows
-      const insideFace = u > fx0 && u < fx1 && v > fy0 && v < chin
-      const hair = insideFace ? 0 : sample(u, v)
-      // The head and the hair hanging from it turn together; the hair's share fades further down.
-      const head = Math.max(1 - liveSmooth(chin - 0.005, chin + 0.05, v), hair * (1 - liveSmooth(chin, chin + 0.28, v)) * 0.85)
-      const chest = liveSmooth(chin, chin + 0.04, v) * (1 - liveSmooth(waist - 0.06, waist + 0.04, v)) * (1 - liveSmooth(0.16, 0.3, Math.abs(u - cx)))
+      const lower = liveSmooth(waist - 0.04, waist + 0.04, v)
+      const hair = sample(u, v) * lower
       const skirt = liveSmooth(waist, hem, v) * (1 - liveSmooth(hem, bottom - 0.015, v))
       data[i++] = u; data[i++] = v
-      data[i++] = head; data[i++] = hair; data[i++] = chest; data[i++] = skirt
+      data[i++] = hair; data[i++] = skirt
     }
   }
   return data
@@ -195,19 +132,6 @@ function liveBlur(values: Float32Array, w: number, h: number, passes: number): F
   return src
 }
 
-/** Random wait before the next blink (ms): mostly 2.5–6 s, sometimes a quick double blink. */
-export function nextBlinkDelay(random: () => number = Math.random): number {
-  return random() < 0.12 ? 180 + random() * 120 : 2500 + random() * 3500
-}
-
-/** Lid closure (0 open … 1 shut) during a 150 ms blink. */
-export function blinkAmount(elapsedMs: number): number {
-  if (elapsedMs <= 0 || elapsedMs >= 150) return 0
-  if (elapsedMs < 55) return elapsedMs / 55
-  if (elapsedMs < 75) return 1
-  return 1 - (elapsedMs - 75) / 75
-}
-
 export class LiveRig {
   private readonly gl: WebGLRenderingContext
   private readonly program: WebGLProgram
@@ -224,13 +148,9 @@ export class LiveRig {
   private running = false
   private lost = false
   private epoch = performance.now()
-  private blinkAt = performance.now() + 1800
-  private blinkStart = -1
   private cache = new Map<string, Promise<HTMLImageElement>>()
   private pixelHeight = 0
-  input: LiveInput = { gazeX: 0, gazeY: 0, talking: false, motion: 1 }
-  /** Called once per frame before drawing, e.g. to read the pointer gaze. */
-  beforeFrame: (() => void) | null = null
+  input: LiveInput = { motion: 1 }
   onReady: (() => void) | null = null
   onFail: (() => void) | null = null
 
@@ -266,7 +186,7 @@ export class LiveRig {
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error('live rig: link failed')
     this.program = program
     gl.useProgram(program)
-    for (const name of ['uT', 'uGaze', 'uTalk', 'uMotion', 'uRig', 'uAspect', 'uPad', 'uTex', 'uAlpha', 'uBlink', 'uEye0', 'uEye1', 'uSkin0', 'uSkin1']) this.loc[name] = gl.getUniformLocation(program, name)
+    for (const name of ['uT', 'uMotion', 'uRig', 'uPad', 'uTex', 'uAlpha']) this.loc[name] = gl.getUniformLocation(program, name)
     this.aUV = gl.getAttribLocation(program, 'aUV')
     this.aW = gl.getAttribLocation(program, 'aW')
     // One shared index buffer: two triangles per grid cell.
@@ -361,15 +281,6 @@ export class LiveRig {
     const soft = liveBlur(mask, sw, sh, 3)
     const sample = (u: number, v: number) => soft[Math.min(sh - 1, Math.floor(v * sh)) * sw + Math.min(sw - 1, Math.floor(u * sw))]
     const vertices = liveWeights(rig, LIVE_COLS, LIVE_ROWS, sample)
-    // Eyelid colour: average skin just below each eye.
-    const eyes = new Float32Array(8), skins = new Float32Array(6)
-    rig.eyes.slice(0, 2).forEach(([ex, ey, ew, eh], index) => {
-      eyes.set([ex, ey, ew / 2, eh / 2], index * 4)
-      const px = sctx.getImageData(Math.max(0, Math.round((ex - ew * 0.2) * sw)), Math.min(sh - 1, Math.round((ey + eh * 0.95) * sh)), Math.max(1, Math.round(ew * 0.4 * sw)), 1).data
-      let r = 0, g = 0, b = 0, n = 0
-      for (let i = 0; i < px.length; i += 4) if (px[i + 3] > 200) { r += px[i]; g += px[i + 1]; b += px[i + 2]; n++ }
-      skins.set(n ? [r / n / 255, g / n / 255, b / n / 255] : [0.98, 0.9, 0.88], index * 3)
-    })
     const texture = gl.createTexture()
     const buffer = gl.createBuffer()
     if (!texture || !buffer) return null
@@ -382,7 +293,7 @@ export class LiveRig {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
     gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)
-    return { texture, buffer, indexCount: this.indexCount, rig, aspect: W / H, eyes, skins, eyeCount: Math.min(2, rig.eyes.length), width: W, height: H }
+    return { texture, buffer, indexCount: this.indexCount, rig, aspect: W / H, width: W, height: H }
   }
 
   private releaseSkin(skin: LiveSkin) {
@@ -422,23 +333,16 @@ export class LiveRig {
     this.frame = 0
   }
 
-  private drawSkin(skin: LiveSkin, alpha: number, blink: number) {
+  private drawSkin(skin: LiveSkin, alpha: number) {
     const gl = this.gl
-    const [fx0, , fx1, chin] = skin.rig.face
     gl.bindTexture(gl.TEXTURE_2D, skin.texture)
     gl.bindBuffer(gl.ARRAY_BUFFER, skin.buffer)
     gl.enableVertexAttribArray(this.aUV)
-    gl.vertexAttribPointer(this.aUV, 2, gl.FLOAT, false, 24, 0)
+    gl.vertexAttribPointer(this.aUV, 2, gl.FLOAT, false, 16, 0)
     gl.enableVertexAttribArray(this.aW)
-    gl.vertexAttribPointer(this.aW, 4, gl.FLOAT, false, 24, 8)
-    gl.uniform4f(this.loc.uRig, (fx0 + fx1) / 2, chin, skin.rig.top, skin.rig.bottom)
-    gl.uniform1f(this.loc.uAspect, skin.aspect)
+    gl.vertexAttribPointer(this.aW, 2, gl.FLOAT, false, 16, 8)
+    gl.uniform4f(this.loc.uRig, 0, 0, skin.rig.top, skin.rig.bottom)
     gl.uniform1f(this.loc.uAlpha, alpha)
-    gl.uniform1f(this.loc.uBlink, skin.eyeCount ? blink : 0)
-    gl.uniform4fv(this.loc.uEye0, skin.eyes.subarray(0, 4))
-    gl.uniform4fv(this.loc.uEye1, skin.eyes.subarray(4, 8))
-    gl.uniform3fv(this.loc.uSkin0, skin.skins.subarray(0, 3))
-    gl.uniform3fv(this.loc.uSkin1, skin.skins.subarray(3, 6))
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer)
     gl.drawElements(gl.TRIANGLES, skin.indexCount, gl.UNSIGNED_SHORT, 0)
   }
@@ -450,30 +354,18 @@ export class LiveRig {
     if (this.canvas.height !== this.pixelHeight || !this.pixelHeight) this.resizeCanvas()
     const gl = this.gl
     const t = (now - this.epoch) / 1000
-    this.beforeFrame?.()
     const motion = Math.min(1, Math.max(0, this.input.motion))
-    // Blink scheduler (skipped entirely when motion is off).
-    let blink = 0
-    if (motion > 0) {
-      if (this.blinkStart < 0 && now >= this.blinkAt) this.blinkStart = now
-      if (this.blinkStart >= 0) {
-        blink = blinkAmount(now - this.blinkStart)
-        if (now - this.blinkStart >= 150) { this.blinkStart = -1; this.blinkAt = now + nextBlinkDelay() }
-      }
-    }
     gl.viewport(0, 0, this.canvas.width, this.canvas.height)
     gl.clearColor(0, 0, 0, 0)
     gl.clear(gl.COLOR_BUFFER_BIT)
     gl.useProgram(this.program)
     gl.uniform1f(this.loc.uT, t)
-    gl.uniform2f(this.loc.uGaze, Math.max(-1, Math.min(1, this.input.gazeX)), Math.max(-1, Math.min(1, this.input.gazeY)))
-    gl.uniform1f(this.loc.uTalk, this.input.talking ? 1 : 0)
     gl.uniform1f(this.loc.uMotion, motion)
     // The new pose is drawn solid and the old one fades out on top, so she never turns translucent.
-    this.drawSkin(skin, 1, blink)
+    this.drawSkin(skin, 1)
     if (this.previous) {
       const fade = Math.min(1, (now - this.fadeStart) / 160)
-      if (fade < 1) this.drawSkin(this.previous, 1 - fade, blink)
+      if (fade < 1) this.drawSkin(this.previous, 1 - fade)
       else { this.releaseSkin(this.previous); this.previous = null }
     }
   }

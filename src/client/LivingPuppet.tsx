@@ -20,9 +20,9 @@ export interface LivingPuppetProps {
   box?: { width: number; height: number; left: number }
   /** Calibrated head-size factor, consumed by theatre CSS as --pose-scale. */
   poseScale?: number
-  /** Live (Live2D-style) motion through WebGL; the <img> stays for hit testing and as the fallback. */
+  /** Swaying clothes through WebGL; the <img> stays for hit testing and as the fallback. */
   live?: boolean
-  /** 0 keeps the live portrait still (reduced motion). */
+  /** 0 keeps the clothes still (reduced motion). */
   motion?: number
   /** Mood mark above her head; a new key replays its animation. */
   emote?: Emote
@@ -30,8 +30,8 @@ export interface LivingPuppetProps {
   onMouseDown?: (e: React.MouseEvent) => void
 }
 
-/** WebGL layer that mirrors the image box (plus a margin for swaying hair). */
-function LiveCanvas({ src, pose, talking, motion, box }: { src: string; pose: string; talking: boolean; motion: number; box?: LivingPuppetProps['box'] }) {
+/** WebGL layer that mirrors the image box (plus a margin for the swaying hem). */
+function LiveCanvas({ src, pose, motion, box }: { src: string; pose: string; motion: number; box?: LivingPuppetProps['box'] }) {
   const ref = useRef<HTMLCanvasElement | null>(null)
   const rigRef = useRef<LiveRig | null>(null)
   useEffect(() => {
@@ -42,23 +42,13 @@ function LiveCanvas({ src, pose, talking, motion, box }: { src: string; pose: st
     rigRef.current = rig
     rig.onReady = () => { canvas.dataset.state = 'ready' }
     rig.onFail = () => { canvas.dataset.state = 'failed' }
-    // The overlay writes the pointer gaze as inline CSS variables once per frame.
-    const root = canvas.closest('[data-whale-pet]') as HTMLElement | null
-    rig.beforeFrame = () => {
-      if (!root) return
-      rig.input.gazeX = Number.parseFloat(root.style.getPropertyValue('--gaze-x')) || 0
-      rig.input.gazeY = Number.parseFloat(root.style.getPropertyValue('--gaze-y')) || 0
-    }
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => rig.resizeCanvas()) : null
     observer?.observe(canvas)
     rig.start()
     return () => { observer?.disconnect(); rig.dispose(); rigRef.current = null }
   }, [])
   useEffect(() => { rigRef.current?.setPose(src, pose) }, [src, pose])
-  useEffect(() => {
-    const rig = rigRef.current
-    if (rig) { rig.input.talking = talking; rig.input.motion = motion }
-  }, [talking, motion])
+  useEffect(() => { if (rigRef.current) rigRef.current.input.motion = motion }, [motion])
   const style: React.CSSProperties | undefined = box ? {
     width: box.width * (1 + 2 * LIVE_PAD) + 'px', height: box.height * (1 + 2 * LIVE_PAD) + 'px',
     left: box.left - box.width * LIVE_PAD + 'px', bottom: -box.height * LIVE_PAD + 'px',
@@ -77,16 +67,13 @@ const EMOTE_GLYPHS: Record<Exclude<Emote, null>, string> = {
 }
 
 /**
- * Two transform layers: the root carries gaze parallax, the canvas carries
+ * Two layers: the root positions the portrait, the canvas carries
  * breathing/talking. The image itself is sized, never transformed, so the
- * clip-path hit area always matches what is drawn. With live motion the
- * WebGL portrait takes over drawing (and breathing) once it is ready.
+ * clip-path hit area always matches what is drawn. With swaying clothes on,
+ * the WebGL copy draws the picture once it is ready (it breathes with the canvas).
+ * The portrait does not follow the pointer.
  */
 export function LivingPuppet({ imgSrc, isMaiden, isGalGameMode, mouthOpenRatio, state, onMouseDown, opacity = 1, poseName = 'Maid', box, poseScale = 1, live = false, motion = 1, emote = null, emoteKey = 0 }: LivingPuppetProps) {
-  // Gaze parallax reads --gaze-x / --gaze-y, written by the overlay once per frame
-  // outside React, so pointer moves never re-render the overlay. The live rig turns the head itself.
-  const k = (isGalGameMode ? 0.6 : 1) * (live ? 0.35 : 1)
-  const transform = `perspective(${isGalGameMode ? 900 : 700}px) rotateY(calc(var(--gaze-x, 0) * ${4.5 * k}deg)) rotateX(calc(var(--gaze-y, 0) * ${-3 * k}deg)) translate(calc(var(--gaze-x, 0) * ${5 * k}px), calc(var(--gaze-y, 0) * ${3 * k}px))`
   const isTalking = mouthOpenRatio > 0.15 || state === 'ANSWERING'
   const imageStyle: React.CSSProperties = {
     clipPath: HIT_AREAS[poseName],
@@ -100,7 +87,7 @@ export function LivingPuppet({ imgSrc, isMaiden, isGalGameMode, mouthOpenRatio, 
     <div
       className={'puppetRoot' + (isGalGameMode ? ' puppetGalGame' : '') + (live ? ' puppetLive' : '')}
       onMouseDown={onMouseDown}
-      style={{ transform, opacity, '--pose-scale': poseScale, '--pose-aspect': aspect } as React.CSSProperties}
+      style={{ opacity, '--pose-scale': poseScale, '--pose-aspect': aspect } as React.CSSProperties}
     >
       <div className={'puppetCanvas' + (isTalking ? ' canvasTalking' : '')} data-state={state}>
         <img
@@ -112,7 +99,7 @@ export function LivingPuppet({ imgSrc, isMaiden, isGalGameMode, mouthOpenRatio, 
           className={'characterBase ' + (isMaiden ? (isGalGameMode ? 'standingGalGame' : 'standingBase') : (isGalGameMode ? 'chibiGalGame' : 'chibiBase'))}
           draggable={false}
         />
-        {live && isMaiden && <LiveCanvas src={imgSrc} pose={poseName} talking={isTalking} motion={motion} box={box} />}
+        {live && isMaiden && <LiveCanvas src={imgSrc} pose={poseName} motion={motion} box={box} />}
         {emote && <div className={'puppetBox' + (box ? '' : ' puppetBoxStage')} style={boxStyle} aria-hidden="true">
           <span key={emoteKey} className="puppetEmote" data-emote={emote} style={{ left: Math.min(92, rig.face[2] * 100 + 1) + '%', top: Math.max(0, rig.face[1] * 100 - 7) + '%' }}>
             <svg viewBox="0 0 24 24" width="100%" height="100%"><path d={EMOTE_GLYPHS[emote]} /></svg>

@@ -6,7 +6,7 @@
  */
 
 import { readFileSync, writeFileSync, mkdirSync, cpSync, existsSync, renameSync } from 'node:fs'
-import { join, dirname } from 'node:path'
+import { join, dirname, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
 import ts from 'typescript'
@@ -97,7 +97,7 @@ console.log('[build] 4. Ensuring lib/assets directory...')
 const libAssetsDir = join(__dirname, 'lib', 'assets')
 mkdirSync(libAssetsDir, { recursive: true })
 // WebP copies are embedded in client.js already; lib/assets keeps the source PNGs only.
-cpSync(srcAssetsDir, libAssetsDir, { recursive: true, filter: source => !source.includes('optimized') })
+cpSync(srcAssetsDir, libAssetsDir, { recursive: true, filter: source => !relative(srcAssetsDir, source).split(sep)[0].startsWith('optimized') })
 
 console.log('[build] 5. Bundling lib/client.js for DSH browser module loader...')
 const petOverlayCss = readFileSync(join(__dirname, 'src', 'client', 'PetOverlay.module.css'), 'utf-8')

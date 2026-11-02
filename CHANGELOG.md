@@ -13,8 +13,9 @@ _Nothing yet._
 
 ### [v0.6.0] - 2026-11-01
 
-- **Live portrait (Live2D-style).** Every illustration is drawn as a dense WebGL mesh that breathes, leans and tilts its head toward the pointer, lets hair, tail and skirt sway, and blinks open eyes. Per-pose rig anchors (face, chin, eyes) were measured from the artwork; hair is found by colour and the weights are blurred so the mesh bends like cloth. Turn it off in Settings › Companionship; without WebGL or with reduced motion she falls back to the still image.
-- **Six new expressions** (smug, shy, frustrated, surprised, proud, happy). In the theatre each page sets her expression like a visual novel, with a small hop and a mood mark above her head (♥ ✦ ♪ 💧 ! ? 💢). Daily life uses them too: head pats, finished answers, pricing-period announcements, low balance and occasional idle glances.
+- **Swaying clothes.** Each illustration is drawn as a WebGL mesh whose skirt, hair ends and tail sway gently below the waist; the face and upper body are never deformed and the portrait does not follow the pointer. Hair is found by colour and the weights are blurred so the mesh bends like cloth. Turn it off in Settings › Companionship; without WebGL or with reduced motion she falls back to the still image.
+- **Six new expressions** (smug, shy, frustrated, surprised, proud, happy). In the theatre each page sets her expression like a visual novel, with a small hop and a mood mark above her head (♥ ✦ ♪ 💧 ! ? 💢). Daily life uses them too: head pats (proud or shy), finished answers, pricing-period announcements, low balance and occasional idle glances.
+- **Easter egg.** Poke her a few times in a row and she gets puzzled; keep going and she gets frustrated.
 - **Visual-novel polish (Senren＊Banka-inspired).** Characters fade in one by one; a whale-tail click-wait mark ends each line; expressions crossfade; backgrounds can follow the time of day (café by day, seaside at dusk, the study at night; now the default).
 - **Smaller download.** Artwork is embedded as WebP when it matches the current PNG (scripts/optimize-assets.py), so the browser bundle shrinks from 18.9 MB to about 7.6 MB despite six more illustrations.
 - **Theatre chips no longer cover the DSH title bar** (Application / Edit menu); expanded reading keeps clear of the window controls.
@@ -24,7 +25,7 @@ _Nothing yet._
 - **Theatre HUD.** Music, background and settings chips at the top left with panels for tracks, volume, scene cards, uploads, text speed, text size and toggles. Escape closes an open menu first and now works from any focused control.
 - **Persistence.** Scene, shuffle, music on/off, track and volume are saved with the other preferences; your picture and music are kept in IndexedDB on this device and restored on the next visit.
 - **Performance.** Painted scenes become short blob URLs once; under an opaque scene the host chat's blur filter is dropped.
-- Tests: 106 pass (rig weights and blinking, expressions, scenes, sequencer scheduling and fades, media validation, preferences, theatre panels, Skip and background-click behaviour).
+- Tests: 107 pass (cloth-sway weights, poke easter egg, expressions, scenes, sequencer scheduling and fades, media validation, preferences, theatre panels, Skip and background-click behaviour).
 
 ### [v0.5.2] - 2026-10-31
 
@@ -144,8 +145,9 @@ _暂无。_
 
 ### [v0.6.0] - 2026-11-01
 
-- **动态立绘（Live2D 风格）。** 每张立绘都以高密度 WebGL 网格绘制：呼吸起伏、头部随鼠标倾斜转动、头发 / 尾巴 / 裙摆摆动，睁眼的姿态会眨眼。各姿态的绑定点（脸、下巴、眼睛）根据原画测量；头发按颜色识别，权重经过模糊，网格像布料一样弯曲而不撕裂。可在 设置 › 陪伴 中关闭；不支持 WebGL 或开启减弱动效时自动使用静态图。
-- **六个新表情**（得意、害羞、抓狂、惊讶、满足、开心）。剧场里像 GalGame 一样逐页换表情，伴随小跳和头顶情绪符号（♥ ✦ ♪ 💧 ! ? 💢）。日常也会用到：摸头、回答完成、峰谷播报、余额偏低以及偶尔的闲置小表情。
+- **裙摆飘动。** 每张立绘以 WebGL 网格绘制，腰部以下的裙摆、发梢和尾巴轻轻摆动；脸和上半身不会变形，也不跟随鼠标。头发按颜色识别，权重经过模糊，像布料一样弯曲而不撕裂。可在 设置 › 陪伴 中关闭；不支持 WebGL 或开启减弱动效时自动使用静态图。
+- **六个新表情**（得意、害羞、抓狂、惊讶、满足、开心）。剧场里像 GalGame 一样逐页换表情，伴随小跳和头顶情绪符号（♥ ✦ ♪ 💧 ! ? 💢）。日常也会用到：摸头（满足或害羞）、回答完成、峰谷播报、余额偏低以及偶尔的闲置小表情。
+- **小彩蛋。** 连续戳她几下她会疑惑，一直戳下去她就会抓狂。
 - **GalGame 打磨（参考千恋＊万花）。** 文字逐字淡入；每句结尾有鲸尾点击提示；表情切换交叉淡入；背景可跟随时间（白天咖啡厅、黄昏海边、夜晚书房，现为默认）。
 - **体积更小。** 立绘在与当前 PNG 一致时以 WebP 内嵌（scripts/optimize-assets.py），即使多了六张图，运行包仍从 18.9 MB 降到约 7.6 MB。
 - **剧场按钮不再遮挡 DSH 标题栏**（Application / Edit 菜单）；大屏阅读避开窗口按钮。
@@ -155,7 +157,7 @@ _暂无。_
 - **剧场 HUD。** 左上角的音乐、背景、设置小按钮，面板内有曲目、音量、场景卡片、上传、文字速度、字号与开关。Escape 优先关闭打开的菜单，并且在任何控件获得焦点时都能使用。
 - **自动保存。** 场景、随机、音乐开关、曲目和音量与其他偏好一起保存；你的图片和音乐保存在本机 IndexedDB，下次打开自动恢复。
 - **性能。** 绘制场景只生成一次短 blob 地址；不透明场景下去掉宿主聊天区的模糊滤镜。
-- 测试：106 项通过（绑定权重与眨眼、表情、场景、调度与淡入淡出、文件校验、偏好、剧场面板、快进与背景点击行为）。
+- 测试：107 项通过（裙摆飘动权重、戳戳彩蛋、表情、场景、调度与淡入淡出、文件校验、偏好、剧场面板、快进与背景点击行为）。
 
 ### [v0.5.2] - 2026-10-31
 

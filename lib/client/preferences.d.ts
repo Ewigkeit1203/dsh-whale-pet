@@ -35,7 +35,7 @@ export interface Preferences {
     bgmOn: boolean;
     bgmTrack: 'daily' | 'calm' | 'night' | 'custom';
     bgmVolume: number;
-    /** Live (Live2D-style) portrait motion through WebGL. */
+    /** Swaying skirt, hair ends and tail (WebGL); the face is never deformed. */
     liveMotion: boolean;
     x?: number;
     y?: number;

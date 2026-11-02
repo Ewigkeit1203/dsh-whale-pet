@@ -26,14 +26,13 @@
 [data-whale-pet="stage"] .standingGalGame { height: calc(var(--stage-h) * var(--pose-scale, 1)); }
 [data-whale-pet="stage"] .chibiGalGame { height: calc(var(--stage-h) * 0.42); }
 
-/* Live (Live2D-style) portrait: the WebGL canvas mirrors the image box plus a 5% margin.
-   It stays invisible until its first frame; then the <img> hides (it still takes clicks)
-   and the canvas does the breathing, so the CSS breathing pauses. */
+/* Swaying clothes: the WebGL canvas mirrors the image box plus a 5% margin. It stays
+   invisible until its first frame; then the <img> hides (it still takes clicks). The
+   canvas sits inside .puppetCanvas, so the CSS breathing moves it as one piece. */
 [data-whale-pet] .liveCanvas { position: absolute; display: block; max-width: none; pointer-events: none; opacity: 0; transition: opacity .25s ease; }
 [data-whale-pet] .liveCanvas[data-state="ready"] { opacity: 1; }
 [data-whale-pet] .liveCanvas[data-state="failed"] { display: none; }
 [data-whale-pet] .puppetCanvas:has(> .liveCanvas[data-state="ready"]) > .characterBase { opacity: 0; }
-[data-whale-pet] .puppetCanvas:has(> .liveCanvas[data-state="ready"]):not([data-state="EATING"]):not([data-state="WANDERING"]) { animation: none; }
 [data-whale-pet="widget"] .puppetCanvas:has(> .liveCanvas[data-state="ready"]) .liveCanvas { filter: drop-shadow(0 8px 14px rgba(8, 30, 60, .22)); }
 [data-whale-pet="widget"] .puppetCanvas:has(> .liveCanvas[data-state="ready"]) { filter: none; }
 [data-whale-pet="stage"] .liveCanvasStage {

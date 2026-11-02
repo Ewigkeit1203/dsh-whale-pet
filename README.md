@@ -6,8 +6,8 @@
 <a id="screenshots"></a>
 ## 使用截图 / Screenshots
 
-**她就住在 DSH 里，而且会动。** 呼吸、眨眼、头发飘动，视线跟着鼠标（Live2D 风格）。头顶小标签显示梁文峰 / 梁文谷时段和账户余额；时段切换时她会换个表情告诉你。<br>
-**She lives inside DSH, and she moves.** She breathes, blinks, her hair sways and her gaze follows the pointer (Live2D-style). Chips above her head show the DeepSeek pricing period (梁文峰 = peak, 梁文谷 = off-peak) and your balance; she announces each period switch with a new expression.
+**她就住在 DSH 里。** 裙摆、发梢和尾巴会轻轻飘动。头顶小标签显示梁文峰 / 梁文谷时段和账户余额；时段切换时她会换个表情告诉你。
+**She lives inside DSH.** Her skirt, hair ends and tail sway gently. Chips above her head show the DeepSeek pricing period (梁文峰 = peak, 梁文谷 = off-peak) and your balance; she announces each period switch with a new expression.<br>
 
 ![大肥鱼在 DSH 中：计费时段、余额与快捷操作 / The companion in DSH with pricing period, balance and quick actions](docs/screenshots/companion.jpg)
 
@@ -22,8 +22,8 @@
   </tr>
 </table>
 
-**GalGame 对话剧场：** 点击输入框即可进入。全屏场景、居中的动态立绘、深蓝毛玻璃对话框和名字标签；她的表情会随每一页台词变化，头顶冒出情绪符号；文字逐字淡入，可以快进，代码有专门的卡片。<br>
-**Visual-novel theatre:** click the chat box to enter. A full-screen scene, a centred live portrait and a deep-blue glass dialogue box with a name tag; her expression changes with each page, with a mood mark above her head; text fades in character by character, with Skip, and code gets copyable cards.
+**GalGame 对话剧场：** 点击输入框即可进入。全屏场景、居中的立绘、深蓝毛玻璃对话框和名字标签；她的表情会随每一页台词变化，头顶冒出情绪符号；文字逐字淡入，可以快进，代码有专门的卡片。<br>
+**Visual-novel theatre:** click the chat box to enter. A full-screen scene, a centred portrait and a deep-blue glass dialogue box with a name tag; her expression changes with each page, with a mood mark above her head; text fades in character by character, with Skip, and code gets copyable cards.
 
 ![剧场：场景、思考气泡与回答 / Theatre with a scene, reasoning bubble and answer](docs/screenshots/theatre.jpg)
 
@@ -44,12 +44,14 @@
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/head-pat.jpg" alt="摸摸头 / Head pat"></td>
-    <td width="50%"><img src="docs/screenshots/dizzy.jpg" alt="晃晕了 / Dizzy after shaking"></td>
+    <td width="33%"><img src="docs/screenshots/head-pat.jpg" alt="摸摸头 / Head pat"></td>
+    <td width="33%"><img src="docs/screenshots/dizzy.jpg" alt="晃晕了 / Dizzy after shaking"></td>
+    <td width="33%"><img src="docs/screenshots/poke.jpg" alt="戳戳彩蛋 / Poke easter egg"></td>
   </tr>
   <tr>
-    <td>在她头上来回移动鼠标：摸摸头，她会开心或害羞，并叫出你设置的称呼。<br>Move the pointer over her head for a head pat; she looks happy or shy and uses the name you set.</td>
+    <td>在她头上来回移动鼠标：摸摸头，她会一脸满足或害羞，并叫出你设置的称呼。<br>Move the pointer over her head for a head pat; she looks content or shy and uses the name you set.</td>
     <td>拖着她快速晃一晃，她就晕了。<br>Shake her quickly while dragging and she gets dizzy.</td>
+    <td>小彩蛋：一直戳她，她会先疑惑，然后抓狂。<br>Easter egg: keep poking her and she gets puzzled, then frustrated.</td>
   </tr>
 </table>
 
@@ -73,8 +75,8 @@ The product name is **大肥鱼** in both languages; `dsh-whale-pet` remains the
 
 ### New in v0.6.0
 
-- **Live portrait (Live2D-style).** Breathing, blinking, swaying hair, tail and skirt, and a head that tilts toward the pointer, on the desktop and in the theatre. Settings › Companionship › Live portrait turns it off.
-- **Six new expressions** that follow the dialogue page by page, with a little hop and a mood mark (♥ ✦ ♪ 💧 ! ? 💢); also used for head pats, finished answers, announcements and idle moments.
+- **Swaying clothes.** Her skirt, hair ends and tail sway gently through WebGL; her face is never distorted. Settings › Companionship › Swaying clothes turns it off. (A real Live2D model is planned.)
+- **Six new expressions** that follow the dialogue page by page, with a little hop and a mood mark (♥ ✦ ♪ 💧 ! ? 💢); also used for head pats, finished answers, announcements, idle moments and a poke easter egg.
 - **Visual-novel touches:** characters fade in one by one, a whale-tail click-wait mark, and backgrounds that follow the time of day.
 - The bundle is now about 7.6 MB (was 18.9 MB), and the theatre chips sit below the DSH title bar.
 
@@ -130,10 +132,10 @@ Run `uninstall.bat` and refresh DSH to remove the plugin from the profile. Saved
 ### Controls
 
 - **Hover** for quick actions: Theatre, Settings, Quiet mode, Dock to the edge and, after an answer with code, Copy code.
-- She moves on her own (Live2D-style) and looks toward your pointer; turn this off in Settings › Companionship › Live portrait.
+- Her skirt, hair ends and tail sway gently; turn this off in Settings › Companionship › Swaying clothes.
 - **Click** her to open Settings; **drag** to move her. With Settings open, she and the panel move together.
 - **Chips above her head:** the pricing period (click to hear it again) and your balance (click for details).
-- Move the pointer back and forth over her head for a head pat. Shaking her quickly makes her dizzy.
+- Move the pointer back and forth over her head for a head pat. Shaking her quickly makes her dizzy. Easter egg: keep poking her and see what happens.
 - Click the DSH chat box to enter the **theatre**; press Escape or **Exit** to leave. Click the text (or the scene) once to finish revealing it, again for the next page; with Transparent selected, clicking the background leaves. The bar under the text has Log, Auto, Skip, Hide, Expand and the ⋯ menu (sounds, reading mode, theme, language).
 - **Theatre chips (top left):** music (tracks, play/pause, volume, your own file), background (time of day, four scenes, Transparent, your picture, shuffle) and theatre settings (text speed, size, typewriter, auto, sounds).
 - Shortcuts: hold **Alt** to click through her, **Alt+W** hides or shows her, **Alt+T** toggles the theatre. In the theatre: ←/→, Enter, hold **Ctrl** to skip, **L** log, **A** auto, **H** hide, **M** sound, **Esc** closes menus first.
@@ -147,7 +149,7 @@ Preferences stay in local storage. A theatre picture or music file you add is ke
 
 **Pricing period:** follows [DeepSeek's official rule](https://api-docs.deepseek.com/zh-cn/quick_start/pricing/). Peak is Beijing time, weekdays 09:00–12:00 and 14:00–18:00; other hours, weekends and Chinese public holidays are off-peak at half price. The holiday table covers 2026 and is updated yearly.
 
-**Live portrait:** the motion is produced by deforming the illustration with WebGL (no separate Live2D model or Cubism runtime). Without WebGL, if the context is lost, or with reduced motion, the still image is shown.
+**Swaying clothes:** only the skirt, hair ends and tail are deformed with WebGL; the face and upper body stay exactly as drawn. Without WebGL, if the context is lost, or with reduced motion, the still image is shown.
 
 Response detection depends on DSH's page structure. Token speed appears only when DSH exposes it; character counts are never shown as tokens/s. Code blocks and lists get dedicated formatting, but this is not a full Markdown renderer. Expressions change by switching artwork; there is no lip-sync.
 
@@ -171,7 +173,7 @@ The build compiles the views, state, host adapter, CSS and all 12 PNGs into `lib
 - **GPT 6.1Sol / Codex (OpenAI)** — AI-assisted v0.4.0 engineering, interaction design, stability work, tests and release documentation.
 - **Claude Sonnet 5.5 (Anthropic)** — AI-assisted product review and UI/UX recommendations; advisory contribution.
 - **Gemini 4 Argon (Google)** — AI-assisted product review, theatre layout and visual interaction proposals; advisory contribution.
-- **Claude Opus 5.5 (Anthropic)** — AI-assisted v0.5.0 frontend: pet and settings group layout with edge handling, rebuilt settings panel and footer, per-pose portrait calibration, balance through DSH's account service with honest states, the 梁文峰 / 梁文谷 pricing-period announcements, render-performance work, theatre layout, a new Web Audio character voice, the design-token stylesheet rewrite and the related regression tests; the theatre update: illustrated scenes with crossfades, live-performed seamless background music, the visual-novel dialogue box, Skip and local picture/music storage; v0.6.0: the WebGL live portrait (Live2D-style mesh rig with hand-calibrated eyes), dialogue-driven expressions and mood marks, Senren＊Banka-style text and click-wait polish, and WebP asset embedding.
+- **Claude Opus 5.5 (Anthropic)** — AI-assisted v0.5.0 frontend: pet and settings group layout with edge handling, rebuilt settings panel and footer, per-pose portrait calibration, balance through DSH's account service with honest states, the 梁文峰 / 梁文谷 pricing-period announcements, render-performance work, theatre layout, a new Web Audio character voice, the design-token stylesheet rewrite and the related regression tests; the theatre update: illustrated scenes with crossfades, live-performed seamless background music, the visual-novel dialogue box, Skip and local picture/music storage; v0.6.0: WebGL swaying clothes, dialogue-driven expressions and mood marks, the poke easter egg, Senren＊Banka-style text and click-wait polish, and WebP asset embedding.
 
 See the [contribution guide](CONTRIBUTING.md) for PR review, release approval and AI-art requirements. Contributions and reports are welcome through [Issues](https://github.com/Ewigkeit1203/dsh-whale-pet/issues) and pull requests. Include your DSH version and reproduction steps; omit private conversations and credentials.
 
@@ -194,8 +196,8 @@ See the [contribution guide](CONTRIBUTING.md) for PR review, release approval an
 
 ### v0.6.0 新体验
 
-- **动态立绘（Live2D 风格）。** 呼吸、眨眼、头发 / 尾巴 / 裙摆摆动，头部跟着鼠标倾斜转动；桌宠和剧场都生效。可在 设置 › 陪伴 › 动态立绘 中关闭。
-- **六个新表情**，剧场里逐页跟随台词变化，小跳一下并冒出情绪符号（♥ ✦ ♪ 💧 ! ? 💢）；摸头、回答完成、峰谷播报和闲置时也会用到。
+- **裙摆飘动。** 裙摆、发梢和尾巴用 WebGL 轻轻摆动，脸部不会变形；可在 设置 › 陪伴 › 裙摆飘动 中关闭。（之后会换成真正的 Live2D 模型。）
+- **六个新表情**，剧场里逐页跟随台词变化，小跳一下并冒出情绪符号（♥ ✦ ♪ 💧 ! ? 💢）；摸头、回答完成、峰谷播报、闲置时以及戳戳彩蛋里也会用到。
 - **GalGame 细节：** 文字逐字淡入、鲸尾点击提示，背景跟随时间切换。
 - 运行包缩小到约 7.6 MB（原 18.9 MB）；剧场按钮移到 DSH 标题栏下方。
 
@@ -251,10 +253,10 @@ React 与 Cordis 由 DSH 提供，普通用户无需 Node.js、npm 或额外素�
 ### 怎么操作
 
 - **悬停**出现快捷操作：剧场、设置、安静模式、贴边；最近的回答里有代码时，还会出现“复制代码”。
-- 她会自己动起来（Live2D 风格），视线跟着鼠标；可在 设置 › 陪伴 › 动态立绘 中关闭。
+- 她的裙摆、发梢和尾巴会轻轻飘动；可在 设置 › 陪伴 › 裙摆飘动 中关闭。
 - **点击**她打开设置，**拖动**可以移动她。设置打开时，她和面板会一起移动。
 - **头顶小标签**：计费时段（点击再播报一次）和余额（点击查看详情）。
-- 在她头上来回移动鼠标可以摸头；快速晃动她会头晕。
+- 在她头上来回移动鼠标可以摸头；快速晃动她会头晕。小彩蛋：一直戳她试试看。
 - 点击 DSH 聊天输入框进入**剧场**；按 Escape 或「退出」离开。第一次点击文字（或场景）会显示完当前段，再点一次翻页；选择「透明」背景时，点击背景会退出。文字下方的按钮栏有回顾、自动、快进、隐藏、大屏和“⋯”菜单（音效、阅读方式、主题、语言）。
 - **剧场左上角小按钮**：音乐（曲目、播放/暂停、音量、本地音乐）、背景（跟随时间、四套场景、透明、我的背景、随机）和剧场设置（文字速度、字号、打字机、自动翻页、音效）。
 - 快捷键：按住 **Alt** 可点穿她，**Alt+W** 隐藏或显示她，**Alt+T** 开关剧场。剧场里：←/→、Enter，按住 **Ctrl** 快进，**L** 回顾，**A** 自动，**H** 隐藏界面，**M** 音效，**Esc** 先关闭菜单。
@@ -268,7 +270,7 @@ React 与 Cordis 由 DSH 提供，普通用户无需 Node.js、npm 或额外素�
 
 **计费时段**：按 DeepSeek 官方规则。北京时间工作日 9:00–12:00、14:00–18:00 为高峰，其余时间以及周末、法定节假日为空闲时段，价格减半。节假日表目前覆盖 2026 年，每年更新。
 
-**动态立绘**：动作由 WebGL 对立绘进行网格形变实现（不需要单独的 Live2D 模型或 Cubism 运行库）。不支持 WebGL、上下文丢失或开启减弱动效时显示静态立绘。
+**裙摆飘动**：只有裙摆、发梢和尾巴由 WebGL 形变，脸和上半身保持原画不变。不支持 WebGL、上下文丢失或开启减弱动效时显示静态立绘。
 
 回答识别依赖 DSH 页面结构。只在 DSH 提供时显示 token 速度，不会用字符数冒充 tokens/s。代码块和列表有专门排版，但不是完整的 Markdown 渲染器。表情靠切换立绘实现，没有真实口型。
 
@@ -292,7 +294,7 @@ node --check lib/client.js
 - **GPT 6.1Sol / Codex (OpenAI)**：AI 辅助 v0.4.0 工程、交互设计、稳定性修复、测试与发布文档。
 - **Claude Sonnet 5.5（Anthropic）**：AI 辅助产品评审、界面审查及路线图建议；提供产品建议。
 - **Gemini 4 Argon（Google）**：AI 辅助产品评审、剧场布局与视觉交互方案；提供产品建议。
-- **Claude Opus 5.5（Anthropic）**：AI 辅助 v0.5.0 前端：角色与设置面板整体布局及贴边处理、设置面板与底部区域重做、逐姿态立绘校准、通过 DSH 账户服务读取余额并如实显示状态、梁文峰 / 梁文谷时段播报、渲染性能优化、剧场布局、新的 Web Audio 人物音效、基于设计变量的样式重写及相应回归测试；剧场更新：插画场景与交叉淡入、实时演奏的无缝背景音乐、GalGame 对话框、快进以及本地图片 / 音乐存储；v0.6.0：WebGL 动态立绘（Live2D 风格网格绑定与手工校准的眼睛）、随台词变化的表情与情绪符号、千恋＊万花风格的文字与点击提示打磨，以及 WebP 立绘内嵌。
+- **Claude Opus 5.5（Anthropic）**：AI 辅助 v0.5.0 前端：角色与设置面板整体布局及贴边处理、设置面板与底部区域重做、逐姿态立绘校准、通过 DSH 账户服务读取余额并如实显示状态、梁文峰 / 梁文谷时段播报、渲染性能优化、剧场布局、新的 Web Audio 人物音效、基于设计变量的样式重写及相应回归测试；剧场更新：插画场景与交叉淡入、实时演奏的无缝背景音乐、GalGame 对话框、快进以及本地图片 / 音乐存储；v0.6.0：WebGL 裙摆飘动、随台词变化的表情与情绪符号、戳戳彩蛋、千恋＊万花风格的文字与点击提示打磨，以及 WebP 立绘内嵌。
 
 欢迎阅读[贡献指南](CONTRIBUTING.md)：代码经 PR 审查与测试后才可合并，发布须由项目负责人确认；接受形象统一、来源与授权清楚的 AI 美术。
 
