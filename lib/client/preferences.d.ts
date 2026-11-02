@@ -28,13 +28,15 @@ export interface Preferences {
     form: 'maiden' | 'chibi';
     autoGalGame: boolean;
     /** Theatre background (see scenes.ts); 'none' shows DSH through a soft blur. */
-    scene: 'study' | 'lab' | 'cafe' | 'seaside' | 'none' | 'custom';
+    scene: 'auto' | 'study' | 'lab' | 'cafe' | 'seaside' | 'none' | 'custom';
     /** Pick a different background each time the theatre opens. */
     sceneShuffle: boolean;
     /** Background music plays while the theatre is open (bgm.ts). */
     bgmOn: boolean;
     bgmTrack: 'daily' | 'calm' | 'night' | 'custom';
     bgmVolume: number;
+    /** Live (Live2D-style) portrait motion through WebGL. */
+    liveMotion: boolean;
     x?: number;
     y?: number;
 }

@@ -1,13 +1,13 @@
 <a id="top"></a>
 # 大肥鱼 — dsh-whale-pet
 
-[使用截图 / Screenshots](#screenshots) | [English](#english) | [中文说明](#chinese) | [Releases / 下载](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) | [Changelog / 更新日志](CHANGELOG.md) | [v0.5.2 notes / 发布说明](docs/releases/v0.5.2.md) | [Docs / 文档](docs/README.md)
+[使用截图 / Screenshots](#screenshots) | [English](#english) | [中文说明](#chinese) | [Releases / 下载](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) | [Changelog / 更新日志](CHANGELOG.md) | [v0.6.0 notes / 发布说明](docs/releases/v0.6.0.md) | [Docs / 文档](docs/README.md)
 
 <a id="screenshots"></a>
 ## 使用截图 / Screenshots
 
-**她就住在 DSH 里。** 头顶小标签显示当前的梁文峰 / 梁文谷时段和账户余额；鼠标悬停时出现快捷操作；时段切换时她会告诉你。<br>
-**She lives inside DSH.** Chips above her head show the DeepSeek pricing period (梁文峰 = peak, 梁文谷 = off-peak) and your balance; hovering reveals quick actions, and she announces each period switch.
+**她就住在 DSH 里，而且会动。** 呼吸、眨眼、头发飘动，视线跟着鼠标（Live2D 风格）。头顶小标签显示梁文峰 / 梁文谷时段和账户余额；时段切换时她会换个表情告诉你。<br>
+**She lives inside DSH, and she moves.** She breathes, blinks, her hair sways and her gaze follows the pointer (Live2D-style). Chips above her head show the DeepSeek pricing period (梁文峰 = peak, 梁文谷 = off-peak) and your balance; she announces each period switch with a new expression.
 
 ![大肥鱼在 DSH 中：计费时段、余额与快捷操作 / The companion in DSH with pricing period, balance and quick actions](docs/screenshots/companion.jpg)
 
@@ -22,13 +22,13 @@
   </tr>
 </table>
 
-**GalGame 对话剧场：** 点击输入框即可进入。全屏场景、居中立绘、深蓝毛玻璃对话框和名字标签；思考过程显示在独立气泡里，回答像台词一样逐字出现，可以快进，代码有专门的卡片。<br>
-**Visual-novel theatre:** click the chat box to enter. A full-screen scene, a centred portrait and a deep-blue glass dialogue box with a name tag; reasoning gets its own bubble, answers type out like lines of dialogue with Skip, and code gets copyable cards.
+**GalGame 对话剧场：** 点击输入框即可进入。全屏场景、居中的动态立绘、深蓝毛玻璃对话框和名字标签；她的表情会随每一页台词变化，头顶冒出情绪符号；文字逐字淡入，可以快进，代码有专门的卡片。<br>
+**Visual-novel theatre:** click the chat box to enter. A full-screen scene, a centred live portrait and a deep-blue glass dialogue box with a name tag; her expression changes with each page, with a mood mark above her head; text fades in character by character, with Skip, and code gets copyable cards.
 
 ![剧场：场景、思考气泡与回答 / Theatre with a scene, reasoning bubble and answer](docs/screenshots/theatre.jpg)
 
-**四套背景，也能用你自己的图：** 和室书房·夜、科技机房、午后咖啡厅、海边黄昏，切换时 0.7 秒交叉淡入；也可以保留「透明」显示 DSH。<br>
-**Four backgrounds, or your own picture:** a study at night, a server room, an afternoon café and a seaside dusk, with a 0.7 s crossfade; “Transparent” keeps DSH visible.
+**四套背景，也能用你自己的图：** 和室书房·夜、科技机房、午后咖啡厅、海边黄昏，默认跟随时间切换，切换时 0.7 秒交叉淡入；也可以保留「透明」显示 DSH。<br>
+**Four backgrounds, or your own picture:** a study at night, a server room, an afternoon café and a seaside dusk, following the time of day by default, with a 0.7 s crossfade; “Transparent” keeps DSH visible.
 
 ![四套剧场背景 / The four theatre backgrounds](docs/screenshots/theatre-scenes.jpg)
 
@@ -37,13 +37,18 @@
 
 ![音乐与背景面板 / Music and background panels](docs/screenshots/theatre-panels.jpg)
 
+**六个新表情：** 得意、害羞、抓狂、惊讶、满足、开心，剧场和日常互动都会用到。<br>
+**Six new expressions:** smug, shy, frustrated, surprised, proud and happy, used in the theatre and in everyday moments.
+
+![六个新表情 / Six new expressions](docs/screenshots/expressions.jpg)
+
 <table>
   <tr>
     <td width="50%"><img src="docs/screenshots/head-pat.jpg" alt="摸摸头 / Head pat"></td>
     <td width="50%"><img src="docs/screenshots/dizzy.jpg" alt="晃晕了 / Dizzy after shaking"></td>
   </tr>
   <tr>
-    <td>在她头上来回移动鼠标：摸摸头，她会叫出你设置的称呼。<br>Move the pointer over her head for a head pat; she uses the name you set.</td>
+    <td>在她头上来回移动鼠标：摸摸头，她会开心或害羞，并叫出你设置的称呼。<br>Move the pointer over her head for a head pat; she looks happy or shy and uses the name you set.</td>
     <td>拖着她快速晃一晃，她就晕了。<br>Shake her quickly while dragging and she gets dizzy.</td>
   </tr>
 </table>
@@ -55,7 +60,7 @@
 
 </details>
 
-<sub>截图使用模拟的 DSH 页面和演示余额，插件界面是真实代码（剧场截图来自尚未发布的新版剧场）。 / Screenshots use a simulated DSH page and sample balance; the plugin UI is the real build (theatre shots show the upcoming theatre update).</sub>
+<sub>截图使用模拟的 DSH 页面和演示余额，插件界面是真实的 v0.6.0 代码。 / Screenshots use a simulated DSH page and sample balance; the plugin UI is the actual v0.6.0 build.</sub>
 
 <a id="english"></a>
 ## English
@@ -66,12 +71,19 @@ An interactive desktop/web companion and visual-novel (GalGame) conversation the
 
 The product name is **大肥鱼** in both languages; `dsh-whale-pet` remains the repository and package identifier.
 
-### Coming next: the theatre update (unreleased)
+### New in v0.6.0
+
+- **Live portrait (Live2D-style).** Breathing, blinking, swaying hair, tail and skirt, and a head that tilts toward the pointer, on the desktop and in the theatre. Settings › Companionship › Live portrait turns it off.
+- **Six new expressions** that follow the dialogue page by page, with a little hop and a mood mark (♥ ✦ ♪ 💧 ! ? 💢); also used for head pats, finished answers, announcements and idle moments.
+- **Visual-novel touches:** characters fade in one by one, a whale-tail click-wait mark, and backgrounds that follow the time of day.
+- The bundle is now about 7.6 MB (was 18.9 MB), and the theatre chips sit below the DSH title bar.
 
 - **Scenes.** Four illustrated backgrounds (study at night, server room, afternoon café, seaside dusk), your own picture, or Transparent to keep DSH visible. Switching crossfades in 0.7 s without flashing; optionally pick a random one on every visit.
 - **Background music.** Everyday Breeze, Quiet Chat and Late-night Comfort, performed live by the plugin with seamless loops, or your own audio file. Play/pause, previous/next, a smooth volume slider; music fades out when you leave the theatre or hide the page.
 - **A proper visual-novel stage.** Larger centred portrait with a soft entrance, breathing and light pooled at her feet; a deep-blue glass dialogue box with a name tag; Skip (or hold Ctrl) races to the last page.
 - **Remembered.** Background, music on/off, track and volume are saved; your picture and music stay in this browser (IndexedDB) and come back next time.
+
+Full notes: [v0.6.0](docs/releases/v0.6.0.md).
 
 ### v0.5.2 Hotfix
 
@@ -94,11 +106,11 @@ The product name is **大肥鱼** in both languages; `dsh-whale-pet` remains the
 - **Consistent portraits.** All poses share one head size and foot line; 撒娇 no longer looks smaller.
 - **Your name in her lines**, a smoother drag, a new soft character voice, a regrouped theatre and rebuilt light/dark themes.
 
-Full notes: [v0.5.2](docs/releases/v0.5.2.md). Twelve illustrations are embedded: five random thinking poses, inspiration, answering, 撒娇, dizzy, rice breaks and more. Reasoning has its own scrollable bubble; she uses the answering pose while output streams and eats rice afterwards. Chibi form switching is paused for now (its artwork is kept).
+Eighteen illustrations are embedded: five random thinking poses, inspiration, answering, 撒娇, dizzy, rice breaks, and the six v0.6.0 expressions. Reasoning has its own scrollable bubble; she uses the answering pose while output streams and eats rice afterwards. Chibi form switching is paused for now (its artwork is kept).
 
 ### Install or upgrade
 
-1. Download **dsh-whale-pet-v0.5.2.zip** from [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases).
+1. Download **dsh-whale-pet-v0.6.0.zip** from [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases).
 2. Extract the entire archive into a permanent folder, such as `D:\dsh-whale-pet`.
 3. Run `install.bat`, then open DSH or press **Ctrl + R** in its window.
 4. Upgrade in the same folder, or rerun the installer if you moved the plugin. Keep the extracted files in place.
@@ -118,11 +130,12 @@ Run `uninstall.bat` and refresh DSH to remove the plugin from the profile. Saved
 ### Controls
 
 - **Hover** for quick actions: Theatre, Settings, Quiet mode, Dock to the edge and, after an answer with code, Copy code.
+- She moves on her own (Live2D-style) and looks toward your pointer; turn this off in Settings › Companionship › Live portrait.
 - **Click** her to open Settings; **drag** to move her. With Settings open, she and the panel move together.
 - **Chips above her head:** the pricing period (click to hear it again) and your balance (click for details).
 - Move the pointer back and forth over her head for a head pat. Shaking her quickly makes her dizzy.
 - Click the DSH chat box to enter the **theatre**; press Escape or **Exit** to leave. Click the text (or the scene) once to finish revealing it, again for the next page; with Transparent selected, clicking the background leaves. The bar under the text has Log, Auto, Skip, Hide, Expand and the ⋯ menu (sounds, reading mode, theme, language).
-- **Theatre chips (top left):** music (tracks, play/pause, volume, your own file), background (four scenes, Transparent, your picture, shuffle) and theatre settings (text speed, size, typewriter, auto, sounds).
+- **Theatre chips (top left):** music (tracks, play/pause, volume, your own file), background (time of day, four scenes, Transparent, your picture, shuffle) and theatre settings (text speed, size, typewriter, auto, sounds).
 - Shortcuts: hold **Alt** to click through her, **Alt+W** hides or shows her, **Alt+T** toggles the theatre. In the theatre: ←/→, Enter, hold **Ctrl** to skip, **L** log, **A** auto, **H** hide, **M** sound, **Esc** closes menus first.
 - Keyboard: Tab to her and press Enter to open Settings.
 
@@ -134,7 +147,9 @@ Preferences stay in local storage. A theatre picture or music file you add is ke
 
 **Pricing period:** follows [DeepSeek's official rule](https://api-docs.deepseek.com/zh-cn/quick_start/pricing/). Peak is Beijing time, weekdays 09:00–12:00 and 14:00–18:00; other hours, weekends and Chinese public holidays are off-peak at half price. The holiday table covers 2026 and is updated yearly.
 
-Response detection depends on DSH's page structure. Token speed appears only when DSH exposes it; character counts are never shown as tokens/s. Code blocks and lists get dedicated formatting, but this is not a full Markdown renderer. The illustrations animate through pose changes rather than lip-sync.
+**Live portrait:** the motion is produced by deforming the illustration with WebGL (no separate Live2D model or Cubism runtime). Without WebGL, if the context is lost, or with reduced motion, the still image is shown.
+
+Response detection depends on DSH's page structure. Token speed appears only when DSH exposes it; character counts are never shown as tokens/s. Code blocks and lists get dedicated formatting, but this is not a full Markdown renderer. Expressions change by switching artwork; there is no lip-sync.
 
 ### Development
 
@@ -156,7 +171,7 @@ The build compiles the views, state, host adapter, CSS and all 12 PNGs into `lib
 - **GPT 6.1Sol / Codex (OpenAI)** — AI-assisted v0.4.0 engineering, interaction design, stability work, tests and release documentation.
 - **Claude Sonnet 5.5 (Anthropic)** — AI-assisted product review and UI/UX recommendations; advisory contribution.
 - **Gemini 4 Argon (Google)** — AI-assisted product review, theatre layout and visual interaction proposals; advisory contribution.
-- **Claude Opus 5.5 (Anthropic)** — AI-assisted v0.5.0 frontend: pet and settings group layout with edge handling, rebuilt settings panel and footer, per-pose portrait calibration, balance through DSH's account service with honest states, the 梁文峰 / 梁文谷 pricing-period announcements, render-performance work, theatre layout, a new Web Audio character voice, the design-token stylesheet rewrite and the related regression tests; the theatre update: illustrated scenes with crossfades, live-performed seamless background music, the visual-novel dialogue box, Skip and local picture/music storage.
+- **Claude Opus 5.5 (Anthropic)** — AI-assisted v0.5.0 frontend: pet and settings group layout with edge handling, rebuilt settings panel and footer, per-pose portrait calibration, balance through DSH's account service with honest states, the 梁文峰 / 梁文谷 pricing-period announcements, render-performance work, theatre layout, a new Web Audio character voice, the design-token stylesheet rewrite and the related regression tests; the theatre update: illustrated scenes with crossfades, live-performed seamless background music, the visual-novel dialogue box, Skip and local picture/music storage; v0.6.0: the WebGL live portrait (Live2D-style mesh rig with hand-calibrated eyes), dialogue-driven expressions and mood marks, Senren＊Banka-style text and click-wait polish, and WebP asset embedding.
 
 See the [contribution guide](CONTRIBUTING.md) for PR review, release approval and AI-art requirements. Contributions and reports are welcome through [Issues](https://github.com/Ewigkeit1203/dsh-whale-pet/issues) and pull requests. Include your DSH version and reproduction steps; omit private conversations and credentials.
 
@@ -177,12 +192,19 @@ See the [contribution guide](CONTRIBUTING.md) for PR review, release approval an
 
 中英文统一使用产品名 **大肥鱼**；仓库与包标识继续使用 `dsh-whale-pet`。
 
-### 即将到来：剧场更新（尚未发布）
+### v0.6.0 新体验
+
+- **动态立绘（Live2D 风格）。** 呼吸、眨眼、头发 / 尾巴 / 裙摆摆动，头部跟着鼠标倾斜转动；桌宠和剧场都生效。可在 设置 › 陪伴 › 动态立绘 中关闭。
+- **六个新表情**，剧场里逐页跟随台词变化，小跳一下并冒出情绪符号（♥ ✦ ♪ 💧 ! ? 💢）；摸头、回答完成、峰谷播报和闲置时也会用到。
+- **GalGame 细节：** 文字逐字淡入、鲸尾点击提示，背景跟随时间切换。
+- 运行包缩小到约 7.6 MB（原 18.9 MB）；剧场按钮移到 DSH 标题栏下方。
 
 - **场景。** 四套插画背景（和室书房·夜、科技机房、午后咖啡厅、海边黄昏）、你自己的图片，或者「透明」继续显示 DSH。切换时 0.7 秒交叉淡入，不闪白；可以设为每次进入随机换一张。
 - **背景音乐。** 「日常轻快」「宁静闲聊」「深夜治愈」由插件实时演奏、无缝循环，也可以添加本地音乐。播放/暂停、上一首/下一首、平滑音量条；离开剧场或页面隐藏时自动淡出。
 - **真正的 GalGame 舞台。** 立绘更大、居中，带淡入、呼吸和脚下的场景光；深蓝毛玻璃对话框配名字标签；「快进」（或按住 Ctrl）直接跳到最后一段。
 - **自动记住。** 背景、音乐开关、曲目和音量都会保存；你的图片和音乐只保存在本机浏览器（IndexedDB），下次打开自动恢复。
+
+完整说明见 [v0.6.0 发布说明](docs/releases/v0.6.0.md)。
 
 ### v0.5.2 快速更新
 
@@ -205,11 +227,11 @@ See the [contribution guide](CONTRIBUTING.md) for PR review, release approval an
 - **立绘大小一致。** 所有姿态的头部大小和脚底位置统一，撒娇不再显小。
 - **台词使用你的称呼**；另外拖动更流畅，人物音效更柔和，剧场重新整理，明暗主题重新设计。
 
-完整说明见 [v0.5.2 发布说明](docs/releases/v0.5.2.md)。内嵌 12 张插画：五套随机思考姿态、顿悟、回答、撒娇、眩晕、干饭等。推理过程显示在独立的可滚动气泡里；输出期间用回答姿态，输出结束后吃饭。Q 版切换暂时关闭，素材保留。
+内嵌 18 张插画：五套随机思考姿态、顿悟、回答、撒娇、眩晕、干饭，以及 v0.6.0 的六个新表情。推理过程显示在独立的可滚动气泡里；输出期间用回答姿态，输出结束后吃饭。Q 版切换暂时关闭，素材保留。
 
 ### 安装或升级
 
-1. 从 [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) 下载 **dsh-whale-pet-v0.5.2.zip**。
+1. 从 [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) 下载 **dsh-whale-pet-v0.6.0.zip**。
 2. 完整解压到固定文件夹，例如 `D:\dsh-whale-pet`。
 3. 双击 `install.bat`，再打开 DSH，或在已打开的窗口中按 **Ctrl + R** 刷新。
 4. 升级时覆盖同一目录中的插件文件；若换了目录，请重新运行安装脚本。解压后的文件需要保留。
@@ -229,11 +251,12 @@ React 与 Cordis 由 DSH 提供，普通用户无需 Node.js、npm 或额外素�
 ### 怎么操作
 
 - **悬停**出现快捷操作：剧场、设置、安静模式、贴边；最近的回答里有代码时，还会出现“复制代码”。
+- 她会自己动起来（Live2D 风格），视线跟着鼠标；可在 设置 › 陪伴 › 动态立绘 中关闭。
 - **点击**她打开设置，**拖动**可以移动她。设置打开时，她和面板会一起移动。
 - **头顶小标签**：计费时段（点击再播报一次）和余额（点击查看详情）。
 - 在她头上来回移动鼠标可以摸头；快速晃动她会头晕。
 - 点击 DSH 聊天输入框进入**剧场**；按 Escape 或「退出」离开。第一次点击文字（或场景）会显示完当前段，再点一次翻页；选择「透明」背景时，点击背景会退出。文字下方的按钮栏有回顾、自动、快进、隐藏、大屏和“⋯”菜单（音效、阅读方式、主题、语言）。
-- **剧场左上角小按钮**：音乐（曲目、播放/暂停、音量、本地音乐）、背景（四套场景、透明、我的背景、随机）和剧场设置（文字速度、字号、打字机、自动翻页、音效）。
+- **剧场左上角小按钮**：音乐（曲目、播放/暂停、音量、本地音乐）、背景（跟随时间、四套场景、透明、我的背景、随机）和剧场设置（文字速度、字号、打字机、自动翻页、音效）。
 - 快捷键：按住 **Alt** 可点穿她，**Alt+W** 隐藏或显示她，**Alt+T** 开关剧场。剧场里：←/→、Enter，按住 **Ctrl** 快进，**L** 回顾，**A** 自动，**H** 隐藏界面，**M** 音效，**Esc** 先关闭菜单。
 - 键盘：用 Tab 聚焦到她，按 Enter 打开设置。
 
@@ -245,7 +268,9 @@ React 与 Cordis 由 DSH 提供，普通用户无需 Node.js、npm 或额外素�
 
 **计费时段**：按 DeepSeek 官方规则。北京时间工作日 9:00–12:00、14:00–18:00 为高峰，其余时间以及周末、法定节假日为空闲时段，价格减半。节假日表目前覆盖 2026 年，每年更新。
 
-回答识别依赖 DSH 页面结构。只在 DSH 提供时显示 token 速度，不会用字符数冒充 tokens/s。代码块和列表有专门排版，但不是完整的 Markdown 渲染器。动画靠切换姿态实现，没有真实口型。
+**动态立绘**：动作由 WebGL 对立绘进行网格形变实现（不需要单独的 Live2D 模型或 Cubism 运行库）。不支持 WebGL、上下文丢失或开启减弱动效时显示静态立绘。
+
+回答识别依赖 DSH 页面结构。只在 DSH 提供时显示 token 速度，不会用字符数冒充 tokens/s。代码块和列表有专门排版，但不是完整的 Markdown 渲染器。表情靠切换立绘实现，没有真实口型。
 
 ### 本地开发
 
@@ -267,7 +292,7 @@ node --check lib/client.js
 - **GPT 6.1Sol / Codex (OpenAI)**：AI 辅助 v0.4.0 工程、交互设计、稳定性修复、测试与发布文档。
 - **Claude Sonnet 5.5（Anthropic）**：AI 辅助产品评审、界面审查及路线图建议；提供产品建议。
 - **Gemini 4 Argon（Google）**：AI 辅助产品评审、剧场布局与视觉交互方案；提供产品建议。
-- **Claude Opus 5.5（Anthropic）**：AI 辅助 v0.5.0 前端：角色与设置面板整体布局及贴边处理、设置面板与底部区域重做、逐姿态立绘校准、通过 DSH 账户服务读取余额并如实显示状态、梁文峰 / 梁文谷时段播报、渲染性能优化、剧场布局、新的 Web Audio 人物音效、基于设计变量的样式重写及相应回归测试；剧场更新：插画场景与交叉淡入、实时演奏的无缝背景音乐、GalGame 对话框、快进以及本地图片 / 音乐存储。
+- **Claude Opus 5.5（Anthropic）**：AI 辅助 v0.5.0 前端：角色与设置面板整体布局及贴边处理、设置面板与底部区域重做、逐姿态立绘校准、通过 DSH 账户服务读取余额并如实显示状态、梁文峰 / 梁文谷时段播报、渲染性能优化、剧场布局、新的 Web Audio 人物音效、基于设计变量的样式重写及相应回归测试；剧场更新：插画场景与交叉淡入、实时演奏的无缝背景音乐、GalGame 对话框、快进以及本地图片 / 音乐存储；v0.6.0：WebGL 动态立绘（Live2D 风格网格绑定与手工校准的眼睛）、随台词变化的表情与情绪符号、千恋＊万花风格的文字与点击提示打磨，以及 WebP 立绘内嵌。
 
 欢迎阅读[贡献指南](CONTRIBUTING.md)：代码经 PR 审查与测试后才可合并，发布须由项目负责人确认；接受形象统一、来源与授权清楚的 AI 美术。
 

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { SCENES, PAINTED_SCENES, sceneMeta, sceneSvg, sceneUrl, shuffleScene, isSceneId } from '../lib/client/scenes.js'
+import { SCENES, PAINTED_SCENES, sceneMeta, sceneSvg, sceneUrl, shuffleScene, isSceneId, timeOfDayScene } from '../lib/client/scenes.js'
 import { BgmPlayer, BGM_TRACKS, BGM_TUNING, bgmGain, cycleBgmTrack, isBgmTrack } from '../lib/client/bgm.js'
 import { checkMedia, saveMedia, loadMedia, deleteMedia } from '../lib/client/media-store.js'
 import { readPreferences, PREFERENCES_KEY } from '../lib/client/preferences.js'
@@ -18,9 +18,10 @@ test('scenes: every painted background is a deterministic, well-formed SVG', () 
   assert.equal(sceneUrl('none', null), '', 'transparent scene shows DSH, not a picture')
   assert.equal(sceneUrl('custom', 'blob:x'), 'blob:x')
   assert.equal(sceneUrl('custom', null), '')
-  assert.equal(sceneMeta('bogus').id, 'study', 'unknown ids fall back to the default scene')
+  assert.equal(sceneMeta('bogus').id, 'study', 'unknown ids fall back to the study')
   assert.ok(SCENES.every(scene => scene.zh && scene.en && scene.base), 'every scene is labelled in both languages and has a base colour')
-  assert.ok(isSceneId('cafe') && !isSceneId('hacker'))
+  assert.ok(isSceneId('cafe') && isSceneId('auto') && !isSceneId('hacker'))
+  assert.deepEqual([0, 5, 6, 12, 15, 16, 18, 19, 23].map(timeOfDayScene), ['study', 'study', 'cafe', 'cafe', 'cafe', 'seaside', 'seaside', 'study', 'study'])
 })
 
 test('scenes: shuffle always changes the scene, never picks transparent, and offers custom only when stored', () => {
@@ -142,15 +143,60 @@ test('preferences: theatre background and music settings persist and are validat
   Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem: (key: string) => key === PREFERENCES_KEY ? value : null, setItem() {} } })
   try {
     const defaults = readPreferences()
-    assert.equal(defaults.scene, 'study'); assert.equal(defaults.bgmOn, false, 'music is opt-in'); assert.equal(defaults.bgmTrack, 'daily'); assert.equal(defaults.bgmVolume, 0.45); assert.equal(defaults.sceneShuffle, false)
+    assert.equal(defaults.scene, 'auto', 'backgrounds follow the time of day by default'); assert.equal(defaults.bgmOn, false, 'music is opt-in'); assert.equal(defaults.bgmTrack, 'daily'); assert.equal(defaults.bgmVolume, 0.45); assert.equal(defaults.sceneShuffle, false)
     value = JSON.stringify({ scene: 'cafe', bgmOn: true, bgmTrack: 'night', bgmVolume: 0.8, sceneShuffle: true })
     const saved = readPreferences()
     assert.equal(saved.scene, 'cafe'); assert.equal(saved.bgmOn, true); assert.equal(saved.bgmTrack, 'night'); assert.equal(saved.bgmVolume, 0.8); assert.equal(saved.sceneShuffle, true)
     value = JSON.stringify({ scene: 'hacker', bgmOn: 'yes', bgmTrack: 'rock', bgmVolume: 7 })
     const safe = readPreferences()
-    assert.equal(safe.scene, 'study'); assert.equal(safe.bgmOn, false); assert.equal(safe.bgmTrack, 'daily'); assert.equal(safe.bgmVolume, 1)
+    assert.equal(safe.scene, 'auto'); assert.equal(safe.bgmOn, false); assert.equal(safe.bgmTrack, 'daily'); assert.equal(safe.bgmVolume, 1)
   } finally {
     if (original) Object.defineProperty(globalThis, 'localStorage', original)
     else Reflect.deleteProperty(globalThis, 'localStorage')
+  }
+})
+
+test('emotion: each page picks an expression and a mood mark; code never sets the mood', async () => {
+  const { detectEmotion, emoteFor, EMOTION_POSE } = await import('../lib/client/emotion.js')
+  assert.equal(detectEmotion('搞定啦！测试全部通过了。'), 'proud')
+  assert.equal(detectEmotion('诶？！竟然是这样'), 'surprised')
+  assert.equal(detectEmotion('抱歉，是我搞错了。'), 'shy')
+  assert.equal(detectEmotion('又报错了，构建失败……'), 'frustrated')
+  assert.equal(detectEmotion('谢谢主人，太好了～'), 'happy')
+  assert.equal(detectEmotion('其实很简单，交给我吧。'), 'smug')
+  assert.equal(detectEmotion('快速排序是一种分治算法。'), 'neutral')
+  assert.equal(detectEmotion('看这里：```js\nthrow new Error("failed")\n```'), 'neutral', 'errors inside code do not upset her')
+  assert.equal(detectEmotion('Whoa, really?! I did not expect that.'), 'surprised')
+  assert.equal(EMOTION_POSE.frustrated, 'angry')
+  assert.equal(emoteFor('surprised', '真的吗？'), 'question')
+  assert.equal(emoteFor('surprised', '哇！'), 'exclaim')
+  assert.equal(emoteFor('neutral'), null)
+})
+
+test('live rig: weights keep the face still, bend hair, plant the feet; blinks are short and spaced', async () => {
+  const { liveWeights, hairness, blinkAmount, nextBlinkDelay } = await import('../lib/client/live-rig.js')
+  const { POSE_RIG, poseRig } = await import('../lib/client/rig.js')
+  const { POSE_META } = await import('../lib/client/poses.js')
+  for (const pose of Object.keys(POSE_META).filter(name => name !== 'DaFeiYu')) assert.ok(POSE_RIG[pose], `${pose} has rig anchors`)
+  const rig = poseRig('Maid')
+  const cols = 10, rows = 20
+  const data = liveWeights(rig, cols, rows, (u) => u < 0.2 ? 1 : 0)
+  const at = (x: number, y: number) => data.subarray((y * (cols + 1) + x) * 6, (y * (cols + 1) + x) * 6 + 6)
+  const [, , head0, hair0] = at(5, 1)
+  assert.equal(head0, 1, 'the head turns as one piece'); assert.equal(hair0, 0)
+  const [, , , hairLeft] = at(1, 12)
+  assert.equal(hairLeft, 1, 'hair found by colour sways')
+  const [, , headFeet, , , skirtFeet] = at(5, rows)
+  assert.equal(headFeet, 0); assert.ok(skirtFeet < 0.05, 'feet stay planted')
+  assert.ok(hairness(140, 160, 210, 255) > 0.5, 'light blue-lavender hair')
+  assert.equal(hairness(50, 55, 95, 255), 0, 'navy dress is not hair')
+  assert.equal(hairness(245, 245, 250, 255), 0, 'white apron is not hair')
+  assert.equal(hairness(250, 220, 210, 255), 0, 'skin is not hair')
+  assert.equal(blinkAmount(-1), 0); assert.equal(blinkAmount(60), 1); assert.equal(blinkAmount(200), 0)
+  assert.ok(blinkAmount(30) > 0 && blinkAmount(30) < 1)
+  for (let i = 0; i < 50; i++) { const d = nextBlinkDelay(); assert.ok(d >= 180 && d <= 6000) }
+  for (const [pose, data] of Object.entries(POSE_RIG)) for (const [x, y, w, h] of data.eyes) {
+    assert.ok(x > data.face[0] - 0.02 && x < data.face[2] + 0.02 && w < 0.1 && h < 0.04, `${pose} eye lies on the face`)
+    void y
   }
 })

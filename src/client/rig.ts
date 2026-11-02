@@ -1,0 +1,43 @@
+/**
+ * Rig anchors for the live (Live2D-style) portrait, one entry per artwork.
+ *
+ * All values are fractions of the source image (x of width, y of height):
+ *  - face: the visible skin of the face [left, top, right, chin];
+ *  - top / bottom: the first and last opaque rows (headdress to shoes);
+ *  - eyes: open eyes only, as [centre x, centre y, width, height]. Poses whose
+ *    eyes are closed, hidden or stylised (><, spirals) have none and never blink.
+ *
+ * Faces and extents were measured from the alpha and skin masks; eyes were
+ * calibrated by hand on a pixel grid. Re-measure after replacing artwork.
+ */
+export interface RigPose {
+  face: [number, number, number, number]
+  top: number
+  bottom: number
+  eyes: Array<[number, number, number, number]>
+}
+
+export const POSE_RIG: Record<string, RigPose> = {
+  Maid: { face: [0.4333, 0.1036, 0.5902, 0.1924], top: 0.0054, bottom: 0.9994, eyes: [[0.4546, 0.1435, 0.047, 0.0179], [0.5571, 0.1257, 0.0534, 0.0197]] },
+  sajiao: { face: [0.4187, 0.1437, 0.5561, 0.2232], top: 0.0383, bottom: 0.9994, eyes: [[0.4355, 0.1787, 0.0421, 0.0135]] },
+  Answering: { face: [0.4066, 0.1084, 0.5495, 0.1934], top: 0.0039, bottom: 0.999, eyes: [] },
+  baifan: { face: [0.435, 0.1098, 0.5846, 0.194], top: 0.005, bottom: 0.9996, eyes: [] },
+  getit: { face: [0.4066, 0.1293, 0.5476, 0.2211], top: 0.0232, bottom: 0.9994, eyes: [[0.4286, 0.1712, 0.0394, 0.0215], [0.5211, 0.1559, 0.0531, 0.0232]] },
+  Think1: { face: [0.4458, 0.1322, 0.6125, 0.1951], top: 0.0185, bottom: 0.9839, eyes: [[0.4667, 0.1484, 0.0521, 0.0179], [0.5813, 0.1329, 0.066, 0.0185]] },
+  Think2: { face: [0.412, 0.1359, 0.5806, 0.2026], top: 0.0012, bottom: 0.9994, eyes: [] },
+  Think3: { face: [0.3981, 0.1681, 0.5784, 0.2592], top: 0.0369, bottom: 0.9976, eyes: [[0.4205, 0.2145, 0.0534, 0.0238], [0.5293, 0.1847, 0.064, 0.028]] },
+  Think4: { face: [0.4424, 0.1303, 0.5821, 0.1909], top: 0.0046, bottom: 0.9996, eyes: [[0.4589, 0.1456, 0.0417, 0.0179], [0.5539, 0.1296, 0.0539, 0.0179]] },
+  Think5: { face: [0.4424, 0.1303, 0.5827, 0.1909], top: 0.0046, bottom: 0.9996, eyes: [[0.4589, 0.1456, 0.0417, 0.0179], [0.5539, 0.1296, 0.0539, 0.0179]] },
+  Dizzy: { face: [0.3633, 0.1081, 0.5088, 0.2025], top: 0.0072, bottom: 0.9928, eyes: [] },
+  smug: { face: [0.4375, 0.1003, 0.5547, 0.1777], top: 0.0007, bottom: 0.998, eyes: [[0.4541, 0.1432, 0.041, 0.0137], [0.5293, 0.125, 0.043, 0.015]] },
+  shy: { face: [0.4365, 0.1497, 0.5449, 0.1947], top: 0.0039, bottom: 0.9948, eyes: [] },
+  angry: { face: [0.4336, 0.11, 0.5605, 0.1836], top: 0.0046, bottom: 0.9909, eyes: [] },
+  surprised: { face: [0.4297, 0.1074, 0.5586, 0.1803], top: 0.0026, bottom: 0.9967, eyes: [[0.4541, 0.1445, 0.041, 0.0156], [0.5332, 0.1263, 0.0469, 0.0182]] },
+  proud: { face: [0.4297, 0.0814, 0.5635, 0.1647], top: 0.002, bottom: 0.9967, eyes: [] },
+  happy: { face: [0.4268, 0.1029, 0.5576, 0.1784], top: 0.0033, bottom: 0.9948, eyes: [] },
+}
+
+/** Rig for a pose, falling back to Maid's proportions for unknown artwork. */
+export function poseRig(pose: string): RigPose {
+  return POSE_RIG[pose] ?? POSE_RIG.Maid
+}

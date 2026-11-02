@@ -11,7 +11,7 @@
  * picture, so a crossfade never changes the scene under the reader.
  */
 
-export type SceneId = 'none' | 'study' | 'lab' | 'cafe' | 'seaside' | 'custom'
+export type SceneId = 'auto' | 'none' | 'study' | 'lab' | 'cafe' | 'seaside' | 'custom'
 
 export interface SceneMeta {
   id: SceneId
@@ -26,6 +26,7 @@ export interface SceneMeta {
 }
 
 export const SCENES: readonly SceneMeta[] = [
+  { id: 'auto', zh: '跟随时间', en: 'Time of day', base: '#141d42', glow: 'rgba(150, 190, 255, .55)', ambient: 'dust' },
   { id: 'study', zh: '和室书房·夜', en: 'Study at night', base: '#141d42', glow: 'rgba(150, 190, 255, .55)', ambient: 'dust' },
   { id: 'lab', zh: '科技机房', en: 'Server room', base: '#050b1a', glow: 'rgba(80, 230, 255, .55)', ambient: 'data' },
   { id: 'cafe', zh: '午后咖啡厅', en: 'Afternoon café', base: '#5a3a24', glow: 'rgba(255, 200, 130, .6)', ambient: 'motes' },
@@ -38,7 +39,17 @@ export const SCENES: readonly SceneMeta[] = [
 export const PAINTED_SCENES: readonly SceneId[] = ['study', 'lab', 'cafe', 'seaside']
 
 export function sceneMeta(id: string): SceneMeta {
-  return SCENES.find(scene => scene.id === id) ?? SCENES[0]
+  return SCENES.find(scene => scene.id === id) ?? SCENES[1]
+}
+
+/**
+ * Time-of-day scene, as visual novels change backgrounds with the hour:
+ * daytime café (06–16), seaside dusk (16–19) and the study at night.
+ */
+export function timeOfDayScene(hour: number): SceneId {
+  if (hour >= 6 && hour < 16) return 'cafe'
+  if (hour >= 16 && hour < 19) return 'seaside'
+  return 'study'
 }
 
 export function isSceneId(value: unknown): value is SceneId {

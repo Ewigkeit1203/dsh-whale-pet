@@ -2,6 +2,7 @@ import React from 'react';
 import type { Preferences } from './preferences.js';
 import type { PetStatusInfo } from './types.js';
 import type { HistoryEntry } from './experience.js';
+import type { Emote } from './emotion.js';
 export type TheatrePanel = 'scene' | 'music' | 'settings' | null;
 /** Two stacked background layers; the inactive one receives the next picture, then they swap (crossfade). */
 export interface SceneLayers {
@@ -14,7 +15,7 @@ export interface TheatreSceneCard {
     label: string;
     thumb: string;
     active: boolean;
-    kind: 'painted' | 'none' | 'custom';
+    kind: 'painted' | 'none' | 'custom' | 'auto';
 }
 export interface TheatreTrack {
     id: string;
@@ -32,6 +33,10 @@ export interface TheatreViewProps {
         poseName: string;
         poseScale: number;
         isMaiden: boolean;
+        live?: boolean;
+        motion?: number;
+        emote?: Emote;
+        emoteKey?: number;
     };
     phase: string | null;
     tier: {
@@ -113,6 +118,7 @@ export interface TheatreViewProps {
         setSpeed: (speed: Preferences['speed']) => void;
         setFontSize: (size: number) => void;
         toggleTypewriter: () => void;
+        toggleLive: () => void;
     };
 }
 /** Visual-novel theatre: scene, stage, thought bubble, dialogue box, HUD and log. Plain render function. */

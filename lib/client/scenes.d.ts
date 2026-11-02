@@ -10,7 +10,7 @@
  * Everything here is deterministic: the same scene id always paints the same
  * picture, so a crossfade never changes the scene under the reader.
  */
-export type SceneId = 'none' | 'study' | 'lab' | 'cafe' | 'seaside' | 'custom';
+export type SceneId = 'auto' | 'none' | 'study' | 'lab' | 'cafe' | 'seaside' | 'custom';
 export interface SceneMeta {
     id: SceneId;
     zh: string;
@@ -26,6 +26,11 @@ export declare const SCENES: readonly SceneMeta[];
 /** Painted scenes that the shuffle may pick (never transparent, custom only when present). */
 export declare const PAINTED_SCENES: readonly SceneId[];
 export declare function sceneMeta(id: string): SceneMeta;
+/**
+ * Time-of-day scene, as visual novels change backgrounds with the hour:
+ * daytime café (06–16), seaside dusk (16–19) and the study at night.
+ */
+export declare function timeOfDayScene(hour: number): SceneId;
 export declare function isSceneId(value: unknown): value is SceneId;
 /** Picks a different scene than `current`; `random` is injectable for tests. */
 export declare function shuffleScene(current: string, hasCustom: boolean, random?: () => number): SceneId;

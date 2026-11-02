@@ -12,9 +12,11 @@
  * `aspect` is the canvas width / height. Re-measure after replacing artwork
  * (see scripts/generate-hitareas.py for the alpha-envelope helper).
  */
+/** `content`: opaque width as a fraction of the canvas when the artwork has wide transparent side margins. */
 export interface PoseMeta {
     aspect: number;
     scale: number;
+    content?: number;
 }
 export declare const POSE_META: Record<string, PoseMeta>;
 /** Stage width relative to its height; wide enough for every maiden pose at its calibrated scale. */

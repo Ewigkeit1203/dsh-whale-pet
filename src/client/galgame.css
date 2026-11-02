@@ -107,7 +107,7 @@ body.dsh-galgame-mode [data-composer-seat] { opacity: 0 !important; transform: t
   -webkit-backdrop-filter: var(--wp-blur); backdrop-filter: var(--wp-blur);
   animation: wpThoughtIn .3s cubic-bezier(.2, .8, .2, 1);
 }
-[data-whale-pet].comicThoughtBubble[data-expanded="true"] { top: 12px; height: calc(var(--head-room) - 24px); }
+[data-whale-pet].comicThoughtBubble[data-expanded="true"] { top: var(--host-top, 52px); height: calc(var(--head-room) - var(--host-top, 52px) - 12px); }
 @keyframes wpThoughtIn { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
 [data-whale-pet] .thoughtBubbleHeader { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 6px 16px; border-bottom: 1px dashed var(--wp-line-strong); }
 [data-whale-pet] .thoughtBubbleTitleGroup { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 650; color: var(--wp-ink-2); }
@@ -279,7 +279,8 @@ body.dsh-galgame-mode [data-composer-seat] { opacity: 0 !important; transform: t
 
 /* ---- HUD: music, background and settings chips (top left) ---------------------- */
 [data-whale-pet].theatreHud {
-  position: fixed; top: 16px; left: 16px; z-index: 1000000;
+  /* Below the DSH desktop title bar (Application / Edit menu and window controls). */
+  position: fixed; top: var(--host-top, 52px); left: 16px; z-index: 1000000;
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   max-width: calc(100vw - 32px);
   font-family: var(--wp-font);
@@ -313,7 +314,7 @@ body.dsh-galgame-mode [data-composer-seat] { opacity: 0 !important; transform: t
 [data-whale-pet] .theatrePanel {
   position: absolute; left: 0; top: calc(100% + 10px);
   width: min(372px, calc(100vw - 32px));
-  max-height: calc(100vh - 92px); overflow-y: auto; overscroll-behavior: contain;
+  max-height: calc(100vh - var(--host-top, 52px) - 76px); overflow-y: auto; overscroll-behavior: contain;
   display: flex; flex-direction: column; gap: 12px; padding: 14px;
   border-radius: 18px;
   background: linear-gradient(180deg, #1d2a58 0%, #0f1834 100%); border: 1px solid var(--gal-glass-edge);
@@ -509,3 +510,17 @@ body.dsh-galgame-mode [data-composer-seat] { opacity: 0 !important; transform: t
 @media (prefers-reduced-motion: reduce) {
   [data-whale-pet], [data-whale-pet] *, [data-whale-pet] *::before, [data-whale-pet] *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---- v0.6.0 visual-novel touches ---------------------------------------------- */
+/* Newest characters fade in one by one. */
+[data-whale-pet] .vnChar { animation: wpCharIn .22s ease-out both; }
+@keyframes wpCharIn { from { opacity: 0; filter: blur(2px); } to { opacity: 1; filter: none; } }
+/* Click-wait mark at the end of the line: a whale tail that bobs (more pages) or rests (last page). */
+[data-whale-pet] .vnWait { display: inline-block; margin-left: 6px; vertical-align: -3px; color: var(--wp-accent); filter: drop-shadow(0 0 6px rgba(159, 208, 255, .55)); }
+[data-whale-pet] .vnWait svg { display: block; fill: currentColor; }
+[data-whale-pet] .vnWait[data-last="false"] svg { animation: wpWaitBob 1s ease-in-out infinite; }
+[data-whale-pet] .vnWait[data-last="true"] svg { animation: wpWaitSway 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes wpWaitBob { 50% { transform: translateY(4px); opacity: .65; } }
+@keyframes wpWaitSway { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+[data-whale-pet] .theatreSceneClock { position: absolute; top: 6px; left: 6px; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: rgba(8, 14, 34, .7); color: #fff; }
+[data-whale-pet] .theatreSceneClock svg { width: 13px; height: 13px; }

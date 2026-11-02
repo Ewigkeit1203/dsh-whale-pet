@@ -4,13 +4,14 @@ import { LivingPuppet } from './LivingPuppet.js'
 import type { Preferences } from './preferences.js'
 import type { PetStatusInfo } from './types.js'
 import type { HistoryEntry } from './experience.js'
+import type { Emote } from './emotion.js'
 
 export type TheatrePanel = 'scene' | 'music' | 'settings' | null
 
 /** Two stacked background layers; the inactive one receives the next picture, then they swap (crossfade). */
 export interface SceneLayers { a: string; b: string; front: 'a' | 'b' }
 
-export interface TheatreSceneCard { id: string; label: string; thumb: string; active: boolean; kind: 'painted' | 'none' | 'custom' }
+export interface TheatreSceneCard { id: string; label: string; thumb: string; active: boolean; kind: 'painted' | 'none' | 'custom' | 'auto' }
 export interface TheatreTrack { id: string; label: string; mood: string }
 
 export interface TheatreViewProps {
@@ -19,7 +20,7 @@ export interface TheatreViewProps {
   status: PetStatusInfo
   lang: string
   petName: string
-  puppet: { imgSrc: string; poseName: string; poseScale: number; isMaiden: boolean }
+  puppet: { imgSrc: string; poseName: string; poseScale: number; isMaiden: boolean; live?: boolean; motion?: number; emote?: Emote; emoteKey?: number }
   phase: string | null
   tier: { tier: 'peak' | 'valley'; label: string; until: string } | null
   uiHidden: boolean
@@ -81,6 +82,7 @@ export interface TheatreViewProps {
     setSpeed: (speed: Preferences['speed']) => void
     setFontSize: (size: number) => void
     toggleTypewriter: () => void
+    toggleLive: () => void
   }
 }
 
@@ -108,6 +110,23 @@ const PLAY = 'M5 3.2v9.6l7.6-4.8z'
 const PAUSE = 'M4.6 3.2h2.4v9.6H4.6zM9 3.2h2.4v9.6H9z'
 const PREV = 'M3.6 3.4h1.6v9.2H3.6zM12.6 3.4L6 8l6.6 4.6z'
 const NEXT = 'M10.8 3.4h1.6v9.2h-1.6zM3.4 3.4L10 8l-6.6 4.6z'
+
+/**
+ * Text being revealed: settled text renders normally and the newest few
+ * characters fade in one by one, as in Yuzusoft visual novels. Markup in the
+ * tail (bold, inline code, line breaks) falls back to plain rendering.
+ */
+function revealText(v: TheatreViewProps) {
+  const chars = Array.from(v.visibleText)
+  const tailLength = v.isRevealing ? Math.min(6, chars.length) : 0
+  const tail = chars.slice(chars.length - tailLength)
+  if (!tailLength || tail.some(c => c === '*' || c === '`' || c === '\n' || c === '#')) return <DialogueContent text={v.visibleText} copy={v.on.copy} copyLabel={v.t('复制', 'Copy')} />
+  const start = chars.length - tailLength
+  return <>
+    <DialogueContent text={chars.slice(0, start).join('')} copy={v.on.copy} copyLabel={v.t('复制', 'Copy')} />
+    {tail.map((c, i) => <span key={start + i} className="vnChar">{c}</span>)}
+  </>
+}
 
 /** A file picker styled as a button; the value is cleared so the same file can be chosen again. */
 function filePicker(accept: string, label: string, onFile: (file: File) => void) {
@@ -143,6 +162,7 @@ function scenePanel(v: TheatreViewProps) {
         title={card.label}
       >
         {card.kind === 'custom' && !card.thumb && <span className="theatreSceneEmpty">{icon(ICONS.plus)}</span>}
+        {card.kind === 'auto' && <span className="theatreSceneClock" aria-hidden="true">{icon('M8 2.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11zM8 5v3.2l2.2 1.4')}</span>}
         <span className="theatreSceneLabel">{card.label}</span>
         {card.active && <span className="theatreSceneCheck">{icon(ICONS.check)}</span>}
       </button>)}
@@ -223,6 +243,7 @@ function settingsPanel(v: TheatreViewProps) {
     {themeSwitch(p.typewriter, t('打字机效果', 'Typewriter text'), on.toggleTypewriter)}
     {themeSwitch(p.autoAdvance, t('读完自动翻页', 'Auto-advance pages'), on.toggleAuto, 'A')}
     {themeSwitch(!p.muted, t('人物音效', 'Character sounds'), on.toggleMute, 'M')}
+    {themeSwitch(p.liveMotion, t('动态立绘（Live2D 风格）', 'Live portrait (Live2D-style)'), on.toggleLive)}
     <p className="theatreFootnote">{t('快捷键：Enter / 空格 继续 · 按住 Ctrl 快进 · H 隐藏界面 · L 回顾 · Esc 关闭', 'Keys: Enter / Space next · hold Ctrl to skip · H hide · L log · Esc close')}</p>
   </section>
 }
@@ -267,7 +288,7 @@ export function TheatreView(v: TheatreViewProps) {
     </div>}
 
     <div {...common} data-whale-pet="stage" data-expanded={v.expanded} data-theatre-hidden={v.uiHidden} data-immersive={v.scene.immersive} style={sceneStyle} className={'galgameCharacterCentered ' + (v.puppet.isMaiden ? 'galgameCharacterMaiden' : 'galgameCharacterChibi')}>
-      <LivingPuppet poseName={v.puppet.poseName} poseScale={v.puppet.poseScale} imgSrc={v.puppet.imgSrc} isMaiden={v.puppet.isMaiden} isGalGameMode={true} mouthOpenRatio={status.mouthOpenRatio} state={status.state} />
+      <LivingPuppet poseName={v.puppet.poseName} poseScale={v.puppet.poseScale} imgSrc={v.puppet.imgSrc} isMaiden={v.puppet.isMaiden} isGalGameMode={true} mouthOpenRatio={status.mouthOpenRatio} state={status.state} live={v.puppet.live} motion={v.puppet.motion} emote={v.puppet.emote} emoteKey={v.puppet.emoteKey} />
     </div>
 
     {!v.uiHidden && <div {...common} data-whale-pet="hud" className="theatreHud" onPointerDown={on.unlock}>
@@ -310,9 +331,12 @@ export function TheatreView(v: TheatreViewProps) {
         title={v.pageCount > 1 ? t('点击继续', 'Click to continue') : undefined}
       >
         <span className="galgameQuotes">「</span>
-        <DialogueContent text={v.visibleText} copy={on.copy} copyLabel={t('复制', 'Copy')} />
+        {revealText(v)}
         {status.isStreaming && <span className="galgameCursor" aria-hidden="true" />}
         <span className="galgameQuotes">」</span>
+        {!v.isRevealing && !status.isStreaming && v.visibleText && <span className="vnWait" data-last={p.reading !== 'pages' || v.pageIndex >= v.pageCount - 1} aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 21.5C11.2 18 10.8 15.5 11 13.2 8.5 13.6 5.2 12.6 2.5 9.5 5.5 10 8 9.2 9.8 7.4c1-1 1.7-.8 2.2.2.5-1 1.2-1.2 2.2-.2 1.8 1.8 4.3 2.6 7.3 2.1-2.7 3.1-6 4.1-8.5 3.7.2 2.3-.2 4.8-1 8.3z" /></svg>
+        </span>}
       </div>
 
       <div className="petReadingNav">
@@ -321,9 +345,7 @@ export function TheatreView(v: TheatreViewProps) {
           <span className="petSinglePage" aria-label={t(`第 ${v.pageIndex + 1} 段，共 ${v.pageCount} 段`, `Page ${v.pageIndex + 1} of ${v.pageCount}`)}>{v.pageIndex + 1} / {v.pageCount}</span>
         </>}
         <span className="petNavSpacer" />
-        {v.isRevealing
-          ? <button type="button" className="petSkipReveal" onClick={on.skipReveal}>{t('显示整段', 'Show page')}</button>
-          : p.reading === 'pages' && v.pageIndex < v.pageCount - 1 && <span className="petNextTriangle" aria-hidden="true">▼</span>}
+        {v.isRevealing && <button type="button" className="petSkipReveal" onClick={on.skipReveal}>{t('显示整段', 'Show page')}</button>}
       </div>
 
       <div className="galgameSystemBar">

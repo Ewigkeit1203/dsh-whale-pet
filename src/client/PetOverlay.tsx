@@ -9,9 +9,11 @@ import { LAYOUT, layoutGroup, clampPet, wanderDestination, nextWanderDelay, plac
 import { walletView } from './wallet.js'
 import { PetVoice, appendedSpeech, speakableText } from './voice.js'
 import { tariffAt, type Tier } from './peak.js'
-import { SCENES, sceneMeta, sceneSvg, sceneUrl, shuffleScene, type SceneId } from './scenes.js'
+import { SCENES, sceneMeta, sceneSvg, sceneUrl, shuffleScene, timeOfDayScene, type SceneId } from './scenes.js'
 import { BgmPlayer, BGM_TRACKS, cycleBgmTrack, type BgmTrackId } from './bgm.js'
 import { checkMedia, saveMedia, loadMedia, deleteMedia } from './media-store.js'
+import { detectEmotion, EMOTION_POSE, emoteFor, type Emote, type Emotion } from './emotion.js'
+import { LiveRig } from './live-rig.js'
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import type { PetStateMachine } from './state-machine.js'
 import type { PetStatusInfo } from './types.js'
@@ -29,6 +31,12 @@ import {
   THINK4_DATA_URI,
   THINK5_DATA_URI,
   DIZZY_DATA_URI,
+  SMUG_DATA_URI,
+  SHY_DATA_URI,
+  ANGRY_DATA_URI,
+  SURPRISED_DATA_URI,
+  PROUD_DATA_URI,
+  HAPPY_DATA_URI,
 } from './assets-data.js'
 
 export interface PetOverlayProps {
@@ -44,6 +52,12 @@ function paginateDialogue(text: string, width: number, height: number, font: num
     if (context) { context.font = font + 'px "Microsoft YaHei", "PingFang SC", sans-serif'; measure = value => context.measureText(value).width }
   }
   return blocks.flatMap(block => block.kind === 'code' ? ['```' + (block.language || '') + '\n' + block.text + '\n```'] : paginateText(block.text, width, height, font, measure))
+}
+
+/** Artwork for reactions and per-page expressions. */
+const EXPRESSION_SRC: Record<string, string> = {
+  smug: SMUG_DATA_URI, shy: SHY_DATA_URI, angry: ANGRY_DATA_URI, surprised: SURPRISED_DATA_URI,
+  proud: PROUD_DATA_URI, happy: HAPPY_DATA_URI, sajiao: SAJIAO_DATA_URI, getit: GETIT_DATA_URI,
 }
 
 const COMPOSER_SELECTOR = '[data-composer-card], [data-composer-seat]'
@@ -87,6 +101,12 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const [revealed, setRevealed] = useState(0)
   const [toast, setToast] = useState('')
   const [affection, setAffection] = useState<'pat' | 'dizzy' | 'float' | ''>('')
+  // v0.6.0 expressions: short reactions (pat, answer finished, announcements, idle glances)
+  // and the theatre's per-page expression with its mood mark.
+  const [reaction, setReaction] = useState<{ pose: string; emote: Emote; until: number; key: number } | null>(null)
+  const [pageEmotion, setPageEmotion] = useState<{ emotion: Emotion; emote: Emote; key: number }>({ emotion: 'neutral', emote: null, key: 0 })
+  const [liveSupported] = useState(() => LiveRig.supported())
+  const emoteSeq = useRef(0)
   const [clock, setClock] = useState(() => Date.now())
   const voiceRef = useRef<PetVoice | null>(null)
   if (!voiceRef.current) voiceRef.current = new PetVoice()
@@ -181,8 +201,11 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const isMaiden = renderForm === 'maiden'
   const resolveCharacter = (): [string, string] => {
     if (!isMaiden) return [CHIBI_DATA_URI, 'DaFeiYu']
-    if (affection === 'pat') return [SAJIAO_DATA_URI, 'sajiao']
     if (affection === 'dizzy' && !status.isStreaming) return [DIZZY_DATA_URI, 'Dizzy']
+    const busy = status.isStreaming || status.isReasoning
+    if (reaction && (!busy || affection === 'pat') && EXPRESSION_SRC[reaction.pose]) return [EXPRESSION_SRC[reaction.pose], reaction.pose]
+    if (affection === 'pat') return [SAJIAO_DATA_URI, 'sajiao']
+    if (status.isGalGameMode && !busy && pageEmotion.emotion !== 'neutral') { const pose = EMOTION_POSE[pageEmotion.emotion]; return [EXPRESSION_SRC[pose], pose] }
     if (status.pose === 'sajiao' || status.pose === 'mad') return [SAJIAO_DATA_URI, 'sajiao']
     if (status.isStreaming) return [ANSWERING_DATA_URI, 'Answering']
     if (status.pose === 'eating' || status.state === 'EATING') return [BAIFAN_DATA_URI, 'baifan']
@@ -493,7 +516,9 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     if (preferences.sceneShuffle) update({ scene: shuffleScene(preferences.scene, Boolean(customScene)) })
   }, [status.isGalGameMode])
 
-  const activeScene: SceneId = preferences.scene === 'custom' && !customScene && customSceneChecked ? 'study' : preferences.scene
+  const sceneHour = new Date(clock).getHours()
+  const chosenScene: SceneId = preferences.scene === 'auto' ? timeOfDayScene(sceneHour) : preferences.scene
+  const activeScene: SceneId = chosenScene === 'custom' && !customScene && customSceneChecked ? 'study' : chosenScene
   const immersive = activeScene !== 'none'
   useEffect(() => {
     document.body?.classList?.toggle('dsh-galgame-immersive', status.isGalGameMode && immersive)
@@ -530,6 +555,40 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     return () => { alive = false }
   }, [wantBgm, preferences.bgmTrack, customBgmVersion])
   useEffect(() => { bgmRef.current?.setVolume(preferences.bgmVolume) }, [preferences.bgmVolume])
+
+  // ---- Expressions & reactions (v0.6.0) ----------------------------------------
+  const react = (pose: string, emote: Emote, ms: number) => {
+    const key = ++emoteSeq.current
+    setReaction({ pose, emote, until: Date.now() + ms, key })
+    later(() => setReaction(current => current && current.key === key ? null : current), ms)
+  }
+  // Answer finished: an expression read from its last lines, then the usual rice break.
+  const finishedStream = useRef(false)
+  useEffect(() => {
+    if (status.isStreaming) { finishedStream.current = true; return }
+    if (!finishedStream.current || status.isReasoning) return
+    finishedStream.current = false
+    if (status.isGalGameMode) return
+    const tail = status.latestDialogue.slice(-400)
+    const emotion = detectEmotion(tail)
+    if (emotion === 'neutral') react('proud', 'sparkle', 2600)
+    else react(EMOTION_POSE[emotion], emoteFor(emotion, tail), 2600)
+  }, [status.isStreaming, status.isReasoning])
+  // Pricing-period announcements: half price is good news, peak is a little alarming.
+  useEffect(() => {
+    if (!tierAnnounce || status.isGalGameMode || status.isStreaming || status.isReasoning) return
+    if (tierAnnounce.tier === 'valley') react('happy', 'heart', 3200)
+    else react('surprised', 'exclaim', 3200)
+  }, [tierAnnounce])
+  // Idle glances: now and then a different face, so she feels alive without being busy.
+  useEffect(() => {
+    if (status.isGalGameMode || status.state !== 'IDLE' || !foreground || isDragging || isSettingsOpen || reaction || preferences.quiet) return
+    const timer = setTimeout(() => {
+      const pose = ['smug', 'happy', 'proud', 'smug'][Math.floor(Math.random() * 4)]
+      react(pose, Math.random() < 0.35 ? (pose === 'happy' ? 'heart' : 'note') : null, 3200)
+    }, 50_000 + Math.random() * 60_000)
+    return () => clearTimeout(timer)
+  }, [status.isGalGameMode, status.state, foreground, isDragging, isSettingsOpen, reaction, preferences.quiet])
   useEffect(() => {
     if (preferences.muted || preferences.quiet) voiceRef.current?.silence()
     else if (!voiceAllowed) voiceRef.current?.cut()
@@ -806,6 +865,25 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', stop) }
   }, [status.isGalGameMode])
 
+  // Theatre: like a visual novel, each page sets her expression; a change hops and shows a mood mark.
+  useEffect(() => {
+    if (!status.isGalGameMode || status.isStreaming || status.isReasoning) {
+      if (pageEmotion.emotion !== 'neutral') setPageEmotion(current => ({ emotion: 'neutral', emote: null, key: current.key }))
+      return
+    }
+    const emotion = detectEmotion(displayDialogue)
+    if (emotion === pageEmotion.emotion) return
+    const key = ++emoteSeq.current
+    setPageEmotion({ emotion, emote: emoteFor(emotion, displayDialogue), key })
+    if (emotion !== 'neutral' && !reduceMotion) {
+      try {
+        document.querySelector?.('[data-whale-pet="stage"] .puppetRoot')?.animate(
+          [{ translate: '0 0' }, { translate: '0 -18px' }, { translate: '0 0' }],
+          { duration: 380, easing: 'cubic-bezier(.3, 1.4, .5, 1)' })
+      } catch { /* Web Animations unavailable */ }
+    }
+  }, [displayDialogue, status.isGalGameMode, status.isStreaming, status.isReasoning])
+
   // One scheduler, two sources: the theatre's letter-by-letter reveal when it
   // is running, otherwise newly streamed text. Skips and bulk text are not voiced.
   useEffect(() => {
@@ -856,6 +934,11 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     : t('现在是梁文谷时间！空闲时段半价，放开用吧～', 'It’s Liang Wengu time! Off-peak, half price.')
   const tierAnnouncing = preferences.peakNotice && !preferences.quiet && tierAnnounce !== null && tierAnnounce.until > clock
   const wallet = walletView({ host: status.hostBalance ?? null, known: status.balancesKnown, toppedUp: status.toppedUpBalance, granted: status.grantedBalance, checkedAt: stateMachine.getStatus().balancesCheckedAt ?? null, now: clock, ricePrice: preferences.ricePrice })
+  const wasLow = useRef(false)
+  useEffect(() => {
+    if (wallet.low && !wasLow.current && !status.isGalGameMode) react('surprised', 'sweat', 3000)
+    wasLow.current = wallet.low
+  }, [wallet.low])
   const hour = new Date(clock).getHours()
   const contextualSpeech = affection === 'pat' ? t('嘿嘿……最喜欢主人摸摸头啦～', 'Hehe… I love head pats!')
     : affection === 'dizzy' ? t('头好晕……深海漩涡出现啦！', 'Whoa… a deep-sea whirlpool!')
@@ -880,6 +963,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     if (sample.turns >= 5) {
       sample.turns = 0; sample.cooldown = now + 4000
       setAffection('pat'); stateMachine.resetActivity()
+      react(['happy', 'shy', 'sajiao', 'happy'][Math.floor(Math.random() * 4)], 'heart', 2000)
       if (voiceAllowed) voiceRef.current?.cue('jelly')
       later(() => setAffection(''), 2000)
     }
@@ -977,10 +1061,10 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const sceneLabel = (id: SceneId) => { const meta = sceneMeta(id); return t(meta.zh, meta.en) }
   const sceneCards = SCENES.map(scene => ({
     id: scene.id,
-    label: t(scene.zh, scene.en),
-    thumb: scene.id === 'none' ? '' : scene.id === 'custom' ? customScene?.url ?? '' : status.isGalGameMode && theatrePanel === 'scene' ? paintedSceneUrl(scene.id) : '',
-    active: scene.id === activeScene,
-    kind: scene.id === 'none' ? 'none' as const : scene.id === 'custom' ? 'custom' as const : 'painted' as const,
+    label: scene.id === 'auto' ? t(scene.zh, scene.en) + ' · ' + sceneLabel(timeOfDayScene(sceneHour)) : t(scene.zh, scene.en),
+    thumb: scene.id === 'none' ? '' : scene.id === 'custom' ? customScene?.url ?? '' : status.isGalGameMode && theatrePanel === 'scene' ? paintedSceneUrl(scene.id === 'auto' ? timeOfDayScene(sceneHour) : scene.id) : '',
+    active: preferences.scene === 'auto' ? scene.id === 'auto' : scene.id === activeScene,
+    kind: scene.id === 'none' ? 'none' as const : scene.id === 'custom' ? 'custom' as const : scene.id === 'auto' ? 'auto' as const : 'painted' as const,
   }))
   const bgmTracks = BGM_TRACKS.filter(track => track.id !== 'custom' || customBgmName).map(track => ({
     id: track.id,
@@ -992,7 +1076,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   if (status.isGalGameMode) {
     return TheatreView({
       t, p: preferences, status, lang, petName,
-      puppet: { imgSrc: currentImgSrc, poseName: hitPose, poseScale: (POSE_META[hitPose] ?? POSE_META.Maid).scale, isMaiden },
+      puppet: { imgSrc: currentImgSrc, poseName: hitPose, poseScale: (POSE_META[hitPose] ?? POSE_META.Maid).scale, isMaiden, live: preferences.liveMotion && liveSupported, motion: reduceMotion ? 0 : 1, emote: pageEmotion.emote ?? reaction?.emote ?? null, emoteKey: pageEmotion.emote ? pageEmotion.key : reaction?.key ?? 0 },
       tier: preferences.peakNotice ? { tier: tariff.tier, label: tierName, until: tierUntil } : null,
       phase: status.isStreaming || status.isReasoning ? phaseLabel + (elapsed !== null ? ' · ' + elapsed + 's' : '') + (nativeSpeed !== null ? ' · ' + nativeSpeed.toFixed(1) + ' tokens/s' : '') : null,
       uiHidden, expanded, logOpen, history,
@@ -1048,6 +1132,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
         setSpeed: speed => update({ speed }),
         setFontSize: size => update({ fontSize: Math.min(24, Math.max(14, Math.round(size))) }),
         toggleTypewriter: () => update({ typewriter: !preferences.typewriter }),
+        toggleLive: () => update({ liveMotion: !preferences.liveMotion }),
       },
     })
   }
@@ -1155,8 +1240,12 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
             isMaiden={isMaiden}
             isGalGameMode={false}
             mouthOpenRatio={status.mouthOpenRatio}
-            state={status.state}
+            state={reaction ? 'IDLE' : status.state}
             box={{ width: geometry.imageWidth, height: geometry.imageHeight, left: geometry.imageLeft }}
+            live={preferences.liveMotion && liveSupported}
+            motion={reduceMotion ? 0 : 1}
+            emote={reaction?.emote ?? null}
+            emoteKey={reaction?.key ?? 0}
             opacity={puppetOpacity}
             onMouseDown={handleMouseDown}
           />
