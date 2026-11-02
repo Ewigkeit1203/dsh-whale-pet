@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { test, describe } from 'node:test'
 import assert from 'node:assert'
 import { existsSync, statSync, readFileSync } from 'node:fs'
@@ -36,8 +37,13 @@ describe('dsh-whale-pet: Assets Integrity', () => {
       'lib/assets/Think3.png',
       'lib/assets/Think4.png',
       'lib/assets/Think5.png',
+      ...['smug', 'shy', 'angry', 'surprised', 'proud', 'happy'].flatMap(name => [`assets/${name}.png`, `assets/optimized/${name}.webp`]),
     ]
-    assert.ok(readFileSync(join(rootDir, 'assets/Dizzy.png')).equals(Buffer.from(DIZZY_DATA_URI.split(',')[1], 'base64')), 'Dizzy illustration is embedded without image edits')
+    // The compact WebP is embedded only while it was made from the current PNG; otherwise the PNG itself.
+    const manifest = JSON.parse(readFileSync(join(rootDir, 'assets/optimized/manifest.json'), 'utf8'))
+    const png = readFileSync(join(rootDir, 'assets/Dizzy.png'))
+    const expected = manifest.Dizzy?.png_sha1 === createHash('sha1').update(png).digest('hex') ? readFileSync(join(rootDir, 'assets/optimized/Dizzy.webp')) : png
+    assert.ok(expected.equals(Buffer.from(DIZZY_DATA_URI.split(',')[1], 'base64')), 'Dizzy illustration is embedded without image edits')
 
     for (const asset of assets) {
       const fullPath = join(rootDir, asset)

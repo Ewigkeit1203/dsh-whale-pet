@@ -12,7 +12,8 @@
  * `aspect` is the canvas width / height. Re-measure after replacing artwork
  * (see scripts/generate-hitareas.py for the alpha-envelope helper).
  */
-export interface PoseMeta { aspect: number; scale: number }
+/** `content`: opaque width as a fraction of the canvas when the artwork has wide transparent side margins. */
+export interface PoseMeta { aspect: number; scale: number; content?: number }
 
 export const POSE_META: Record<string, PoseMeta> = {
   Maid: { aspect: 937 / 1679, scale: 1 },
@@ -26,6 +27,13 @@ export const POSE_META: Record<string, PoseMeta> = {
   Think4: { aspect: 1632 / 2624, scale: 1.03 },
   Think5: { aspect: 1632 / 2624, scale: 1.03 },
   Dizzy: { aspect: 1024 / 1536, scale: 0.96 },
+  // v0.6.0 expressions (same 1024×1536 framing; head measured against Maid).
+  smug: { aspect: 1024 / 1536, scale: 1.03, content: 0.764 },
+  shy: { aspect: 1024 / 1536, scale: 0.98, content: 0.811 },
+  angry: { aspect: 1024 / 1536, scale: 1.03, content: 0.754 },
+  surprised: { aspect: 1024 / 1536, scale: 1.03, content: 0.818 },
+  proud: { aspect: 1024 / 1536, scale: 1.03, content: 0.789 },
+  happy: { aspect: 1024 / 1536, scale: 1.03, content: 0.766 },
   DaFeiYu: { aspect: 1, scale: 0.46 },
 }
 

@@ -1,5 +1,5 @@
 import { SettingsPanel } from './SettingsPanel.js'
-import { TheatreView } from './TheatreView.js'
+import { TheatreView, type TheatrePanel, type SceneLayers } from './TheatreView.js'
 import { paginateText, revealDelay, diagnosticReport } from './usability.js'
 import { dialogueBlocks, readConversationLog, type HistoryEntry } from './experience.js'
 import { readPreferences, savePreferences, quietPreset, defaultPreferences, type Preferences } from './preferences.js'
@@ -9,6 +9,11 @@ import { LAYOUT, layoutGroup, clampPet, wanderDestination, nextWanderDelay, plac
 import { walletView } from './wallet.js'
 import { PetVoice, appendedSpeech, speakableText } from './voice.js'
 import { tariffAt, type Tier } from './peak.js'
+import { SCENES, sceneMeta, sceneSvg, sceneUrl, shuffleScene, timeOfDayScene, type SceneId } from './scenes.js'
+import { BgmPlayer, BGM_TRACKS, cycleBgmTrack, type BgmTrackId } from './bgm.js'
+import { checkMedia, saveMedia, loadMedia, deleteMedia } from './media-store.js'
+import { detectEmotion, EMOTION_POSE, emoteFor, type Emote, type Emotion } from './emotion.js'
+import { LiveRig } from './live-rig.js'
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import type { PetStateMachine } from './state-machine.js'
 import type { PetStatusInfo } from './types.js'
@@ -26,6 +31,12 @@ import {
   THINK4_DATA_URI,
   THINK5_DATA_URI,
   DIZZY_DATA_URI,
+  SMUG_DATA_URI,
+  SHY_DATA_URI,
+  ANGRY_DATA_URI,
+  SURPRISED_DATA_URI,
+  PROUD_DATA_URI,
+  HAPPY_DATA_URI,
 } from './assets-data.js'
 
 export interface PetOverlayProps {
@@ -41,6 +52,12 @@ function paginateDialogue(text: string, width: number, height: number, font: num
     if (context) { context.font = font + 'px "Microsoft YaHei", "PingFang SC", sans-serif'; measure = value => context.measureText(value).width }
   }
   return blocks.flatMap(block => block.kind === 'code' ? ['```' + (block.language || '') + '\n' + block.text + '\n```'] : paginateText(block.text, width, height, font, measure))
+}
+
+/** Artwork for reactions and per-page expressions. */
+const EXPRESSION_SRC: Record<string, string> = {
+  smug: SMUG_DATA_URI, shy: SHY_DATA_URI, angry: ANGRY_DATA_URI, surprised: SURPRISED_DATA_URI,
+  proud: PROUD_DATA_URI, happy: HAPPY_DATA_URI, sajiao: SAJIAO_DATA_URI, getit: GETIT_DATA_URI,
 }
 
 const COMPOSER_SELECTOR = '[data-composer-card], [data-composer-seat]'
@@ -84,6 +101,16 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const [revealed, setRevealed] = useState(0)
   const [toast, setToast] = useState('')
   const [affection, setAffection] = useState<'pat' | 'dizzy' | 'float' | ''>('')
+  // v0.6.0 expressions: short reactions (pat, answer finished, announcements, idle glances)
+  // and the theatre's per-page expression with its mood mark.
+  const [reaction, setReaction] = useState<{ pose: string; emote: Emote; until: number; key: number } | null>(null)
+  const [pageEmotion, setPageEmotion] = useState<{ emotion: Emotion; emote: Emote; key: number }>({ emotion: 'neutral', emote: null, key: 0 })
+  const [liveSupported] = useState(() => LiveRig.supported())
+  const emoteSeq = useRef(0)
+  // Easter egg: poke her quickly and she gets puzzled, then frustrated.
+  const pokeTimes = useRef<number[]>([])
+  const pokeCooldown = useRef(0)
+  const [poke, setPoke] = useState<'' | 'curious' | 'angry'>('')
   const [clock, setClock] = useState(() => Date.now())
   const voiceRef = useRef<PetVoice | null>(null)
   if (!voiceRef.current) voiceRef.current = new PetVoice()
@@ -112,6 +139,8 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const [isThoughtBubbleVisible, setIsThoughtBubbleVisible] = useState(true)
   const [tierAnnounce, setTierAnnounce] = useState<{ tier: Tier; until: number } | null>(null)
   const [panelFlipping, setPanelFlipping] = useState(false)
+  const [theatrePanel, setTheatrePanel] = useState<TheatrePanel>(null)
+  const [skipping, setSkipping] = useState(false)
 
   const sideRef = useRef<PanelSide | undefined>(undefined)
   const statusKeyRef = useRef('')
@@ -176,8 +205,11 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const isMaiden = renderForm === 'maiden'
   const resolveCharacter = (): [string, string] => {
     if (!isMaiden) return [CHIBI_DATA_URI, 'DaFeiYu']
-    if (affection === 'pat') return [SAJIAO_DATA_URI, 'sajiao']
     if (affection === 'dizzy' && !status.isStreaming) return [DIZZY_DATA_URI, 'Dizzy']
+    const busy = status.isStreaming || status.isReasoning
+    if (reaction && (!busy || affection === 'pat') && EXPRESSION_SRC[reaction.pose]) return [EXPRESSION_SRC[reaction.pose], reaction.pose]
+    if (affection === 'pat') return [SAJIAO_DATA_URI, 'sajiao']
+    if (status.isGalGameMode && !busy && pageEmotion.emotion !== 'neutral') { const pose = EMOTION_POSE[pageEmotion.emotion]; return [EXPRESSION_SRC[pose], pose] }
     if (status.pose === 'sajiao' || status.pose === 'mad') return [SAJIAO_DATA_URI, 'sajiao']
     if (status.isStreaming) return [ANSWERING_DATA_URI, 'Answering']
     if (status.pose === 'eating' || status.state === 'EATING') return [BAIFAN_DATA_URI, 'baifan']
@@ -281,23 +313,9 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   }, [stateMachine])
 
   // At most one render per frame, and only when something drawn changed.
-  // Gaze is applied as CSS variables outside React (see LivingPuppet).
+  // (Pointer gaze is not drawn: the portrait does not follow the mouse.)
   useEffect(() => {
-    let gaze = stateMachine.getStatus().gazeOffset
-    let gazeQueued = false
-    const writeGaze = () => {
-      gazeQueued = false
-      document.querySelectorAll?.('[data-whale-pet="widget"], [data-whale-pet="stage"]').forEach(node => {
-        const el = node as HTMLElement
-        el.style.setProperty('--gaze-x', gaze.x.toFixed(3))
-        el.style.setProperty('--gaze-y', gaze.y.toFixed(3))
-      })
-    }
     const unsubscribe = stateMachine.subscribe(next => {
-      if (next.gazeOffset.x !== gaze.x || next.gazeOffset.y !== gaze.y) {
-        gaze = next.gazeOffset
-        if (!gazeQueued) { gazeQueued = true; nextFrame(writeGaze) }
-      }
       const key = statusRenderKey(next)
       if (key === statusKeyRef.current) return
       statusKeyRef.current = key
@@ -377,7 +395,9 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     if (!status.isGalGameMode) return
     const close = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null
-      if (event.isComposing || event.ctrlKey || event.metaKey || event.altKey || target?.closest('input, textarea, select, button, summary, [contenteditable="true"]')) return
+      // Escape always works (even from a focused button or slider); other keys leave form controls alone.
+      if (event.isComposing || event.ctrlKey || event.metaKey || event.altKey) return
+      if (event.key !== 'Escape' && target?.closest('input, textarea, select, button, summary, [contenteditable="true"]')) return
       if (event.key !== 'Escape' && event.key !== 'Enter' && event.key !== ' ' && event.key !== 'ArrowRight' && event.key !== 'ArrowLeft' && !['l', 'a', 'h', 'm'].includes(event.key.toLowerCase())) return
       if (event.key !== 'Escape') {
         if (target?.closest('[role="button"], [role="log"]')) return
@@ -392,11 +412,12 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       }
       const more = document.querySelector('[data-whale-pet] details[open]')
       if (more) { more.removeAttribute('open'); return }
+      if (theatrePanel) { setTheatrePanel(null); return }
       if (uiHidden) setUiHidden(false); else if (logOpen) setLogOpen(false); else stateMachine.setGalGameMode(false)
     }
     window.addEventListener('keydown', close)
     return () => window.removeEventListener('keydown', close)
-  }, [status.isGalGameMode, stateMachine, uiHidden, logOpen, revealed, currentPageIndex, dialoguePages, preferences.autoAdvance, preferences.reading, preferences.muted])
+  }, [status.isGalGameMode, stateMachine, uiHidden, logOpen, revealed, currentPageIndex, dialoguePages, preferences.autoAdvance, preferences.reading, preferences.muted, theatrePanel])
 
   useEffect(() => {
     if (status.isReasoning) { followThoughtRef.current = true; setIsThoughtBubbleVisible(true) }
@@ -420,6 +441,144 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   // ---- Voice ----------------------------------------------------------------
   const voiceAllowed = !preferences.muted && !preferences.quiet && preferences.volume > 0 && foreground && !uiHidden && !logOpen
   useEffect(() => { voiceRef.current?.setVolume(preferences.volume) }, [preferences.volume])
+
+  // ---- Theatre scene & music -------------------------------------------------
+  const bgmRef = useRef<BgmPlayer | null>(null)
+  if (!bgmRef.current) bgmRef.current = new BgmPlayer()
+  const [pageVisible, setPageVisible] = useState(true)
+  const [customScene, setCustomScene] = useState<{ url: string; name: string } | null>(null)
+  const [customSceneChecked, setCustomSceneChecked] = useState(false)
+  const [customBgmName, setCustomBgmName] = useState<string | null>(null)
+  const [customBgmVersion, setCustomBgmVersion] = useState(0)
+  const [bgmPlaying, setBgmPlaying] = useState(false)
+  const [sceneLayers, setSceneLayers] = useState<SceneLayers>({ a: '', b: '', front: 'a' })
+  const sceneUrlCache = useRef(new Map<string, string>())
+  const customSceneRef = useRef<string | null>(null)
+  customSceneRef.current = customScene?.url ?? null
+
+  const releaseUrl = (url: string | null | undefined) => {
+    if (!url || !url.startsWith('blob:')) return
+    try { URL.revokeObjectURL(url) } catch { /* not a blob URL here */ }
+  }
+  /** Painted scenes become short blob: URLs once, so re-renders never diff a 60 KB data URI. */
+  const paintedSceneUrl = (id: SceneId): string => {
+    const cached = sceneUrlCache.current.get(id)
+    if (cached !== undefined) return cached
+    let url = ''
+    try { url = URL.createObjectURL(new Blob([sceneSvg(id)], { type: 'image/svg+xml' })) } catch { url = sceneUrl(id, null) }
+    sceneUrlCache.current.set(id, url)
+    return url
+  }
+  const flash = (message: string) => { setToast(message); later(() => setToast(''), 2800) }
+
+  useEffect(() => {
+    let alive = true
+    void loadMedia('scene').then(record => {
+      if (!alive) return
+      if (record) {
+        try { setCustomScene({ url: URL.createObjectURL(record.blob), name: record.name }) } catch { /* object URLs unavailable */ }
+      }
+      setCustomSceneChecked(true)
+    })
+    void loadMedia('bgm').then(async record => {
+      if (!alive || !record) return
+      try { bgmRef.current?.setCustom(await record.blob.arrayBuffer()); setCustomBgmName(record.name) } catch { /* unreadable file */ }
+    })
+    // Page hide / unload: stop at once and release the audio device.
+    const hide = () => bgmRef.current?.stopNow()
+    const visibility = () => setPageVisible(!document.hidden)
+    window.addEventListener('pagehide', hide)
+    document.addEventListener('visibilitychange', visibility)
+    return () => {
+      alive = false
+      window.removeEventListener('pagehide', hide)
+      document.removeEventListener('visibilitychange', visibility)
+      bgmRef.current?.dispose()
+      sceneUrlCache.current.forEach(releaseUrl)
+      sceneUrlCache.current.clear()
+      releaseUrl(customSceneRef.current)
+    }
+  }, [])
+
+  // Leaving the theatre closes its menus and stops skipping; a shuffle picks a new scene on entry.
+  useEffect(() => {
+    if (!status.isGalGameMode) { setTheatrePanel(null); setSkipping(false); return }
+    if (preferences.sceneShuffle) update({ scene: shuffleScene(preferences.scene, Boolean(customScene)) })
+  }, [status.isGalGameMode])
+
+  const sceneHour = new Date(clock).getHours()
+  const chosenScene: SceneId = preferences.scene === 'auto' ? timeOfDayScene(sceneHour) : preferences.scene
+  const activeScene: SceneId = chosenScene === 'custom' && !customScene && customSceneChecked ? 'study' : chosenScene
+  const immersive = activeScene !== 'none'
+  useEffect(() => {
+    document.body?.classList?.toggle('dsh-galgame-immersive', status.isGalGameMode && immersive)
+    return () => { document.body?.classList?.remove('dsh-galgame-immersive') }
+  }, [status.isGalGameMode, immersive])
+  const sceneTarget = !status.isGalGameMode || !immersive ? '' : activeScene === 'custom' ? customScene?.url ?? '' : paintedSceneUrl(activeScene)
+  // Crossfade: decode the next picture first, then swap layers, so a switch never flashes white or half-loaded.
+  useEffect(() => {
+    if (!status.isGalGameMode) return
+    const frontUrl = sceneLayers.front === 'a' ? sceneLayers.a : sceneLayers.b
+    if (sceneTarget === frontUrl) return
+    let cancelled = false
+    const swap = () => { if (!cancelled) setSceneLayers(previous => previous.front === 'a' ? { ...previous, b: sceneTarget, front: 'b' } : { ...previous, a: sceneTarget, front: 'a' }) }
+    if (!sceneTarget || typeof Image !== 'function') { swap(); return }
+    const image = new Image()
+    image.src = sceneTarget
+    const ready = typeof image.decode === 'function' ? image.decode() : new Promise<void>(resolve => { image.onload = () => resolve(); image.onerror = () => resolve() })
+    ready.then(swap, swap)
+    return () => { cancelled = true }
+  }, [status.isGalGameMode, sceneTarget])
+
+  // Music follows the theatre: it fades in on entry and fades out on exit or when the page is hidden.
+  const wantBgm = status.isGalGameMode && preferences.bgmOn && pageVisible
+  useEffect(() => {
+    const bgm = bgmRef.current
+    if (!bgm) return
+    if (!wantBgm) { if (bgm.playing) bgm.fadeOut(); setBgmPlaying(false); return }
+    let alive = true
+    void bgm.play(preferences.bgmTrack, preferences.bgmVolume).then(ok => {
+      if (!alive) return
+      setBgmPlaying(ok)
+      if (!ok && preferences.bgmTrack === 'custom') { update({ bgmTrack: 'daily' }); flash(t('这首本地音乐无法播放，已换回内置曲目', 'That file could not be played; switched back to a built-in track')) }
+    })
+    return () => { alive = false }
+  }, [wantBgm, preferences.bgmTrack, customBgmVersion])
+  useEffect(() => { bgmRef.current?.setVolume(preferences.bgmVolume) }, [preferences.bgmVolume])
+
+  // ---- Expressions & reactions (v0.6.0) ----------------------------------------
+  const react = (pose: string, emote: Emote, ms: number) => {
+    const key = ++emoteSeq.current
+    setReaction({ pose, emote, until: Date.now() + ms, key })
+    later(() => setReaction(current => current && current.key === key ? null : current), ms)
+  }
+  // Answer finished: an expression read from its last lines, then the usual rice break.
+  const finishedStream = useRef(false)
+  useEffect(() => {
+    if (status.isStreaming) { finishedStream.current = true; return }
+    if (!finishedStream.current || status.isReasoning) return
+    finishedStream.current = false
+    if (status.isGalGameMode) return
+    const tail = status.latestDialogue.slice(-400)
+    const emotion = detectEmotion(tail)
+    if (emotion === 'neutral') react('proud', 'sparkle', 2600)
+    else react(EMOTION_POSE[emotion], emoteFor(emotion, tail), 2600)
+  }, [status.isStreaming, status.isReasoning])
+  // Pricing-period announcements: half price is good news, peak is a little alarming.
+  useEffect(() => {
+    if (!tierAnnounce || !preferences.peakNotice || preferences.quiet || status.isGalGameMode || status.isStreaming || status.isReasoning) return
+    if (tierAnnounce.tier === 'valley') react('happy', 'heart', 3200)
+    else react('surprised', 'exclaim', 3200)
+  }, [tierAnnounce])
+  // Idle glances: now and then a different face, so she feels alive without being busy.
+  useEffect(() => {
+    if (status.isGalGameMode || status.state !== 'IDLE' || !foreground || isDragging || isSettingsOpen || reaction || preferences.quiet) return
+    const timer = setTimeout(() => {
+      const pose = ['smug', 'happy', 'proud', 'smug'][Math.floor(Math.random() * 4)]
+      react(pose, Math.random() < 0.35 ? (pose === 'happy' ? 'heart' : 'note') : null, 3200)
+    }, 50_000 + Math.random() * 60_000)
+    return () => clearTimeout(timer)
+  }, [status.isGalGameMode, status.state, foreground, isDragging, isSettingsOpen, reaction, preferences.quiet])
   useEffect(() => {
     if (preferences.muted || preferences.quiet) voiceRef.current?.silence()
     else if (!voiceAllowed) voiceRef.current?.cut()
@@ -583,7 +742,22 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
           setIsBouncing(true)
           later(() => setIsBouncing(false), 480)
           stateMachine.triggerMad()
-          setIsSettingsOpen(previous => !previous)
+          // The first click toggles Settings; quick follow-up clicks are pokes.
+          const now = Date.now()
+          const pokes = pokeTimes.current.filter(time => now - time < 2500).concat(now)
+          pokeTimes.current = pokes
+          if (pokes.length === 1 && now >= pokeCooldown.current) setIsSettingsOpen(previous => !previous)
+          else setIsSettingsOpen(false)
+          if (now < pokeCooldown.current) { /* still frustrated */ }
+          else if (pokes.length >= 6) {
+            pokeTimes.current = []
+            pokeCooldown.current = now + 4000
+            setPoke('angry'); react('angry', 'anger', 3200)
+            later(() => setPoke(current => current === 'angry' ? '' : current), 3200)
+          } else if (pokes.length === 3) {
+            setPoke('curious'); react('surprised', 'question', 1800)
+            later(() => setPoke(current => current === 'curious' ? '' : current), 1800)
+          }
         }
       }
       dragStartRef.current = null
@@ -673,6 +847,48 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     return () => clearTimeout(timer)
   }, [preferences.autoAdvance, preferences.reading, status.isGalGameMode, status.isStreaming, isRevealing, uiHidden, logOpen, currentPageIndex, dialoguePages, characters.length])
 
+  // Skip (快进): finish the current page at once, then flip pages quickly until the last one.
+  useEffect(() => {
+    if (!skipping || !status.isGalGameMode) return
+    if (isRevealing) { setRevealed(characters.length); voiceRef.current?.cut(); return }
+    if (preferences.reading !== 'pages' || currentPageIndex >= dialoguePages.length - 1) { if (!status.isStreaming) setSkipping(false); return }
+    const timer = setTimeout(() => setCurrentPageIndex(i => Math.min(i + 1, dialoguePages.length - 1)), 200)
+    return () => clearTimeout(timer)
+  }, [skipping, isRevealing, characters.length, currentPageIndex, dialoguePages.length, status.isGalGameMode, status.isStreaming, preferences.reading])
+  // Holding Ctrl skips, as in most visual novels; releasing it stops. Ignored while text is selected or typed.
+  useEffect(() => {
+    if (!status.isGalGameMode) return
+    const down = (event: KeyboardEvent) => {
+      if (event.key !== 'Control' || event.repeat) return
+      const target = event.target as HTMLElement | null
+      if (target?.closest?.('input, textarea, [contenteditable="true"]') || String(window.getSelection?.() ?? '')) return
+      setSkipping(true)
+    }
+    const up = (event: KeyboardEvent) => { if (event.key === 'Control') setSkipping(false) }
+    const stop = () => setSkipping(false)
+    window.addEventListener('keydown', down); window.addEventListener('keyup', up); window.addEventListener('blur', stop)
+    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', stop) }
+  }, [status.isGalGameMode])
+
+  // Theatre: like a visual novel, each page sets her expression; a change hops and shows a mood mark.
+  useEffect(() => {
+    if (!status.isGalGameMode || status.isStreaming || status.isReasoning) {
+      if (pageEmotion.emotion !== 'neutral') setPageEmotion(current => ({ emotion: 'neutral', emote: null, key: current.key }))
+      return
+    }
+    const emotion = detectEmotion(displayDialogue)
+    if (emotion === pageEmotion.emotion) return
+    const key = ++emoteSeq.current
+    setPageEmotion({ emotion, emote: emoteFor(emotion, displayDialogue), key })
+    if (emotion !== 'neutral' && !reduceMotion) {
+      try {
+        document.querySelector?.('[data-whale-pet="stage"] .puppetRoot')?.animate(
+          [{ translate: '0 0' }, { translate: '0 -18px' }, { translate: '0 0' }],
+          { duration: 380, easing: 'cubic-bezier(.3, 1.4, .5, 1)' })
+      } catch { /* Web Animations unavailable */ }
+    }
+  }, [displayDialogue, status.isGalGameMode, status.isStreaming, status.isReasoning])
+
   // One scheduler, two sources: the theatre's letter-by-letter reveal when it
   // is running, otherwise newly streamed text. Skips and bulk text are not voiced.
   useEffect(() => {
@@ -698,7 +914,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     catch { setToast(t('复制失败，请选中文字手动复制', 'Copy failed. Select the text and copy it manually.')) }
     later(() => setToast(''), 2500)
   }
-  const unlockAudio = () => { if (!preferences.muted && !preferences.quiet) voiceRef.current?.unlock() }
+  const unlockAudio = () => { if (!preferences.muted && !preferences.quiet) voiceRef.current?.unlock(); if (wantBgm) bgmRef.current?.unlock() }
   const toggleMute = () => { if (preferences.muted) voiceRef.current?.unlock(); else voiceRef.current?.silence(); update({ muted: !preferences.muted }) }
   const codeText = dialogueBlocks(status.latestDialogue).filter(block => block.kind === 'code').map(block => block.text).join('\n\n')
   const nativeSpeed = useMemo(() => {
@@ -723,8 +939,15 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     : t('现在是梁文谷时间！空闲时段半价，放开用吧～', 'It’s Liang Wengu time! Off-peak, half price.')
   const tierAnnouncing = preferences.peakNotice && !preferences.quiet && tierAnnounce !== null && tierAnnounce.until > clock
   const wallet = walletView({ host: status.hostBalance ?? null, known: status.balancesKnown, toppedUp: status.toppedUpBalance, granted: status.grantedBalance, checkedAt: stateMachine.getStatus().balancesCheckedAt ?? null, now: clock, ricePrice: preferences.ricePrice })
+  const wasLow = useRef(false)
+  useEffect(() => {
+    if (wallet.low && !wasLow.current && !status.isGalGameMode && !preferences.quiet) react('surprised', 'sweat', 3000)
+    wasLow.current = wallet.low
+  }, [wallet.low])
   const hour = new Date(clock).getHours()
-  const contextualSpeech = affection === 'pat' ? t('嘿嘿……最喜欢主人摸摸头啦～', 'Hehe… I love head pats!')
+  const contextualSpeech = poke === 'angry' ? t('别戳啦！再戳我真的要生气了！', 'Stop poking me! I’m getting really mad!')
+    : poke === 'curious' ? t('唔？主人是在戳我吗？', 'Hm? Are you poking me?')
+    : affection === 'pat' ? t('嘿嘿……最喜欢主人摸摸头啦～', 'Hehe… I love head pats!')
     : affection === 'dizzy' ? t('头好晕……深海漩涡出现啦！', 'Whoa… a deep-sea whirlpool!')
     : tierAnnouncing ? tierLine(tierAnnounce!.tier)
     : preferences.reminders && status.state === 'IDLE' && hour >= 1 && hour < 5 ? t('呼啊……夜深啦，主人记得休息，我陪着你。', 'It’s late… remember to rest. I’m right here.')
@@ -747,6 +970,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     if (sample.turns >= 5) {
       sample.turns = 0; sample.cooldown = now + 4000
       setAffection('pat'); stateMachine.resetActivity()
+      react(['proud', 'shy', 'sajiao', 'proud'][Math.floor(Math.random() * 4)], 'heart', 2000)
       if (voiceAllowed) voiceRef.current?.cue('jelly')
       later(() => setAffection(''), 2000)
     }
@@ -782,20 +1006,99 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const settingsPanel = useMemo(() => isSettingsOpen ? SettingsPanel(settingsProps()) : null,
     [isSettingsOpen, preferences, status.autoGalGameOnChat, JSON.stringify(wallet), tariff.tier, tierUntil, tariff.holidayDataMissing, group?.mode, viewport.width, viewport.height])
 
+  // ---- Theatre: background, music and upload handlers ----------------------------
+  const pickScene = (id: string) => {
+    const scene = sceneMeta(id).id
+    if (scene === 'custom' && !customScene) { flash(t('先上传一张图片作为「我的背景」', 'Upload a picture first to use “My picture”')); return }
+    update({ scene })
+  }
+  const uploadScene = async (file: File) => {
+    const check = checkMedia('scene', file)
+    if (!check.ok) { flash(check.reason === 'type' ? t('请选择图片（PNG / JPG / WebP / GIF）', 'Choose an image (PNG, JPG, WebP or GIF)') : t('图片需小于 15 MB', 'Pictures must be under 15 MB')); return }
+    let url = ''
+    try { url = URL.createObjectURL(file) } catch { flash(t('当前环境无法读取图片', 'Pictures cannot be read here')); return }
+    releaseUrl(customSceneRef.current)
+    setCustomScene({ url, name: file.name })
+    update({ scene: 'custom' })
+    const saved = await saveMedia('scene', file)
+    flash(saved ? t('已设为背景，下次进入剧场会自动恢复', 'Background set; it will be restored next time') : t('已设为背景（浏览器存储不可用，仅本次有效）', 'Background set for this session (browser storage unavailable)'))
+  }
+  const removeScene = async () => {
+    releaseUrl(customSceneRef.current)
+    setCustomScene(null)
+    if (preferences.scene === 'custom') update({ scene: 'study' })
+    await deleteMedia('scene')
+    flash(t('已移除我的背景', 'Your picture was removed'))
+  }
+  const startBgm = (track: BgmTrackId) => {
+    // Called inside the click, so browsers that require a gesture let audio start.
+    void bgmRef.current?.play(track, preferences.bgmVolume).then(ok => setBgmPlaying(ok))
+  }
+  const toggleBgm = () => {
+    if (preferences.bgmOn) { bgmRef.current?.fadeOut(); setBgmPlaying(false); update({ bgmOn: false }); return }
+    update({ bgmOn: true })
+    startBgm(preferences.bgmTrack)
+  }
+  const pickTrack = (id: string) => {
+    const track = BGM_TRACKS.find(item => item.id === id)?.id
+    if (!track) return
+    if (track === 'custom' && !customBgmName) { flash(t('先添加一首本地音乐', 'Add a music file first')); return }
+    update({ bgmTrack: track, bgmOn: true })
+    startBgm(track)
+  }
+  const uploadBgm = async (file: File) => {
+    const check = checkMedia('bgm', file)
+    if (!check.ok) { flash(check.reason === 'type' ? t('请选择音频文件（MP3 / OGG / WAV / M4A）', 'Choose an audio file (MP3, OGG, WAV or M4A)') : t('音乐文件需小于 40 MB', 'Music files must be under 40 MB')); return }
+    let bytes: ArrayBuffer
+    try { bytes = await file.arrayBuffer() } catch { flash(t('读取音乐文件失败', 'Could not read that file')); return }
+    bgmRef.current?.setCustom(bytes)
+    setCustomBgmName(file.name)
+    setCustomBgmVersion(version => version + 1)
+    update({ bgmTrack: 'custom', bgmOn: true })
+    const saved = await saveMedia('bgm', file)
+    flash(saved ? t('已添加，正在无缝循环播放', 'Added; now looping seamlessly') : t('已添加（浏览器存储不可用，仅本次有效）', 'Added for this session (browser storage unavailable)'))
+  }
+  const removeBgm = async () => {
+    bgmRef.current?.setCustom(null)
+    setCustomBgmName(null)
+    if (preferences.bgmTrack === 'custom') update({ bgmTrack: 'daily' })
+    await deleteMedia('bgm')
+    flash(t('已移除我的音乐', 'Your music was removed'))
+  }
+  const sceneLabel = (id: SceneId) => { const meta = sceneMeta(id); return t(meta.zh, meta.en) }
+  const sceneCards = SCENES.map(scene => ({
+    id: scene.id,
+    label: scene.id === 'auto' ? t(scene.zh, scene.en) + ' · ' + sceneLabel(timeOfDayScene(sceneHour)) : t(scene.zh, scene.en),
+    thumb: scene.id === 'none' ? '' : scene.id === 'custom' ? customScene?.url ?? '' : status.isGalGameMode && theatrePanel === 'scene' ? paintedSceneUrl(scene.id === 'auto' ? timeOfDayScene(sceneHour) : scene.id) : '',
+    active: preferences.scene === 'auto' ? scene.id === 'auto' : scene.id === activeScene,
+    kind: scene.id === 'none' ? 'none' as const : scene.id === 'custom' ? 'custom' as const : scene.id === 'auto' ? 'auto' as const : 'painted' as const,
+  }))
+  const bgmTracks = BGM_TRACKS.filter(track => track.id !== 'custom' || customBgmName).map(track => ({
+    id: track.id,
+    label: track.id === 'custom' && customBgmName ? customBgmName.replace(/\.[^.]+$/, '') : t(track.zh, track.en),
+    mood: t(track.moodZh, track.moodEn),
+  }))
+
   // ---- Theatre ----------------------------------------------------------------
   if (status.isGalGameMode) {
     return TheatreView({
       t, p: preferences, status, lang, petName,
-      puppet: { imgSrc: currentImgSrc, poseName: hitPose, poseScale: (POSE_META[hitPose] ?? POSE_META.Maid).scale, isMaiden },
+      puppet: { imgSrc: currentImgSrc, poseName: hitPose, poseScale: (POSE_META[hitPose] ?? POSE_META.Maid).scale, isMaiden, live: preferences.liveMotion && liveSupported, motion: reduceMotion ? 0 : 1, emote: pageEmotion.emote ?? reaction?.emote ?? null, emoteKey: pageEmotion.emote ? pageEmotion.key : reaction?.key ?? 0 },
       tier: preferences.peakNotice ? { tier: tariff.tier, label: tierName, until: tierUntil } : null,
       phase: status.isStreaming || status.isReasoning ? phaseLabel + (elapsed !== null ? ' · ' + elapsed + 's' : '') + (nativeSpeed !== null ? ' · ' + nativeSpeed.toFixed(1) + ' tokens/s' : '') : null,
       uiHidden, expanded, logOpen, history,
       showThoughts: isThoughtBubbleVisible && (status.isReasoning || Boolean(status.reasoningText)),
       visibleText, isRevealing, pageIndex: currentPageIndex, pageCount: dialoguePages.length,
       inputValue, toast, textRef: textScrollRef, thoughtRef: thoughtScrollRef,
+      scene: { id: activeScene, label: sceneLabel(activeScene), base: sceneMeta(activeScene).base, glow: sceneMeta(activeScene).glow, ambient: sceneMeta(activeScene).ambient, immersive, layers: sceneLayers },
+      sceneCards, customSceneName: customScene?.name ?? null,
+      panel: theatrePanel, skipping,
+      bgm: { on: preferences.bgmOn, playing: bgmPlaying, track: preferences.bgmTrack, volume: preferences.bgmVolume, customName: customBgmName, tracks: bgmTracks },
       on: {
         exit: () => stateMachine.setGalGameMode(false),
-        backdrop: () => uiHidden ? setUiHidden(false) : stateMachine.setGalGameMode(false),
+        // With a painted scene the background behaves like a visual novel: click to continue.
+        backdrop: () => theatrePanel ? setTheatrePanel(null) : uiHidden ? setUiHidden(false) : immersive ? handleAdvancePage() : stateMachine.setGalGameMode(false),
+        dismiss: () => setTheatrePanel(null),
         unlock: unlockAudio,
         hideUi: setUiHidden,
         toggleExpanded: () => setExpanded(value => !value),
@@ -817,9 +1120,26 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
           if (event.deltaY > 0) handleAdvancePage(); else setCurrentPageIndex(index => Math.max(0, index - 1))
         },
         skipReveal: () => { setRevealed(characters.length); voiceRef.current?.cut() },
+        toggleSkip: () => setSkipping(value => !value),
         input: setInputValue,
         send: handleSendMessage,
         copy: text => void copyCode(text),
+        panel: setTheatrePanel,
+        pickScene,
+        shuffleScene: () => update({ scene: shuffleScene(activeScene, Boolean(customScene)) }),
+        toggleShuffle: () => update({ sceneShuffle: !preferences.sceneShuffle }),
+        uploadScene: file => void uploadScene(file),
+        removeScene: () => void removeScene(),
+        bgmToggle: toggleBgm,
+        bgmPick: pickTrack,
+        bgmStep: direction => pickTrack(cycleBgmTrack(preferences.bgmTrack, direction, Boolean(customBgmName))),
+        bgmVolume: volume => update({ bgmVolume: Math.min(1, Math.max(0, volume)) }),
+        uploadBgm: file => void uploadBgm(file),
+        removeBgm: () => void removeBgm(),
+        setSpeed: speed => update({ speed }),
+        setFontSize: size => update({ fontSize: Math.min(24, Math.max(14, Math.round(size))) }),
+        toggleTypewriter: () => update({ typewriter: !preferences.typewriter }),
+        toggleLive: () => update({ liveMotion: !preferences.liveMotion }),
       },
     })
   }
@@ -927,8 +1247,12 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
             isMaiden={isMaiden}
             isGalGameMode={false}
             mouthOpenRatio={status.mouthOpenRatio}
-            state={status.state}
+            state={reaction ? 'IDLE' : status.state}
             box={{ width: geometry.imageWidth, height: geometry.imageHeight, left: geometry.imageLeft }}
+            live={preferences.liveMotion && liveSupported}
+            motion={reduceMotion ? 0 : 1}
+            emote={reaction?.emote ?? null}
+            emoteKey={reaction?.key ?? 0}
             opacity={puppetOpacity}
             onMouseDown={handleMouseDown}
           />

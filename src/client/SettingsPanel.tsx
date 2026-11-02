@@ -110,6 +110,7 @@ export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, q
             <strong>{p.quiet ? t('结束安静模式', 'End quiet mode') : t('安静模式', 'Quiet mode')}</strong>
             <small>{p.quiet ? t('恢复之前的音效与游荡设置', 'Restore previous sound and wandering') : t('暂停闲聊、音效和游荡', 'Pause chatter, sounds and wandering')}</small>
           </button>
+          {toggle(p.liveMotion, liveMotion => update({ liveMotion }), t('裙摆飘动', 'Swaying clothes'), { hint: t('裙摆、发梢和尾巴轻轻摆动', 'Skirt, hair ends and tail sway gently') })}
           {toggle(p.wandering, wandering => update({ wandering }), t('闲置时散步', 'Wander when idle'), { disabled: p.quiet })}
           {toggle(p.reminders, reminders => update({ reminders }), t('午饭和熬夜提醒', 'Lunch & late-night reminders'))}
           {toggle(p.peakNotice, peakNotice => update({ peakNotice }), t('峰谷时段播报', 'Peak / off-peak announcements'), { hint: t('切换到梁文峰 / 梁文谷时间时告诉你', 'Tell you when API pricing switches') })}

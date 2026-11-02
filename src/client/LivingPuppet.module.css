@@ -25,3 +25,45 @@
 [data-whale-pet="stage"] .characterBase { left: 0; transform: translateX(-50%); width: auto; pointer-events: none; }
 [data-whale-pet="stage"] .standingGalGame { height: calc(var(--stage-h) * var(--pose-scale, 1)); }
 [data-whale-pet="stage"] .chibiGalGame { height: calc(var(--stage-h) * 0.42); }
+
+/* Swaying clothes: the WebGL canvas mirrors the image box plus a 5% margin. It stays
+   invisible until its first frame; then the <img> hides (it still takes clicks). The
+   canvas sits inside .puppetCanvas, so the CSS breathing moves it as one piece. */
+[data-whale-pet] .liveCanvas { position: absolute; display: block; max-width: none; pointer-events: none; opacity: 0; transition: opacity .25s ease; }
+[data-whale-pet] .liveCanvas[data-state="ready"] { opacity: 1; }
+[data-whale-pet] .liveCanvas[data-state="failed"] { display: none; }
+[data-whale-pet] .puppetCanvas:has(> .liveCanvas[data-state="ready"]) > .characterBase { opacity: 0; }
+[data-whale-pet="widget"] .puppetCanvas:has(> .liveCanvas[data-state="ready"]) .liveCanvas { filter: drop-shadow(0 8px 14px rgba(8, 30, 60, .22)); }
+[data-whale-pet="widget"] .puppetCanvas:has(> .liveCanvas[data-state="ready"]) { filter: none; }
+[data-whale-pet="stage"] .liveCanvasStage {
+  left: 0; bottom: calc(var(--stage-h) * var(--pose-scale, 1) * -0.05);
+  height: calc(var(--stage-h) * var(--pose-scale, 1) * 1.1); width: auto;
+  transform: translateX(-50%);
+}
+
+/* Mood marks (♥ ✦ ♪ 💧 ! ? 💢) above her head, placed from the pose's face box. */
+[data-whale-pet] .puppetBox { position: absolute; bottom: 0; pointer-events: none; }
+[data-whale-pet="stage"] .puppetBoxStage { left: 0; height: calc(var(--stage-h) * var(--pose-scale, 1)); aspect-ratio: var(--pose-aspect, .6); transform: translateX(-50%); }
+[data-whale-pet] .puppetEmote {
+  position: absolute; width: clamp(22px, 9%, 64px); aspect-ratio: 1; margin-left: -2%;
+  filter: drop-shadow(0 2px 3px rgba(20, 20, 60, .35));
+  animation: wpEmoteIn .32s cubic-bezier(.2, 1.6, .4, 1) both, wpEmoteOut .4s ease 2.6s forwards;
+}
+[data-whale-pet] .puppetEmote svg { display: block; overflow: visible; }
+[data-whale-pet] .puppetEmote path { fill: var(--emote-fill); stroke: var(--emote-stroke); stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; }
+[data-whale-pet] .puppetEmote[data-emote="heart"] { --emote-fill: #ff6f9c; --emote-stroke: #fff; }
+[data-whale-pet] .puppetEmote[data-emote="sparkle"] { --emote-fill: #ffd84d; --emote-stroke: #fff6c8; }
+[data-whale-pet] .puppetEmote[data-emote="note"] { --emote-fill: #8f7bff; --emote-stroke: #fff; }
+[data-whale-pet] .puppetEmote[data-emote="sweat"] { --emote-fill: #7cc8ff; --emote-stroke: #fff; width: clamp(16px, 6%, 44px); }
+[data-whale-pet] .puppetEmote[data-emote="exclaim"] { --emote-fill: #ff9f1c; --emote-stroke: #fff; }
+[data-whale-pet] .puppetEmote[data-emote="question"] { --emote-fill: #57b6ff; --emote-stroke: #fff; }
+[data-whale-pet] .puppetEmote[data-emote="anger"] { --emote-fill: none; --emote-stroke: #ff3b4e; }
+[data-whale-pet] .puppetEmote[data-emote="anger"] path { stroke-width: 3; }
+[data-whale-pet] .puppetEmote[data-emote="sweat"] svg { animation: wpSweat 1.4s ease-in .3s infinite; }
+[data-whale-pet] .puppetEmote[data-emote="anger"] svg { animation: wpAnger .5s ease-in-out .3s infinite alternate; }
+[data-whale-pet] .puppetEmote:is([data-emote="heart"], [data-emote="note"], [data-emote="sparkle"]) svg { animation: wpEmoteFloat 1.6s ease-in-out .3s infinite alternate; }
+@keyframes wpEmoteIn { from { opacity: 0; transform: scale(.2) translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes wpEmoteOut { to { opacity: 0; transform: translateY(-8px); } }
+@keyframes wpEmoteFloat { to { transform: translateY(-5px) rotate(6deg); } }
+@keyframes wpSweat { 0% { transform: none; opacity: 1; } 80% { transform: translateY(40%); opacity: 1; } 100% { transform: translateY(50%); opacity: 0; } }
+@keyframes wpAnger { to { transform: scale(1.18); } }

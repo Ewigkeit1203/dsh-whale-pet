@@ -18,14 +18,16 @@ test('F03: pose metadata matches the real artwork and every pose has a hit area'
 
 test('F03: calibrated head sizes stay within 5% of Maid and every maiden pose fits the shared stage', () => {
   // Head heights (headdress top to chin) measured on a 1000px-tall canvas; eye spacing used as a cross-check.
-  const measured: Record<string, number> = { Maid: 165, sajiao: 164, Answering: 172, baifan: 170, getit: 170, Think1: 162, Think2: 168, Think3: 167, Dizzy: 173 }
+  const measured: Record<string, number> = { Maid: 165, sajiao: 164, Answering: 172, baifan: 170, getit: 170, Think1: 162, Think2: 168, Think3: 167, Dizzy: 173,
+    // v0.6.0 art, same method (proud tilts her head back, so it is checked by eye spacing instead).
+    smug: 156, shy: 168, angry: 158, surprised: 157, happy: 154 }
   for (const [pose, head] of Object.entries(measured)) {
     const ratio = (head * POSE_META[pose].scale) / 165
     assert.ok(Math.abs(ratio - 1) <= 0.05, `${pose} head ratio ${ratio.toFixed(3)}`)
   }
   for (const pose of Object.keys(POSE_META)) {
     const g = spriteGeometry(pose, 800, 1)
-    assert.ok(g.imageWidth <= g.stageWidth * 1.01, `${pose} fits the stage width`)
+    assert.ok(g.imageWidth * (POSE_META[pose].content ?? 1) <= g.stageWidth * 1.01, `${pose} fits the stage width`)
     assert.ok(g.imageHeight <= g.stageHeight * 1.04, `${pose} keeps its head on stage`)
   }
 })

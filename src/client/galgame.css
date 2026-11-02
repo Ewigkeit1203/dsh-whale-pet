@@ -6,6 +6,8 @@
 
 body.dsh-galgame-mode { overflow: hidden; }
 body.dsh-galgame-mode [data-slot="conversation.chat.flow"] { opacity: .25 !important; filter: blur(3px) !important; pointer-events: none !important; transition: opacity .3s ease, filter .3s ease; }
+/* Under an opaque scene the chat is covered anyway: skip the costly blur. */
+body.dsh-galgame-mode.dsh-galgame-immersive [data-slot="conversation.chat.flow"] { filter: none !important; transition: none; }
 body.dsh-galgame-mode [data-composer-seat] { opacity: 0 !important; transform: translateY(60px) !important; pointer-events: none !important; }
 
 /* Shared geometry for the stage, thought bubble and dialogue box */
@@ -19,12 +21,51 @@ body.dsh-galgame-mode [data-composer-seat] { opacity: 0 !important; transform: t
 }
 
 [data-whale-pet].galgameBackdrop {
-  position: fixed; inset: 0; z-index: 150;
+  position: fixed; inset: 0; z-index: 150; overflow: hidden;
   background: radial-gradient(120% 90% at 50% 100%, rgba(12, 40, 72, .38), rgba(6, 16, 30, .3));
   -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
   cursor: pointer;
+  animation: wpSceneIn .45s ease both;
 }
 [data-whale-pet].galgameBackdrop[data-pet-theme="dark"] { background: radial-gradient(120% 90% at 50% 100%, rgba(10, 30, 56, .55), rgba(2, 8, 18, .5)); }
+/* Immersive scene: an opaque picture replaces the host page; clicking continues the dialogue. */
+[data-whale-pet].galgameBackdrop[data-immersive="true"] {
+  background: var(--scene-base, #10162e);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  cursor: default;
+}
+@keyframes wpSceneIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* Two stacked layers crossfade; the base colour shows while a picture decodes, never white. */
+[data-whale-pet] .sceneLayer {
+  position: absolute; inset: -2%;
+  background: var(--scene-base, #10162e) center / cover no-repeat;
+  opacity: 0; transition: opacity .7s ease;
+  will-change: opacity, transform;
+  animation: wpSceneDrift 48s ease-in-out infinite alternate;
+}
+[data-whale-pet] .sceneLayer[data-front="true"] { opacity: 1; }
+@keyframes wpSceneDrift { from { transform: scale(1.02) translate3d(0, 0, 0); } to { transform: scale(1.07) translate3d(-1%, -.6%, 0); } }
+[data-whale-pet] .sceneShade {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(to top, rgba(4, 8, 22, .58) 0, rgba(4, 8, 22, .18) 34%, transparent 52%);
+}
+
+/* Ambient particles drifting upwards: two tiled layers, each looping by exactly one tile. */
+[data-whale-pet] .sceneAmbient { position: absolute; inset: 0; overflow: hidden; pointer-events: none; --p: rgba(220, 232, 255, .55); }
+[data-whale-pet] .sceneAmbient[data-ambient="none"] { display: none; }
+[data-whale-pet] .sceneAmbient[data-ambient="data"] { --p: rgba(130, 240, 255, .6); }
+[data-whale-pet] .sceneAmbient[data-ambient="motes"] { --p: rgba(255, 236, 190, .6); }
+[data-whale-pet] .sceneAmbient[data-ambient="sparkle"] { --p: rgba(255, 228, 236, .62); }
+[data-whale-pet] .sceneAmbient::before,
+[data-whale-pet] .sceneAmbient::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 0;
+  background-image: radial-gradient(circle at 30% 40%, var(--p) 0 1.4px, transparent 2.6px), radial-gradient(circle at 75% 80%, var(--p) 0 1px, transparent 2px);
+}
+[data-whale-pet] .sceneAmbient::before { bottom: -240px; background-size: 240px 240px; animation: wpRiseA 30s linear infinite; opacity: .7; }
+[data-whale-pet] .sceneAmbient::after { bottom: -380px; background-size: 380px 380px; background-position: 120px 60px; animation: wpRiseB 52s linear infinite; opacity: .45; filter: blur(1px); }
+@keyframes wpRiseA { to { transform: translate3d(0, -240px, 0); } }
+@keyframes wpRiseB { to { transform: translate3d(0, -380px, 0); } }
 
 /* Stage: feet at the bottom, head clear of the dialogue box. */
 [data-whale-pet].galgameCharacterCentered {
@@ -42,6 +83,15 @@ body.dsh-galgame-mode [data-composer-seat] { opacity: 0 !important; transform: t
 }
 [data-whale-pet].galgameCharacterCentered[data-theatre-hidden="true"] { --stage-h: 94vh; bottom: 0; height: auto; -webkit-mask-image: none; mask-image: none; }
 [data-whale-pet].galgameCharacterChibi { --stage-h: 60vh; }
+[data-whale-pet].galgameCharacterCentered .puppetRoot { animation: wpStageIn .8s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes wpStageIn { from { opacity: 0; translate: 0 26px; scale: .985; } to { opacity: 1; translate: 0 0; scale: 1; } }
+/* Soft light pooled at her feet, tinted by the scene. */
+[data-whale-pet].galgameCharacterCentered[data-immersive="true"]::before {
+  content: ""; position: absolute; left: 50%; bottom: -8vh; width: min(80vh, 90vw); height: 26vh;
+  transform: translateX(-50%); border-radius: 50%;
+  background: radial-gradient(closest-side, var(--scene-glow, rgba(150, 190, 255, .5)), transparent);
+  opacity: .55; pointer-events: none;
+}
 
 /* Thought bubble beside the head */
 [data-whale-pet].comicThoughtBubble {
@@ -57,7 +107,7 @@ body.dsh-galgame-mode [data-composer-seat] { opacity: 0 !important; transform: t
   -webkit-backdrop-filter: var(--wp-blur); backdrop-filter: var(--wp-blur);
   animation: wpThoughtIn .3s cubic-bezier(.2, .8, .2, 1);
 }
-[data-whale-pet].comicThoughtBubble[data-expanded="true"] { top: 12px; height: calc(var(--head-room) - 24px); }
+[data-whale-pet].comicThoughtBubble[data-expanded="true"] { top: var(--host-top, 52px); height: calc(var(--head-room) - var(--host-top, 52px) - 12px); }
 @keyframes wpThoughtIn { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
 [data-whale-pet] .thoughtBubbleHeader { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 6px 16px; border-bottom: 1px dashed var(--wp-line-strong); }
 [data-whale-pet] .thoughtBubbleTitleGroup { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 650; color: var(--wp-ink-2); }
@@ -72,56 +122,91 @@ body.dsh-galgame-mode [data-composer-seat] { opacity: 0 !important; transform: t
   scrollbar-width: thin; scrollbar-color: var(--wp-line-strong) transparent;
 }
 
+/* Theatre chrome (dialogue box, HUD, panels) uses its own deep-blue glass palette in both themes. */
+[data-whale-pet][data-pet-theme]:is(.galgameTheatreBox, .theatreHud) {
+  --wp-surface: rgba(16, 24, 52, .92); --wp-surface-solid: #131c3a; --wp-surface-strong: rgba(16, 24, 52, .94);
+  --wp-raised: rgba(255, 255, 255, .07);
+  --wp-control: rgba(170, 200, 255, .09); --wp-control-hover: rgba(170, 200, 255, .17);
+  --wp-ink: #eef3ff; --wp-ink-2: #bac6e6; --wp-ink-3: #8a99be;
+  --wp-line: rgba(170, 200, 255, .15); --wp-line-strong: rgba(170, 200, 255, .3);
+  --wp-accent: #9fd0ff; --wp-accent-hover: #c2e2ff; --wp-accent-ink: #0b1a36; --wp-accent-soft: rgba(143, 200, 255, .16);
+  --wp-warn: #ffb08a; --wp-warn-soft: rgba(255, 150, 100, .16);
+  --wp-peak: #fcc56b; --wp-peak-soft: rgba(252, 197, 107, .16); --wp-valley: #6ee0cf; --wp-valley-soft: rgba(110, 224, 207, .14);
+  --wp-shadow: 0 30px 70px -26px rgba(0, 0, 0, .75), 0 2px 10px rgba(0, 0, 0, .3);
+  --wp-focus: 0 0 0 2px #131c3a, 0 0 0 4px #9fd0ff;
+  --gal-glass: linear-gradient(180deg, rgba(30, 44, 92, .74) 0%, rgba(14, 22, 50, .84) 100%);
+  --gal-glass-edge: rgba(176, 204, 255, .26);
+  --gal-name: linear-gradient(135deg, #6d8cff 0%, #9b7bff 55%, #d48cff 100%);
+  color: var(--wp-ink); color-scheme: dark;
+}
+[data-whale-pet][data-pet-theme="light"]:is(.galgameTheatreBox, .theatreHud) {
+  --gal-glass: linear-gradient(180deg, rgba(44, 64, 124, .66) 0%, rgba(22, 34, 76, .78) 100%);
+}
+
 /* Dialogue box */
 [data-whale-pet].galgameTheatreBox {
   position: fixed; z-index: 999999;
   left: 50%; bottom: var(--box-bottom); transform: translateX(-50%);
-  width: min(1100px, calc(100vw - 32px)); height: var(--box-h); min-height: 200px;
+  width: min(1120px, calc(100vw - 32px)); height: var(--box-h); min-height: 200px;
   display: flex; flex-direction: column;
-  border-radius: 20px;
-  background: var(--wp-surface-strong); border: 1px solid var(--wp-line);
-  box-shadow: var(--wp-shadow);
-  -webkit-backdrop-filter: var(--wp-blur); backdrop-filter: var(--wp-blur);
+  border-radius: 18px;
+  background: var(--gal-glass);
+  border: 1px solid var(--gal-glass-edge);
+  box-shadow: var(--wp-shadow), inset 0 1px 0 rgba(255, 255, 255, .14), inset 0 -24px 48px -32px rgba(120, 150, 255, .35);
+  -webkit-backdrop-filter: blur(20px) saturate(150%); backdrop-filter: blur(20px) saturate(150%);
   font-family: var(--wp-font);
   transition: height .3s cubic-bezier(.2, .8, .2, 1);
+  animation: wpBoxIn .5s cubic-bezier(.2, .8, .2, 1) both;
 }
+@keyframes wpBoxIn { from { opacity: 0; translate: 0 24px; } to { opacity: 1; translate: 0 0; } }
+/* Glossy top edge and a faint diagonal sheen */
 [data-whale-pet].galgameTheatreBox::before {
-  content: ""; position: absolute; left: 24px; right: 24px; top: -1px; height: 2px; border-radius: 2px;
-  background: linear-gradient(90deg, transparent, var(--wp-accent), transparent); opacity: .55;
+  content: ""; position: absolute; left: 22px; right: 22px; top: -1px; height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, rgba(190, 220, 255, .95), rgba(214, 160, 255, .8), transparent); opacity: .7;
 }
-[data-whale-pet] .galgameHeaderBar { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 50px; padding: 8px 12px 6px 22px; }
-[data-whale-pet] .galgameIdentity { display: flex; align-items: center; gap: 10px; min-width: 0; }
+[data-whale-pet].galgameTheatreBox::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(115deg, rgba(255, 255, 255, .09) 0%, rgba(255, 255, 255, 0) 32%, rgba(255, 255, 255, 0) 70%, rgba(255, 255, 255, .04) 100%);
+}
 [data-whale-pet] .galgameNameTag {
-  position: relative; padding-bottom: 3px;
-  font-size: 16px; font-weight: 700; letter-spacing: .04em; color: var(--wp-accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  position: absolute; left: 26px; top: 0; transform: translateY(-58%); z-index: 2;
+  max-width: calc(100% - 52px); padding: 7px 20px 7px 18px;
+  border-radius: 10px 10px 10px 3px;
+  background: var(--gal-name); color: #fff;
+  font-size: 15px; font-weight: 700; letter-spacing: .14em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(30, 20, 80, .45);
+  box-shadow: 0 8px 18px -8px rgba(110, 90, 255, .8), inset 0 1px 0 rgba(255, 255, 255, .35);
 }
-[data-whale-pet] .galgameNameTag::after { content: ""; position: absolute; left: 0; bottom: 0; width: 22px; height: 2px; border-radius: 2px; background: currentColor; opacity: .7; }
+[data-whale-pet] .galgameHeaderBar { position: relative; z-index: 1; flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; padding: 12px 16px 2px 24px; }
+[data-whale-pet] .galgameIdentity { display: flex; align-items: center; gap: 8px; min-width: 0; margin-left: auto; }
 [data-whale-pet] .petTierTag { padding: 2px 9px; border-radius: 999px; background: var(--tier-soft); color: var(--tier); font-size: 11.5px; font-weight: 650; white-space: nowrap; }
 [data-whale-pet] .petPhase { padding: 2px 9px; border-radius: 999px; background: var(--wp-control); color: var(--wp-ink-2); font-size: 11.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-[data-whale-pet] .galgameTopControls { display: flex; align-items: center; gap: 2px; flex: none; }
+[data-whale-pet] .galgameSkipBadge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 10px; border-radius: 999px; background: rgba(214, 160, 255, .18); color: #e6c8ff; font-size: 11.5px; font-weight: 650; animation: wpPulse .7s ease-in-out infinite alternate; }
+[data-whale-pet] .galgameSystemBar { position: relative; z-index: 1; flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 12px 12px 16px; border-top: 1px solid var(--wp-line); }
+[data-whale-pet] .galgameTopControls { display: flex; align-items: center; gap: 1px; flex: none; }
 [data-whale-pet] .galgameCloseBtn,
 [data-whale-pet] .petTheatreMore > summary {
-  display: inline-flex; align-items: center; gap: 6px;
-  height: 32px; padding: 0 10px;
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 32px; padding: 0 9px;
   border: 0; border-radius: var(--wp-radius-s);
   background: transparent; color: var(--wp-ink-2);
-  font-size: 12.5px; font-weight: 550; white-space: nowrap; cursor: pointer;
+  font-size: 12.5px; font-weight: 550; letter-spacing: .02em; white-space: nowrap; cursor: pointer;
   transition: background-color .15s ease, color .15s ease;
 }
 [data-whale-pet] .galgameCloseBtn:hover, [data-whale-pet] .petTheatreMore > summary:hover { background: var(--wp-control-hover); color: var(--wp-ink); }
-[data-whale-pet] .galgameCloseBtn[aria-pressed="true"] { background: var(--wp-accent-soft); color: var(--wp-accent); }
-[data-whale-pet] .galgameExit { margin-left: 6px; }
+[data-whale-pet] .galgameCloseBtn[aria-pressed="true"] { background: var(--wp-accent-soft); color: var(--wp-accent); box-shadow: inset 0 0 0 1px rgba(159, 208, 255, .25); }
+[data-whale-pet] .galgameExit { margin-left: 4px; }
 [data-whale-pet] .galgameExit:hover { background: var(--wp-warn-soft); color: var(--wp-warn); }
 [data-whale-pet] .petTheatreMore { position: relative; }
 [data-whale-pet] .petTheatreMore > summary { list-style: none; width: 32px; padding: 0; justify-content: center; }
 [data-whale-pet] .petTheatreMore > summary::-webkit-details-marker { display: none; }
 [data-whale-pet] .petTheatreMore[open] > summary { background: var(--wp-control-hover); color: var(--wp-ink); }
 [data-whale-pet] .petMorePanel {
-  position: absolute; right: 0; top: calc(100% + 6px); z-index: 10;
-  width: 232px; max-height: min(60vh, 360px); overflow-y: auto;
+  position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 10;
+  width: 236px; max-height: min(60vh, 360px); overflow-y: auto;
   display: flex; flex-direction: column; gap: 1px; padding: 6px;
   border-radius: var(--wp-radius-m);
-  background: var(--wp-surface-solid); border: 1px solid var(--wp-line);
+  background: var(--wp-surface-solid); border: 1px solid var(--wp-line-strong);
   box-shadow: var(--wp-shadow);
 }
 [data-whale-pet] .petMorePanel button {
@@ -174,17 +259,206 @@ body.dsh-galgame-mode [data-composer-seat] { opacity: 0 !important; transform: t
 @keyframes wpNext { 50% { opacity: .3; transform: translateY(2px); } }
 [data-whale-pet] .petSkipReveal { color: var(--wp-accent) !important; }
 
-[data-whale-pet] .galgameComposerArea { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 12px 12px; border-top: 1px solid var(--wp-line); }
+[data-whale-pet] .galgameComposerArea { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; }
 [data-whale-pet] .galgameInput {
-  flex: 1; min-width: 0; height: 38px; padding: 0 14px;
-  border: 1px solid var(--wp-line-strong); border-radius: 10px;
-  background: var(--wp-raised); color: var(--wp-ink); font: inherit; font-size: 14px; outline: none;
-  transition: border-color .15s ease, box-shadow .15s ease;
+  flex: 1; min-width: 0; height: 36px; padding: 0 14px;
+  border: 1px solid var(--wp-line); border-radius: 10px;
+  background: rgba(6, 12, 32, .35); color: var(--wp-ink); font: inherit; font-size: 13.5px; outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
 }
 [data-whale-pet] .galgameInput::placeholder { color: var(--wp-ink-3); }
-[data-whale-pet] .galgameInput:focus { border-color: var(--wp-accent); box-shadow: 0 0 0 3px var(--wp-accent-soft); }
-[data-whale-pet] .galgameSendBtn { height: 38px; padding: 0 18px; border: 0; border-radius: 10px; background: var(--wp-accent); color: var(--wp-accent-ink); font-size: 14px; font-weight: 600; cursor: pointer; transition: background-color .15s ease; }
-[data-whale-pet] .galgameSendBtn:not(:disabled):hover { background: var(--wp-accent-hover); }
+[data-whale-pet] .galgameInput:focus { border-color: rgba(159, 208, 255, .6); background: rgba(6, 12, 32, .5); box-shadow: 0 0 0 3px var(--wp-accent-soft); }
+[data-whale-pet] .galgameSendBtn {
+  height: 36px; padding: 0 16px; border: 0; border-radius: 10px;
+  background: var(--gal-name); color: #fff; font-size: 13.5px; font-weight: 650; letter-spacing: .06em; cursor: pointer;
+  box-shadow: 0 6px 16px -8px rgba(120, 100, 255, .9), inset 0 1px 0 rgba(255, 255, 255, .3);
+  transition: filter .15s ease, opacity .15s ease;
+}
+[data-whale-pet] .galgameSendBtn:not(:disabled):hover { filter: brightness(1.1); }
+[data-whale-pet] .galgameSendBtn:disabled { background: rgba(170, 200, 255, .14); box-shadow: none; color: var(--wp-ink-3); }
+
+/* ---- HUD: music, background and settings chips (top left) ---------------------- */
+[data-whale-pet].theatreHud {
+  /* Below the DSH desktop title bar (Application / Edit menu and window controls). */
+  position: fixed; top: var(--host-top, 52px); left: 16px; z-index: 1000000;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  max-width: calc(100vw - 32px);
+  font-family: var(--wp-font);
+  animation: wpSceneIn .5s .15s ease both;
+}
+[data-whale-pet] .theatreChip {
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 34px; max-width: 220px; padding: 0 13px;
+  border: 1px solid var(--gal-glass-edge); border-radius: 999px;
+  background: rgba(14, 22, 50, .55); color: var(--wp-ink);
+  -webkit-backdrop-filter: blur(14px) saturate(150%); backdrop-filter: blur(14px) saturate(150%);
+  box-shadow: 0 8px 20px -12px rgba(0, 0, 0, .7), inset 0 1px 0 rgba(255, 255, 255, .12);
+  font-size: 12.5px; font-weight: 600; letter-spacing: .02em; cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease, transform .15s ease;
+}
+[data-whale-pet] .theatreChip:hover { background: rgba(30, 44, 92, .7); transform: translateY(-1px); }
+[data-whale-pet] .theatreChip[aria-pressed="true"] { border-color: rgba(159, 208, 255, .7); background: rgba(40, 60, 120, .72); box-shadow: 0 0 0 3px rgba(143, 200, 255, .16), inset 0 1px 0 rgba(255, 255, 255, .16); }
+[data-whale-pet] .theatreChipIcon { width: 34px; padding: 0; justify-content: center; }
+[data-whale-pet] .theatreChipText { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Equaliser bars: still when paused, dancing while music plays. */
+[data-whale-pet] .theatreEq { display: inline-flex; align-items: flex-end; gap: 2px; width: 14px; height: 12px; flex: none; }
+[data-whale-pet] .theatreEq i { flex: 1; height: 30%; border-radius: 1px; background: currentColor; opacity: .75; transform-origin: bottom; }
+[data-whale-pet] .theatreEq[data-playing="true"] i { height: 100%; background: linear-gradient(to top, #9fd0ff, #d4a8ff); opacity: 1; animation: wpEq .9s ease-in-out infinite; }
+[data-whale-pet] .theatreEq[data-playing="true"] i:nth-child(2) { animation-delay: -.3s; animation-duration: .7s; }
+[data-whale-pet] .theatreEq[data-playing="true"] i:nth-child(3) { animation-delay: -.55s; animation-duration: 1.1s; }
+[data-whale-pet] .theatreEq[data-playing="true"] i:nth-child(4) { animation-delay: -.15s; animation-duration: .8s; }
+@keyframes wpEq { 0%, 100% { transform: scaleY(.25); } 50% { transform: scaleY(1); } }
+
+/* ---- Panels --------------------------------------------------------------------- */
+[data-whale-pet] .theatrePanel {
+  position: absolute; left: 0; top: calc(100% + 10px);
+  width: min(372px, calc(100vw - 32px));
+  max-height: calc(100vh - var(--host-top, 52px) - 76px); overflow-y: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: 12px; padding: 14px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #1d2a58 0%, #0f1834 100%); border: 1px solid var(--gal-glass-edge);
+  box-shadow: var(--wp-shadow), inset 0 1px 0 rgba(255, 255, 255, .14);
+  color: var(--wp-ink); font-size: 13px;
+  scrollbar-width: thin; scrollbar-color: var(--wp-line-strong) transparent;
+  animation: wpPanelIn .22s cubic-bezier(.2, .8, .2, 1) both;
+  transform-origin: top left;
+}
+[data-whale-pet] .theatrePanelNarrow { width: min(320px, calc(100vw - 32px)); }
+@keyframes wpPanelIn { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: none; } }
+[data-whale-pet] .theatrePanelHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 30px; }
+[data-whale-pet] .theatrePanelHead strong { font-size: 14px; letter-spacing: .06em; }
+[data-whale-pet] .theatreGhostBtn {
+  display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px;
+  border: 1px solid var(--wp-line); border-radius: 999px; background: var(--wp-control); color: var(--wp-ink);
+  font-size: 12px; font-weight: 600; cursor: pointer; transition: background-color .15s ease, border-color .15s ease;
+}
+[data-whale-pet] .theatreGhostBtn:hover { background: var(--wp-control-hover); border-color: var(--wp-line-strong); }
+[data-whale-pet] .theatreFootnote { margin: 0; color: var(--wp-ink-3); font-size: 11.5px; line-height: 1.6; }
+
+/* Background cards */
+[data-whale-pet] .theatreSceneGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+[data-whale-pet] .theatreSceneCard {
+  position: relative; aspect-ratio: 16 / 10; overflow: hidden; padding: 0;
+  border: 1px solid var(--wp-line); border-radius: 12px;
+  background: #1a2244 center / cover no-repeat; color: #fff; cursor: pointer;
+  box-shadow: 0 6px 16px -10px rgba(0, 0, 0, .8);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+[data-whale-pet] .theatreSceneCard:hover { transform: translateY(-2px); border-color: var(--wp-line-strong); box-shadow: 0 12px 22px -12px rgba(0, 0, 0, .9); }
+[data-whale-pet] .theatreSceneCard[aria-checked="true"] { border-color: transparent; box-shadow: 0 0 0 2px #9fd0ff, 0 0 18px -2px rgba(143, 200, 255, .6); }
+[data-whale-pet] .theatreSceneCard[data-kind="none"] {
+  background: repeating-linear-gradient(135deg, rgba(170, 200, 255, .1) 0 10px, rgba(170, 200, 255, .03) 10px 20px), linear-gradient(160deg, #26345f, #141c3a);
+}
+[data-whale-pet] .theatreSceneCard[data-kind="custom"]:not([style]) { border-style: dashed; background: rgba(170, 200, 255, .05); }
+[data-whale-pet] .theatreSceneEmpty { position: absolute; inset: 0 0 22px; display: grid; place-items: center; color: var(--wp-ink-2); }
+[data-whale-pet] .theatreSceneEmpty svg { width: 22px; height: 22px; }
+[data-whale-pet] .theatreSceneLabel {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 8px 6px;
+  background: linear-gradient(to top, rgba(6, 10, 26, .82), transparent);
+  font-size: 11.5px; font-weight: 650; letter-spacing: .04em; text-align: left; text-shadow: 0 1px 2px rgba(0, 0, 0, .6);
+}
+[data-whale-pet] .theatreSceneCheck {
+  position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; display: grid; place-items: center;
+  border-radius: 50%; background: #9fd0ff; color: #0b1a36; box-shadow: 0 2px 6px rgba(0, 0, 0, .4);
+}
+[data-whale-pet] .theatreSceneCheck svg { width: 12px; height: 12px; stroke-width: 2.2; }
+
+/* Switches */
+[data-whale-pet] :is(.theatreToggle, .theatreSwitchOnly) { border: 0; background: transparent; color: inherit; cursor: pointer; }
+[data-whale-pet] .theatreToggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 36px; padding: 4px 2px; text-align: left; font-size: 13px; }
+[data-whale-pet] .theatreToggleText { display: inline-flex; align-items: center; gap: 8px; }
+[data-whale-pet] .theatreToggleText small { padding: 0 5px; border: 1px solid var(--wp-line); border-radius: 4px; color: var(--wp-ink-3); font: 10.5px var(--wp-mono); }
+[data-whale-pet] .theatreSwitchOnly { padding: 4px; border-radius: 999px; }
+[data-whale-pet] .theatreSwitch {
+  position: relative; display: inline-block; vertical-align: middle; flex: none; width: 38px; height: 22px; border-radius: 999px;
+  background: rgba(170, 200, 255, .18); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .35);
+  transition: background-color .2s ease;
+}
+[data-whale-pet] .theatreSwitch i {
+  position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; box-shadow: 0 2px 4px rgba(0, 0, 0, .35); transition: transform .2s cubic-bezier(.2, .8, .2, 1);
+}
+[data-whale-pet] [aria-checked="true"] > .theatreSwitch { background: linear-gradient(90deg, #6d8cff, #b38cff); }
+[data-whale-pet] [aria-checked="true"] > .theatreSwitch i { transform: translateX(16px); }
+
+/* File pickers */
+[data-whale-pet] .theatreFileRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+[data-whale-pet] .theatreUpload {
+  position: relative; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px;
+  border: 1px dashed var(--wp-line-strong); border-radius: 999px; color: var(--wp-ink);
+  font-size: 12.5px; font-weight: 600; cursor: pointer; transition: background-color .15s ease, border-color .15s ease;
+}
+[data-whale-pet] .theatreUpload:hover { background: var(--wp-control); border-color: rgba(159, 208, 255, .6); }
+[data-whale-pet] .theatreUpload:focus-within { box-shadow: var(--wp-focus); }
+[data-whale-pet] .theatreUpload input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+/* Music: now playing, transport, tracks, volume */
+[data-whale-pet] .theatreNowPlaying {
+  display: flex; align-items: center; gap: 12px; padding: 12px;
+  border-radius: 14px; border: 1px solid var(--wp-line);
+  background: linear-gradient(135deg, rgba(109, 140, 255, .26), rgba(212, 140, 255, .18));
+}
+[data-whale-pet] .theatreDisc {
+  flex: none; width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%;
+  background: radial-gradient(circle, #1a2550 0 18%, transparent 19%), conic-gradient(from 0deg, #6d8cff, #d48cff, #9fd0ff, #6d8cff);
+  color: #fff; box-shadow: 0 6px 14px -6px rgba(110, 90, 255, .8);
+}
+[data-whale-pet] .theatreDisc svg { opacity: 0; }
+[data-whale-pet] .theatreNowPlaying[data-playing="true"] .theatreDisc { animation: wpSpin 6s linear infinite; }
+@keyframes wpSpin { to { transform: rotate(360deg); } }
+[data-whale-pet] .theatreTrackInfo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+[data-whale-pet] .theatreTrackInfo strong { font-size: 15px; letter-spacing: .04em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-whale-pet] .theatreTrackInfo small { color: var(--wp-ink-2); font-size: 11.5px; }
+[data-whale-pet] .theatreNowPlaying .theatreEq { width: 18px; height: 16px; color: var(--wp-ink-3); }
+[data-whale-pet] .theatreTransport { display: flex; align-items: center; justify-content: center; gap: 14px; }
+[data-whale-pet] .theatreRound {
+  display: grid; place-items: center; width: 36px; height: 36px; padding: 0;
+  border: 1px solid var(--wp-line); border-radius: 50%; background: var(--wp-control); color: var(--wp-ink); cursor: pointer;
+  transition: background-color .15s ease, transform .15s ease;
+}
+[data-whale-pet] .theatreRound:hover { background: var(--wp-control-hover); transform: scale(1.05); }
+[data-whale-pet] .theatrePlay { width: 46px; height: 46px; border: 0; background: var(--gal-name); color: #fff; box-shadow: 0 8px 18px -8px rgba(120, 100, 255, .95), inset 0 1px 0 rgba(255, 255, 255, .35); }
+[data-whale-pet] .theatreTrackList { display: flex; flex-direction: column; gap: 2px; }
+[data-whale-pet] .theatreTrack {
+  display: flex; align-items: center; gap: 12px; min-height: 42px; padding: 4px 10px;
+  border: 0; border-radius: 10px; background: transparent; color: var(--wp-ink); text-align: left; cursor: pointer;
+  transition: background-color .15s ease;
+}
+[data-whale-pet] .theatreTrack:hover { background: var(--wp-control); }
+[data-whale-pet] .theatreTrack[aria-checked="true"] { background: var(--wp-accent-soft); }
+[data-whale-pet] .theatreTrackIndex { width: 20px; flex: none; display: grid; place-items: center; color: var(--wp-ink-3); font: 11.5px var(--wp-mono); }
+[data-whale-pet] .theatreTrack[aria-checked="true"] .theatreTrackIndex { color: var(--wp-accent); }
+[data-whale-pet] .theatreTrackName { display: flex; flex-direction: column; min-width: 0; font-size: 13px; font-weight: 600; }
+[data-whale-pet] .theatreTrackName small { color: var(--wp-ink-3); font-size: 11px; font-weight: 500; }
+[data-whale-pet] .theatreVolume { display: flex; align-items: center; gap: 10px; }
+[data-whale-pet] .theatreIconBtn { display: grid; place-items: center; width: 30px; height: 30px; flex: none; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--wp-ink-2); cursor: pointer; }
+[data-whale-pet] .theatreIconBtn:hover { background: var(--wp-control); color: var(--wp-ink); }
+[data-whale-pet] .theatreValue { width: 38px; flex: none; text-align: right; color: var(--wp-ink-2); font: 12px var(--wp-mono); font-variant-numeric: tabular-nums; }
+
+/* Range slider with a gradient fill up to --fill */
+[data-whale-pet] .theatreRange {
+  -webkit-appearance: none; appearance: none; flex: 1; min-width: 0; width: 100%; height: 6px; margin: 8px 0;
+  border-radius: 999px; outline: none; cursor: pointer;
+  background: linear-gradient(90deg, #8fb8ff 0, #c69cff var(--fill, 50%), rgba(170, 200, 255, .18) var(--fill, 50%));
+}
+[data-whale-pet] .theatreRange::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border: 0; border-radius: 50%;
+  background: #fff; box-shadow: 0 0 0 4px rgba(143, 200, 255, .25), 0 2px 6px rgba(0, 0, 0, .45);
+  transition: box-shadow .15s ease;
+}
+[data-whale-pet] .theatreRange:hover::-webkit-slider-thumb, [data-whale-pet] .theatreRange:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 6px rgba(143, 200, 255, .3), 0 2px 6px rgba(0, 0, 0, .45); }
+[data-whale-pet] .theatreRange::-moz-range-thumb { width: 16px; height: 16px; border: 0; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px rgba(143, 200, 255, .25), 0 2px 6px rgba(0, 0, 0, .45); }
+[data-whale-pet] .theatreRange:focus-visible { box-shadow: none; }
+
+/* Settings fields */
+[data-whale-pet] .theatreField { display: flex; flex-direction: column; gap: 6px; }
+[data-whale-pet] .theatreField > span { display: flex; justify-content: space-between; color: var(--wp-ink-2); font-size: 12px; font-weight: 600; letter-spacing: .04em; }
+[data-whale-pet] .theatreField > span b { color: var(--wp-ink); font: 12px var(--wp-mono); }
+[data-whale-pet] .theatreSegments { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; padding: 3px; border-radius: 10px; background: rgba(6, 12, 32, .35); border: 1px solid var(--wp-line); }
+[data-whale-pet] .theatreSegments button { height: 28px; border: 0; border-radius: 7px; background: transparent; color: var(--wp-ink-2); font-size: 12px; font-weight: 600; cursor: pointer; transition: background-color .15s ease, color .15s ease; }
+[data-whale-pet] .theatreSegments button:hover { color: var(--wp-ink); }
+[data-whale-pet] .theatreSegments button[aria-checked="true"] { background: var(--gal-name); color: #fff; box-shadow: 0 4px 10px -6px rgba(110, 90, 255, .9); }
 
 [data-whale-pet].petRestore {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 1000001;
@@ -213,11 +487,20 @@ body.dsh-galgame-mode [data-composer-seat] { opacity: 0 !important; transform: t
 [data-whale-pet].petLog > pre { padding: 12px; border-radius: var(--wp-radius-s); background: var(--wp-control); font: 12px/1.5 var(--wp-mono); overflow: auto; }
 
 /* Narrow and short windows */
+@media (max-width: 1100px) {
+  [data-whale-pet] .galgameCloseBtn:not(.galgameExit) { width: 32px; padding: 0; justify-content: center; font-size: 0; }
+}
 @media (max-width: 760px) {
   [data-whale-pet].comicThoughtBubble { left: 16px; right: 16px; top: 12px; width: auto; height: min(26vh, 200px); border-radius: 18px; }
-  [data-whale-pet] .galgameCloseBtn:not(.galgameExit) { width: 32px; padding: 0; justify-content: center; font-size: 0; }
+  [data-whale-pet] .galgameCloseBtn { width: 32px; padding: 0; justify-content: center; font-size: 0; }
+  [data-whale-pet] .galgameSystemBar { flex-wrap: wrap; }
+  [data-whale-pet] .galgameComposerArea { flex-basis: 100%; }
+  [data-whale-pet] .galgameTopControls { margin-left: auto; }
+  [data-whale-pet] .theatreChipText { display: none; }
+  [data-whale-pet] .theatreChip { width: 34px; padding: 0; justify-content: center; }
   [data-whale-pet] :is(.petPhase, .petTierTag) { display: none; }
   [data-whale-pet] .galgameHeaderBar { padding-left: 16px; }
+  [data-whale-pet] .galgameNameTag { left: 16px; }
   [data-whale-pet] .galgameTextBody { padding: 4px 16px 4px 32px; }
   [data-whale-pet] .galgameQuotes:first-child { left: 10px; }
 }
@@ -227,3 +510,17 @@ body.dsh-galgame-mode [data-composer-seat] { opacity: 0 !important; transform: t
 @media (prefers-reduced-motion: reduce) {
   [data-whale-pet], [data-whale-pet] *, [data-whale-pet] *::before, [data-whale-pet] *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---- v0.6.0 visual-novel touches ---------------------------------------------- */
+/* Newest characters fade in one by one. */
+[data-whale-pet] .vnChar { animation: wpCharIn .22s ease-out both; }
+@keyframes wpCharIn { from { opacity: 0; filter: blur(2px); } to { opacity: 1; filter: none; } }
+/* Click-wait mark at the end of the line: a whale tail that bobs (more pages) or rests (last page). */
+[data-whale-pet] .vnWait { display: inline-block; margin-left: 6px; vertical-align: -3px; color: var(--wp-accent); filter: drop-shadow(0 0 6px rgba(159, 208, 255, .55)); }
+[data-whale-pet] .vnWait svg { display: block; fill: currentColor; }
+[data-whale-pet] .vnWait[data-last="false"] svg { animation: wpWaitBob 1s ease-in-out infinite; }
+[data-whale-pet] .vnWait[data-last="true"] svg { animation: wpWaitSway 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes wpWaitBob { 50% { transform: translateY(4px); opacity: .65; } }
+@keyframes wpWaitSway { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+[data-whale-pet] .theatreSceneClock { position: absolute; top: 6px; left: 6px; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: rgba(8, 14, 34, .7); color: #fff; }
+[data-whale-pet] .theatreSceneClock svg { width: 13px; height: 13px; }

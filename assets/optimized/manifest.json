@@ -1,0 +1,92 @@
+{
+  "Answering": {
+    "png_sha1": "904878a27653901b76bc056373f580d96b87539e",
+    "webp_bytes": 133254,
+    "png_bytes": 241731
+  },
+  "DaFeiYu": {
+    "png_sha1": "017edb048e04d451873638893c35eef46f5feb5e",
+    "webp_bytes": 196806,
+    "png_bytes": 1286593
+  },
+  "Dizzy": {
+    "png_sha1": "4bb7390962f7c258a029b829853222e68683e11e",
+    "webp_bytes": 294138,
+    "png_bytes": 2211782
+  },
+  "Maid": {
+    "png_sha1": "c3111b392aa51e57b376e5ac1866a87477c6d65c",
+    "webp_bytes": 319470,
+    "png_bytes": 1933444
+  },
+  "Think1": {
+    "png_sha1": "f76db62d464622ccfa3a15e89aa5eec12f1054ce",
+    "webp_bytes": 617416,
+    "png_bytes": 1231606
+  },
+  "Think2": {
+    "png_sha1": "e9c7a64f399abf4eadb65ac515c7b5f6e7ef0267",
+    "webp_bytes": 316460,
+    "png_bytes": 590373
+  },
+  "Think3": {
+    "png_sha1": "4e729814802eee42d960ff9a7fd1f76eaf9b87ed",
+    "webp_bytes": 260866,
+    "png_bytes": 1792642
+  },
+  "Think4": {
+    "png_sha1": "9d659f2e25640fe6834470c1af9c23cb45e0dd57",
+    "webp_bytes": 498444,
+    "png_bytes": 1200476
+  },
+  "Think5": {
+    "png_sha1": "fff61264e72395e47c8d4f419bc6ef9ba1a65be8",
+    "webp_bytes": 511994,
+    "png_bytes": 1193073
+  },
+  "angry": {
+    "png_sha1": "f74bde5cc23d68900be796033e93a26333dadd6d",
+    "webp_bytes": 210234,
+    "png_bytes": 1923524
+  },
+  "baifan": {
+    "png_sha1": "bca4906d4f053e70d01f7264a4c791429974c0f2",
+    "webp_bytes": 504488,
+    "png_bytes": 1125281
+  },
+  "getit": {
+    "png_sha1": "2d10e1a88da4050c359ea3672d9905e5484265ff",
+    "webp_bytes": 281788,
+    "png_bytes": 570014
+  },
+  "happy": {
+    "png_sha1": "b0ef653af6a5f2c99c52b70b7007469f4c0b3499",
+    "webp_bytes": 198850,
+    "png_bytes": 1905800
+  },
+  "proud": {
+    "png_sha1": "8c2d19f612dcadbdef8b044406e549eaf6e41bcb",
+    "webp_bytes": 197230,
+    "png_bytes": 1933911
+  },
+  "sajiao": {
+    "png_sha1": "427986ba14f221e75238b6c00a2267c4474ca783",
+    "webp_bytes": 255102,
+    "png_bytes": 527742
+  },
+  "shy": {
+    "png_sha1": "6799b06b789822ac080b1f3d0f092bba51d2e840",
+    "webp_bytes": 199348,
+    "png_bytes": 1920003
+  },
+  "smug": {
+    "png_sha1": "82c522e942c361b47f77349b6637a01ec461a7c4",
+    "webp_bytes": 206834,
+    "png_bytes": 1925758
+  },
+  "surprised": {
+    "png_sha1": "aa09a88ecc96811d19e555763550454d787441f6",
+    "webp_bytes": 206054,
+    "png_bytes": 1947385
+  }
+}
