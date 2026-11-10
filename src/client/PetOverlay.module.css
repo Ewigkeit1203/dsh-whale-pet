@@ -117,9 +117,14 @@
   pointer-events: none;
   transition: left .28s cubic-bezier(.2, .8, .2, 1), top .28s cubic-bezier(.2, .8, .2, 1);
 }
-.petWidget[data-whale-pet][data-dragging] { transition: none; cursor: grabbing; }
+.petWidget[data-whale-pet][data-sizing] { transition: none; }
 .petWidget[data-whale-pet][data-settling] { transition: left .24s cubic-bezier(.15, .7, .2, 1), top .24s cubic-bezier(.15, .7, .2, 1); }
 .petWidget[data-whale-pet][data-wandering] { transition: left 3.2s cubic-bezier(.25, .1, .25, 1), top 3.2s cubic-bezier(.25, .1, .25, 1); }
+/* Dragging always wins over wandering and the previous landing transition. */
+.petWidget[data-whale-pet][data-dragging] { transition: none; cursor: grabbing; }
+/* A moving WebGL canvas does not need a fresh blurred silhouette each frame. */
+.petWidget[data-whale-pet]:is([data-dragging], [data-settling]) .puppetRoot,
+.petWidget[data-whale-pet] .puppetRoot[data-carry-phase] { filter: none; will-change: transform; }
 [data-whale-pet][data-hidden="true"] { display: none !important; }
 [data-whale-pet][data-paused="true"], [data-whale-pet][data-paused="true"] * { animation-play-state: paused !important; }
 
@@ -241,7 +246,7 @@
 [data-whale-pet] .petHearts { position: absolute; left: 0; right: 0; text-align: center; z-index: 25; pointer-events: none; color: #f08cba; font-size: 22px; letter-spacing: 6px; animation: wpHearts 2s ease-out both; }
 @keyframes wpHearts { from { transform: translateY(10px); opacity: 1; } to { transform: translateY(-40px); opacity: 0; } }
 
-/* Reactions on the sprite layer (separate from gaze and breathing layers) */
+/* Reactions on the sprite layer (separate from the breathing layer) */
 [data-whale-pet] .qBounce { animation: wpBounce .48s cubic-bezier(.34, 1.56, .64, 1); }
 @keyframes wpBounce { 0% { transform: none; } 25% { transform: scale(1.06, .94); } 55% { transform: scale(.97, 1.04) translateY(-8px); } 80% { transform: scale(1.02, .99); } 100% { transform: none; } }
 [data-whale-pet] .petReaction-dizzy { animation: wpDizzy .45s ease-in-out 5; }
@@ -283,7 +288,6 @@
 /* Moving glass is expensive: drop the blur while dragging, and slide only on a side switch. */
 .petWidget[data-whale-pet][data-dragging] .settingsDrawer { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--wp-surface-solid); }
 [data-whale-pet] .settingsDrawer[data-flipping] { transition: left .24s cubic-bezier(.2, .8, .2, 1), top .24s cubic-bezier(.2, .8, .2, 1); }
-@keyframes wpPanelIn { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
 
 [data-whale-pet] .petPanelHeader { flex: none; display: flex; align-items: center; gap: 8px; padding: 12px 10px 10px 18px; border-bottom: 1px solid var(--wp-line); }
 [data-whale-pet] .petPanelHeader h2 { margin: 0; flex: 1; font-size: 15px; font-weight: 650; letter-spacing: .01em; color: var(--wp-ink); }
@@ -397,6 +401,14 @@
   background: var(--wp-raised); color: var(--wp-ink); text-align: left; cursor: pointer;
   transition: border-color .15s ease, background-color .15s ease;
 }
+[data-whale-pet] .petFilePick { position: relative; cursor: pointer; }
+[data-whale-pet] .petFilePick input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+[data-whale-pet] .petFilePick[data-disabled] { opacity: .55; pointer-events: none; }
+[data-whale-pet] .petFilePick:focus-within { outline: 2px solid var(--wp-accent); outline-offset: 2px; }
+[data-whale-pet] .petModelStatus { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--wp-ink-2); }
+[data-whale-pet] .petModelStatus[data-state="failed"] { color: var(--wp-danger, #d64545); }
+[data-whale-pet] .petCredit { margin: 0; font-size: 11px; line-height: 1.5; color: var(--wp-ink-3); }
+[data-whale-pet] .petCredit a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 [data-whale-pet] .petWide:hover { border-color: var(--wp-line-strong); background: var(--wp-control); }
 [data-whale-pet] .petWide strong { font-size: 13px; font-weight: 600; }
 [data-whale-pet] .petWide small { font-size: 11.5px; color: var(--wp-ink-3); }

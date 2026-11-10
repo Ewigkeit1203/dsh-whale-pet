@@ -233,8 +233,12 @@ export function apply(ctx: Context): void {
     let wasRunning = false
     let scheduled: ReturnType<typeof setTimeout> | null = null
     let lastBalanceCheck = 0
+    // Set by host mutations. While idle and unchanged, the safety poll below has nothing to re-read:
+    // re-extracting the latest answer every second cost a deep clone of it for no reason.
+    let hostDirty = true
 
     const inspectDomState = () => {
+      hostDirty = false
       // ---- 0. Conversation identity & turn-start detection ----
       const sessionEl = document.querySelector('[data-conversation-session]')
       const sessionId = sessionEl ? sessionEl.getAttribute('data-conversation-session') : null
@@ -305,7 +309,9 @@ export function apply(ctx: Context): void {
         const el = record.target instanceof Element ? record.target : record.target.parentElement
         return !el?.closest('[data-whale-pet]')
       })
-      if (!hostChanged || scheduled !== null) return
+      if (!hostChanged) return
+      hostDirty = true
+      if (scheduled !== null) return
       scheduled = setTimeout(() => {
         scheduled = null
         inspectDomState()
@@ -321,7 +327,8 @@ export function apply(ctx: Context): void {
     })
 
     inspectDomState()
-    const interval = setInterval(inspectDomState, 1000)
+    // Safety net for missed mutations; only works while something changed or a turn is running.
+    const interval = setInterval(() => { if (hostDirty || wasRunning) inspectDomState() }, 1000)
 
     return () => {
       observer.disconnect()

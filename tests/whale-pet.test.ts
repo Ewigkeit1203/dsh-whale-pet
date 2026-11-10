@@ -11,7 +11,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(__dirname, '..')
 
 describe('dsh-whale-pet: Assets Integrity', () => {
-  test('all character pose illustrations from 大肥鱼表情 exist with valid sizes', () => {
+  test('all character pose illustrations exist with valid sizes', () => {
     const assets = [
       'assets/Dizzy.png',
       'assets/Maid.png',
@@ -25,18 +25,6 @@ describe('dsh-whale-pet: Assets Integrity', () => {
       'assets/Think3.png',
       'assets/Think4.png',
       'assets/Think5.png',
-      'lib/assets/Dizzy.png',
-      'lib/assets/Maid.png',
-      'lib/assets/DaFeiYu.png',
-      'lib/assets/Answering.png',
-      'lib/assets/baifan.png',
-      'lib/assets/getit.png',
-      'lib/assets/sajiao.png',
-      'lib/assets/Think1.png',
-      'lib/assets/Think2.png',
-      'lib/assets/Think3.png',
-      'lib/assets/Think4.png',
-      'lib/assets/Think5.png',
       ...['smug', 'shy', 'angry', 'surprised', 'proud', 'happy'].flatMap(name => [`assets/${name}.png`, `assets/optimized/${name}.webp`]),
     ]
     // The compact WebP is embedded only while it was made from the current PNG; otherwise the PNG itself.
@@ -158,7 +146,7 @@ describe('dsh-whale-pet: State Machine & Living Behavior Logic', () => {
     const initialThinkingPose = sm.getStatus().pose
 
     // Click character -> triggers short sajiao (2s)
-    sm.triggerMad()
+    sm.triggerSajiao()
     assert.strictEqual(sm.getStatus().pose, 'sajiao')
     assert.strictEqual(sm.getStatus().state, 'REASONING', 'State remains REASONING')
 
@@ -198,12 +186,12 @@ describe('dsh-whale-pet: State Machine & Living Behavior Logic', () => {
     sm.dispose()
   })
 
-  test('form toggles between maiden and chibi', () => {
+  test('form switches between maiden and chibi', () => {
     const sm = new PetStateMachine()
     assert.strictEqual(sm.getStatus().form, 'maiden')
-    sm.toggleForm()
+    sm.setForm('chibi')
     assert.strictEqual(sm.getStatus().form, 'chibi')
-    sm.toggleForm()
+    sm.setForm('maiden')
     assert.strictEqual(sm.getStatus().form, 'maiden')
     sm.dispose()
   })

@@ -41,7 +41,7 @@ function loadBundle(storage?: { getItem(key: string): string | null; setItem(key
   }
   const bundle = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
     .replace('const DialogueContent =', 'globalThis.BundleAudio = PetVoice; const DialogueContent =')
-    .replace('const MAIDEN_PATH =', 'globalThis.BundleStateMachine = PetStateMachine; const MAIDEN_PATH =')
+    .replace('const MAID_DATA_URI =', 'globalThis.BundleStateMachine = PetStateMachine; const MAID_DATA_URI =')
   vm.runInNewContext(bundle, context)
   let overlay: any
   const effects: any[] = []
@@ -89,13 +89,24 @@ for (const [label, make] of [
     assert.equal(sm.getStatus().state, 'REASONING')
   })
 
-  test(`${label}: unloading mid-blink clears all animation callbacks`, t => {
+  test(`${label}: an idle companion does not wake the UI, and nothing fires after unload`, t => {
     t.mock.timers.enable({ apis: ['setTimeout', 'setInterval'] })
     const StateMachine = make()
     const sm = new StateMachine()
-    sm.performBlinkCycle(() => assert.fail('blink callback survived dispose'))
+    let notified = 0
+    sm.subscribe(() => { notified++ })
+    notified = 0
+    // No mouth, blink or gaze ticks any more: until the 60 s lonely prompt nothing is pushed to the UI.
+    t.mock.timers.tick(50000)
+    assert.equal(notified, 0, 'idle state machine notified the UI')
+    sm.setStreaming(true)
+    const whileStreaming = notified
+    t.mock.timers.tick(5000)
+    assert.ok(notified - whileStreaming <= 2, 'streaming does not tick the UI on a timer')
     sm.dispose()
-    t.mock.timers.tick(100000)
+    const atDispose = notified
+    t.mock.timers.tick(200000)
+    assert.equal(notified, atDispose, 'a timer survived dispose')
   })
 
   test(`${label}: waking lonely sajiao immediately notifies the UI`, t => {
@@ -134,7 +145,7 @@ test('browser bundle: widget marks its subtree and keeps the full portrait on sc
   assert.equal(widget.props['data-whale-pet'], 'widget')
   assert.ok(Number.parseFloat(widget.props.style.top) <= 800 - 480)
   const puppetNode = walk(widget).find(node => node.props.imgSrc)
-  const puppet = puppetNode.type(puppetNode.props)
+  const puppet = walk(puppetNode.type(puppetNode.props)).find(n=>String(n.props.className).split(' ').includes('puppetRoot'))
   assert.equal(puppet.props.style.transform, undefined, 'the portrait does not follow the pointer')
   assert.equal(puppet.children[0].props.style, undefined, 'breathing and parallax use different transform layers')
 })
@@ -566,4 +577,101 @@ test('browser bundle: poking her quickly makes her puzzled, then frustrated; a p
   assert.ok(walk(tree).some(node => node.children?.some?.((child: any) => typeof child === 'string' && child.includes('别戳啦'))))
   t.mock.timers.tick(3500); tree = runtime.render()
   assert.equal(walk(tree).find(node => node.props.imgSrc).props.poseName, 'Maid', 'she calms down')
+})
+
+
+test('browser bundle: separate model size sliders save values without resizing illustrations', t => {
+  t.mock.timers.enable({apis:['setTimeout']})
+  const store = new Map<string,string>()
+  const runtime = loadBundle({getItem:key=>store.get(key)??null,setItem:(key,value)=>{store.set(key,value)}})
+  const sm = runtime.mount(); t.after(()=>sm.dispose())
+  let tree = runtime.render()
+  walk(tree).find(node=>node.type==='button' && node.children.includes('设置')).props.onClick()
+  tree = runtime.render()
+  const before = walk(tree).find(node=>String(node.props.className).startsWith('petSpriteSize')).props.style.height
+  const desktop = walk(tree).find(node=>node.type==='input' && node.props['aria-label']==='桌宠模型大小')
+  const theatre = walk(tree).find(node=>node.type==='input' && node.props['aria-label']==='剧场模型大小')
+  assert.ok(desktop && theatre)
+  desktop.props.onChange({target:{value:'1.65'}})
+  tree = runtime.render()
+  walk(tree).find(node=>node.type==='input' && node.props['aria-label']==='剧场模型大小').props.onChange({target:{value:'1.4'}})
+  tree = runtime.render()
+  assert.equal(walk(tree).find(node=>String(node.props.className).startsWith('petSpriteSize')).props.style.height,before)
+  const stopSaving = runtime.viewEffects.find(fn => String(fn).includes('savePreferences'))()
+  t.after(stopSaving)
+  t.mock.timers.tick(300)
+  const p = JSON.parse([...store.values()][0])
+  assert.equal(p.live2dWidgetScale,1.65); assert.equal(p.live2dTheatreScale,1.4)
+})
+
+
+test('browser bundle: chest clicks ask the player to stop, do not open settings, and do not fire after a drag', t => {
+  t.mock.timers.enable({apis:['setTimeout']})
+  const runtime=loadBundle(), sm=runtime.mount();t.after(()=>sm.dispose())
+  let tree=runtime.render()
+  const begin=()=>{walk(tree).find(n=>n.props.imgSrc).props.onMouseDown({button:0,clientX:900,clientY:400},'chest');runtime.render();return runtime.viewEffects.find(fn=>String(fn).includes('const cancelDrag'))()}
+  let remove=begin()
+  runtime.dispatch('mouseup',{clientX:900,clientY:400});remove();tree=runtime.render()
+  assert.ok(!walk(tree).some(n=>n.props.className==='settingsDrawer'))
+  assert.equal(walk(tree).find(n=>n.props.imgSrc).props.poseName,'shy')
+  assert.ok(walk(tree).some(n=>n.children?.some?.((c:any)=>typeof c==='string'&&c.includes('请不要碰这里'))))
+  t.mock.timers.tick(3300);tree=runtime.render()
+  assert.equal(walk(tree).find(n=>n.props.imgSrc).props.poseName,'Maid')
+  remove=begin();runtime.dispatch('mousemove',{clientX:940,clientY:400});runtime.render()
+  runtime.dispatch('mouseup',{clientX:940,clientY:400});remove();tree=runtime.render()
+  assert.ok(!walk(tree).some(n=>n.children?.some?.((c:any)=>typeof c==='string'&&c.includes('请不要碰这里'))),'a chest-origin drag is not a chest click')
+})
+
+test('browser bundle: rapid opposite drags start at the visible position and reject the previous queued frame', t => {
+  t.mock.timers.enable({apis:['setTimeout']})
+  const frames:Array<()=>void>=[], runtime=loadBundle(undefined,frames), sm=runtime.mount();t.after(()=>sm.dispose())
+  let tree=runtime.render()
+  const begin=(left:number)=>{
+    walk(tree).find(n=>n.props.imgSrc).props.onMouseDown({button:0,clientX:600,clientY:400,currentTarget:{closest:()=>({getBoundingClientRect:()=>({left,top:150})})}})
+    tree=runtime.render();return runtime.viewEffects.find(fn=>String(fn).includes('const cancelDrag'))()
+  }
+  let remove=begin(450)
+  runtime.dispatch('mousemove',{clientX:700,clientY:400})
+  const oldFrame=frames.pop()!
+  runtime.dispatch('mouseup',{clientX:700,clientY:400});remove();tree=runtime.render()
+  remove=begin(400)
+  assert.equal(tree.props.style.left,'400px','interrupt CSS settling at the visible location')
+  runtime.dispatch('mousemove',{clientX:560,clientY:400})
+  tree=runtime.render();const attached=tree.props.style.left
+  runtime.dispatch('mousemove',{clientX:520,clientY:400})
+  const freshFrame=frames.pop()!
+  oldFrame();tree=runtime.render()
+  assert.equal(tree.props.style.left,attached,'old drag cannot steal the new frame')
+  freshFrame();tree=runtime.render()
+  assert.equal(Number.parseFloat(tree.props.style.left),400-80)
+  runtime.dispatch('mouseup',{clientX:520,clientY:400});remove()
+})
+
+
+test('browser bundle: click jitter never moves or lifts the companion, including repeated body clicks',t=>{
+  t.mock.timers.enable({apis:['setTimeout']})
+  const frames:Array<()=>void>=[],runtime=loadBundle(undefined,frames),sm=runtime.mount();t.after(()=>sm.dispose())
+  let tree=runtime.render(),before={...tree.props.style}
+  for(let n=0;n<5;n++){
+    const puppet=walk(tree).find(node=>node.props.imgSrc)
+    puppet.props.onMouseDown({button:0,clientX:600,clientY:400},'chest')
+    tree=runtime.render();const cleanup=runtime.viewEffects.find(fn=>String(fn).includes('const cancelDrag'))()
+    for(const x of [603,596,607,602])runtime.dispatch('mousemove',{clientX:x,clientY:402})
+    tree=runtime.render();assert.equal(walk(tree).find(node=>node.props.imgSrc).props.held,null)
+    assert.equal(frames.length,0,'sub-threshold jitter queues no position update')
+    runtime.dispatch('mouseup',{clientX:602,clientY:402});cleanup();tree=runtime.render()
+    assert.equal(tree.props.style.left,before.left);assert.equal(tree.props.style.top,before.top)
+  }
+})
+
+test('browser bundle: a real drag keeps its original pointer offset instead of moving the collar under a belly click',t=>{
+  t.mock.timers.enable({apis:['setTimeout']})
+  const runtime=loadBundle(),sm=runtime.mount();t.after(()=>sm.dispose())
+  let tree=runtime.render()
+  walk(tree).find(n=>n.props.imgSrc).props.onMouseDown({button:0,clientX:600,clientY:450,currentTarget:{closest:()=>({getBoundingClientRect:()=>({left:400,top:150})})}})
+  tree=runtime.render();const cleanup=runtime.viewEffects.find(fn=>String(fn).includes('const cancelDrag'))()
+  runtime.dispatch('mousemove',{clientX:620,clientY:450});tree=runtime.render()
+  assert.equal(tree.props.style.left,'420px');assert.equal(tree.props.style.top,'150px')
+  assert.ok(walk(tree).find(n=>n.props.imgSrc).props.held)
+  runtime.dispatch('mouseup',{clientX:620,clientY:450});cleanup()
 })

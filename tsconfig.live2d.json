@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2020", "DOM"],
+    "strict": false,
+    "noImplicitAny": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": []
+  },
+  "files": ["live2d/runtime.ts", "live2d/shaders.d.ts", "vendor/live2d/Core/live2dcubismcore.d.ts"]
+}

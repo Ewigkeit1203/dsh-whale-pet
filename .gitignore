@@ -25,3 +25,6 @@ dist/
 docs/handover/
 docs/PM_REVIEW_IMPLEMENTATION.md
 docs/GEMINI_REVIEW_IMPLEMENTATION.md
+
+# Keep the SDK's non-redistributable debug source map local.
+vendor/live2d/Core/*.js.map

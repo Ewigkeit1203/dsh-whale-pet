@@ -10,7 +10,6 @@ export interface HistoryEntry {
     text: string;
 }
 export declare function readConversationLog(): HistoryEntry[];
-export declare function parseBalance(value: string): number | null;
 /** Preserve code and block boundaries while excluding reasoning and controls. */
 export declare function messageText(container: Element): string;
 //# sourceMappingURL=experience.d.ts.map

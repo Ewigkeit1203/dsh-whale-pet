@@ -1,9 +1,9 @@
-大肥鱼 — dsh-whale-pet v0.6.0
+大肥鱼 — dsh-whale-pet v0.7.0
 
 English / 中文
 README: https://github.com/Ewigkeit1203/dsh-whale-pet#readme
 Changelog / 更新日志: https://github.com/Ewigkeit1203/dsh-whale-pet/blob/main/CHANGELOG.md
-Release notes / 发布说明: https://github.com/Ewigkeit1203/dsh-whale-pet/blob/main/docs/releases/v0.5.2.md
+Release notes / 发布说明: https://github.com/Ewigkeit1203/dsh-whale-pet/blob/main/docs/releases/v0.7.0.md
 
 ENGLISH
 Extract the whole ZIP into a permanent folder. Run install.bat, then press Ctrl + R in DSH. You do not need Node.js. Keep the extracted files in place; rerun the installer if you move the folder. Run uninstall.bat to remove the plugin; your saved preferences stay.
@@ -28,3 +28,6 @@ Ewigkeit1203 — Creator & product direction / 项目发起与产品方向
 Antigravity (Google DeepMind) — AI-assisted initial engineering / AI 辅助初期工程
 Codex (OpenAI) — AI-assisted v0.4.0 engineering & documentation / AI 辅助 v0.4.0 工程与文档
 Claude Opus 5.5 (Anthropic) — AI-assisted v0.5–v0.6 frontend / AI 辅助 v0.5–v0.6 前端
+
+旧版安装失败请参阅 docs/INSTALLATION_RECOVERY.md / For older installer failures, see docs/INSTALLATION_RECOVERY.md.
+Live2D 运行库内置、模型另行导入；正常升级保留本机模型 / Live2D runtime included, model imported separately; normal upgrades retain the local model.

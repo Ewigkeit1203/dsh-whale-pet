@@ -19,6 +19,14 @@ export interface PoseMeta {
     content?: number;
 }
 export declare const POSE_META: Record<string, PoseMeta>;
+/**
+ * The imported Live2D model is not an illustration, so it is kept out of POSE_META.
+ * `aspect` is the runtime's framing of 大肥鱼 (replaced by the measured value once it loads);
+ * `scale` matches her head size to Maid's.
+ */
+export declare const LIVE2D_POSE_META: PoseMeta;
+/** Pose metadata for the Live2D model with its measured aspect. */
+export declare function live2dPoseMeta(aspect: number | null): PoseMeta;
 /** Stage width relative to its height; wide enough for every maiden pose at its calibrated scale. */
 export declare const STAGE_ASPECT = 0.64;
 /** Base character height before the user's size step: up to 480px, never more than 60% of the viewport. */
@@ -32,5 +40,7 @@ export interface SpriteGeometry {
     imageHeight: number;
     imageLeft: number;
 }
-export declare function spriteGeometry(pose: string, viewportHeight: number, userScale: number): SpriteGeometry;
+export declare function spriteGeometry(pose: string, viewportHeight: number, userScale: number, override?: PoseMeta): SpriteGeometry;
+/** Fit the full desktop model inside the viewport; illustration sizing is unchanged. */
+export declare function live2dWidgetGeometry(width: number, height: number, scale: number, aspect: number | null): SpriteGeometry;
 //# sourceMappingURL=poses.d.ts.map

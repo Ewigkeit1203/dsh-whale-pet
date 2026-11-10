@@ -19,10 +19,6 @@ export function readConversationLog(): HistoryEntry[] {
     return { role: node.getAttribute('data-chat-flow-kind') === 'user-prompt' ? 'user' as const : 'assistant' as const, text: messageText(node).slice(0, 20000) }
   }).filter(entry => entry.text)
 }
-export function parseBalance(value: string): number | null {
-  const match = value.replace(/,/g, '').match(/(?:¥|￥)?\s*(\d+(?:\.\d+)?)/)
-  return match ? Number(match[1]) : null
-}
 /** Preserve code and block boundaries while excluding reasoning and controls. */
 export function messageText(container: Element): string {
   const clone = container.cloneNode(true) as Element

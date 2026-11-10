@@ -37,4 +37,19 @@ export declare function saveMedia(slot: MediaSlot, file: Blob & {
 }): Promise<boolean>;
 export declare function loadMedia(slot: MediaSlot): Promise<StoredMedia | null>;
 export declare function deleteMedia(slot: MediaSlot): Promise<boolean>;
+/** Key of the imported Live2D model in the same object store; one model at a time. */
+export declare const LIVE2D_MEDIA_KEY = "live2d";
+export interface StoredLive2D {
+    modelPath: string;
+    files: Record<string, Blob>;
+    expressions: Record<string, string>;
+    idleMotion?: string;
+    motions?: Record<string, string>;
+    name: string;
+    bytes: number;
+    savedAt: number;
+}
+export declare function saveLive2DModel(record: StoredLive2D): Promise<boolean>;
+export declare function loadLive2DModel(): Promise<StoredLive2D | null>;
+export declare function deleteLive2DModel(): Promise<boolean>;
 //# sourceMappingURL=media-store.d.ts.map

@@ -1,6 +1,19 @@
-import React from 'react';
 import type { Preferences } from './preferences.js';
 import type { WalletView } from './wallet.js';
+/** What Settings shows about the imported Live2D model. */
+export interface Live2DSettings {
+    /** This build carries Cubism Core and the runtime. */
+    bundled: boolean;
+    state: 'checking' | 'none' | 'importing' | 'ready' | 'failed';
+    name?: string;
+    bytes?: number;
+    progress?: [number, number];
+    /** Why the last import or load failed (already phrased for the user). */
+    message?: string;
+    /** The model is what she is drawn with right now. */
+    active: boolean;
+    needsReimport?: boolean;
+}
 export interface SettingsPanelProps {
     p: Preferences;
     wallet: WalletView;
@@ -20,7 +33,11 @@ export interface SettingsPanelProps {
     notify: () => void;
     close: () => void;
     openTheatre: () => void;
+    live2d: Live2DSettings;
+    importLive2D: (files: File[]) => void;
+    removeLive2D: () => void;
+    onSizeStart?: () => void;
 }
 /** Plain render function (no hooks): header, scrollable body, fixed footer. */
-export declare function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, quiet, reset, doctor, notify, close, openTheatre }: SettingsPanelProps): React.JSX.Element;
+export declare function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, quiet, reset, doctor, notify, close, openTheatre, live2d, importLive2D, removeLive2D, onSizeStart }: SettingsPanelProps): import("react").JSX.Element;
 //# sourceMappingURL=SettingsPanel.d.ts.map

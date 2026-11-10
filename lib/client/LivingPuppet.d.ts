@@ -1,13 +1,13 @@
+import { type Stroke, type TouchRegion } from './touch.js';
+import { type CarryGrab } from './carry.js';
 import React from 'react';
-import type { PetState, GazeOffset } from './types.js';
+import type { Live2DLook, Live2DSource } from './live2d-types.js';
+import type { PetState } from './types.js';
 import type { Emote } from './emotion.js';
 export interface LivingPuppetProps {
     imgSrc: string;
     isMaiden: boolean;
     isGalGameMode: boolean;
-    mouthOpenRatio: number;
-    /** Unused: gaze is applied through CSS variables. Kept optional for compatibility. */
-    gazeOffset?: GazeOffset;
     state: PetState;
     poseName?: string;
     opacity?: number;
@@ -26,14 +26,26 @@ export interface LivingPuppetProps {
     /** Mood mark above her head; a new key replays its animation. */
     emote?: Emote;
     emoteKey?: number;
-    onMouseDown?: (e: React.MouseEvent) => void;
+    onMouseDown?: (e: React.MouseEvent, region?: TouchRegion | null) => void;
+    /** Pointer attachment plus the previous widget position, for a smooth collar pickup. */
+    held?: CarryGrab | null;
+    /** Strokes over her head or tail, and (in the theatre) clicks on her. side: +1 when the hand is to her right on screen. */
+    onTouch?: (touch: PuppetTouch) => void;
+    /** Imported Live2D model; the illustration shows until the model's first frame, and again if it fails. */
+    live2d?: Live2DBinding;
 }
-/**
- * Two layers: the root positions the portrait, the canvas carries
- * breathing/talking. The image itself is sized, never transformed, so the
- * clip-path hit area always matches what is drawn. With swaying clothes on,
- * the WebGL copy draws the picture once it is ready (it breathes with the canvas).
- * The portrait does not follow the pointer.
- */
-export declare function LivingPuppet({ imgSrc, isMaiden, isGalGameMode, mouthOpenRatio, state, onMouseDown, opacity, poseName, box, poseScale, live, motion, emote, emoteKey }: LivingPuppetProps): React.JSX.Element;
+export interface PuppetTouch {
+    kind: Stroke | 'poke' | 'chest';
+    side: number;
+}
+export interface Live2DBinding {
+    /** Theatre zoom; widget size is handled by its collision-aware geometry. */
+    scale?: number;
+    source: Live2DSource;
+    look: Live2DLook;
+    /** Width / height of the framed model, used for the box the next time (reported once ready). */
+    onReady?: (aspect: number) => void;
+    onFail?: (reason: string) => void;
+}
+export declare function LivingPuppet({ imgSrc, isMaiden, isGalGameMode, state, onMouseDown, onTouch, held, opacity, poseName, box, poseScale, live, motion, emote, emoteKey, live2d }: LivingPuppetProps): React.JSX.Element;
 //# sourceMappingURL=LivingPuppet.d.ts.map

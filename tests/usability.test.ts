@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { pageCapacity, revealDelay } from '../lib/client/usability.js'
+import { revealDelay } from '../lib/client/usability.js'
 import { defaultPreferences, quietPreset } from '../lib/client/preferences.js'
 test('quiet mode restores exact previous audio and wandering choices', () => {
  const before={...defaultPreferences(),muted:false,wandering:false}
@@ -8,10 +8,6 @@ test('quiet mode restores exact previous audio and wandering choices', () => {
  assert.equal(quiet.muted,true);assert.equal(quiet.wandering,false);assert.equal(quiet.quiet,true)
  const restored=quietPreset(quiet)
  assert.equal(restored.muted,false);assert.equal(restored.wandering,false);assert.equal(restored.quiet,false)
-})
-test('large type and short screens reduce page capacity',()=>{
- assert.ok(pageCapacity(720,180,24)<pageCapacity(720,180,14))
- assert.ok(pageCapacity(720,90,17)<pageCapacity(720,180,17))
 })
 test('punctuation adds pauses and instant mode skips reveal waits',()=>{
  assert.ok(revealDelay('。','medium')>revealDelay('，','medium'))

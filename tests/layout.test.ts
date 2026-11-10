@@ -121,3 +121,26 @@ test('settings keep a readable bounded height through window/fullscreen changes 
  const detached=layoutGroup({viewportWidth:500,viewportHeight:1080,pet:{x:16,y:400,width:307,height:480},panelHeight:2000})
  assert.equal(detached.mode,'detached');assert.ok(detached.panel.y>100,'independent sheet is vertically centred')
 })
+
+
+test('Resizing keeps the controls fixed, preserves the feet and reverses without drift', async () => {
+  const {layoutResizedGroup} = await import('../lib/client/layout.js')
+  for (const x of [160, 1000]) {
+    const input = {viewportWidth: 1600, viewportHeight: 1000, pet: {x, y: 320, width: 240, height: 500}}
+    const anchor = layoutGroup(input), bottom = anchor.pet.y + input.pet.height
+    for (let cycle = 0; cycle < 10; cycle++) for (const scale of [0.5, 0.75, 1.3, 1, 0.5, 1]) {
+      const next = layoutResizedGroup({...input, pet: {...input.pet, width: 240 * scale, height: 500 * scale}}, anchor, bottom)
+      assert.deepEqual(next.panel, anchor.panel, 'slider must never move underneath the pointer')
+      assert.equal(next.side, anchor.side)
+      assert.equal(next.pet.y + 500 * scale, bottom)
+      if (anchor.side === 'left') assert.equal(next.pet.x, anchor.panel.x + anchor.panel.width + LAYOUT.gap)
+      else assert.equal(next.pet.x + 240 * scale, anchor.panel.x - LAYOUT.gap)
+    }
+  }
+  const input = {viewportWidth: 500, viewportHeight: 550, pet: {x: 80, y: 90, width: 180, height: 400}}
+  const anchor = layoutGroup(input)
+  const next = layoutResizedGroup({...input, pet: {...input.pet, width: 300, height: 440}}, anchor, 490)
+  assert.deepEqual(next.panel, anchor.panel, 'narrow-window sheet stays readable')
+  assert.ok(next.pet.x >= 16 && next.pet.x + 300 <= 484)
+  assert.ok(next.pet.y >= 90 && next.pet.y + 440 <= 534)
+})

@@ -160,6 +160,20 @@ export function layoutGroup(input: GroupInput): GroupLayout {
   }
 }
 
+/** Keep the controls still while changing size; grow beside them, anchored at the feet.
+ * The anchor lasts until the panel closes, the viewport changes or the pet is dragged.
+ * Releasing a slider must not cause a second layout jump.
+ */
+export function layoutResizedGroup(input: GroupInput, anchor: GroupLayout, bottom: number): GroupLayout {
+  const { pet, viewportWidth: vw, viewportHeight: vh } = input
+  const x = input.petPinned ? pet.x : anchor.side === 'left'
+    ? anchor.panel.x + anchor.panel.width + LAYOUT.gap
+    : anchor.panel.x - LAYOUT.gap - pet.width
+  const free = input.petPinned ? { x: pet.x, y: pet.y }
+    : clampPet(x, bottom - pet.height, pet.width, pet.height, vw, vh)
+  return { ...anchor, pet: free }
+}
+
 /** Idle wait is bounded but independently sampled for every stroll. */
 export function nextWanderDelay(random = Math.random()): number {
   return 8000 + Math.max(0, Math.min(1, random)) * 12000

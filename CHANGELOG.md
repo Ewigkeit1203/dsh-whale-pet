@@ -9,7 +9,38 @@
 
 ### Unreleased
 
-_Nothing yet._
+### [v0.7.0] - 2026-11-10
+
+- **Installer recovery and checked downloads.** Audit all eight historical ZIPs; add an installer-only repair archive, preserve old runtime files, and run Windows build, launcher and archive smoke checks before publishing the exact verified downloads. Explain optional Live2D import and storage across upgrades.
+
+- **Stable clicks and leg cushioning.** Ignore drag jitter below 10 CSS px and preserve the original grab offset instead of snapping a body click to the collar. Suspended knees move inward with slightly relaxed lower legs; landing uses a small knee bend with planted soles, replacing Live2D whole-image squash. Remove the extra landing pulse and release slide. Local mesh offsets restore exactly before every Core update, use fixed buffers and keep clipping masks synchronized; no model reimport is needed. 155 tests, build and strict type checks pass. Real-model geometry and static poses were checked; interactive DSH/GPU acceptance remains pending because window-control initialization still fails.
+
+- **Correct arm arcs and collar pickup.** Calibrate the full hand path on the original model: screen-left raises clockwise, screen-right counterclockwise, and lowering retraces the same outward arc. Replace the inner long turn with the short positive forearm range. Four stages now share a pure carry controller: lift/stretch, short struggle, relaxed hanging and drop/landing compression. The collar remains the rotation pivot, a small ground cue fades/shrinks, and fast re-grabs preserve the full rotated/scaled image. Long-hold release no longer raises the arms again. 147 tests and strict type checks pass; real-model geometry was checked, but interactive visual/GPU acceptance is pending because the local window-control tools failed to initialize.
+
+- **Gentler travel and expressive hands.** Wandering uses a small lateral glide instead of front-facing marching. Carrying bends both elbows with soft hand motion and head counterbalance; it no longer kicks or pumps the hips. Rapid re-grabs use the visible position, preserve the image when the pivot changes, and discard stale queued drag frames. Dragging overrides landing/wandering transitions and temporarily skips the blurred shadow; hit-test bounds/order are reused.
+- **Respect her space.** Clicking the visible Live2D chest makes her blush, cover up and ask the player to stop. Works in the widget and theatre, has a cooldown, and never treats a drag as a chest click or advances dialogue. Hands covering the chest intercept the hit normally. No additional model files or imports are needed. Current validation: 147 passing tests, build and strict type checks; hardware frame-time profiling is still outstanding.
+
+- **Stable size controls and carrying.** Size changes keep the settings panel fixed and grow the character beside it from her feet. Carrying uses calibrated arm animation inputs and head counterbalance, with a soft release and no extra kicking.
+- **Desktop idle budget.** Long idle performances stay at the ambient 30 fps budget; brief gesture transitions, reactions and dragging can still use 60. Separate the pacing clock from elapsed animation time to avoid double-counting frame remainder on high-refresh screens. Index motion curves once instead of rescanning/allocating per frame; remove a redundant framebuffer query. Validation: 147 tests, including a three-minute runtime simulation and five-minute timing simulations; real GPU frame-time profiling remains outstanding.
+
+- **Reliability and idle cost.** Stop animation-frame requests while hidden or detached, release expired decoded bitmaps, and rebuild lost WebGL contexts instead of reusing a failed model. Older imports now explain how to enable missing gestures. Fix the pnpm build-policy placeholder and make uninstall back up the profile while preserving neighbouring plugin entries. Validation: 131 Node tests plus isolated installation/package checks.
+- **Live2D size and movement.** Separate saved desktop/theatre model size sliders (60–200%, default 120%/115%); theatre size is also adjustable from its settings. Desktop geometry fits the viewport.
+- **Live2D motion that reads as alive.** Head, body, hips, legs, hair and skirt are now moved by the model's own physics (the tracking inputs VTube Studio would send), so turns and sways are actually visible. Her eyes reach the pointer first, the head follows and the body follows the head; after a few still seconds she goes back to her own business. While idle she occasionally shifts her weight, leans in, stretches, glances aside, tilts her head or takes a deep breath, with 6–15 s rests and never the same thing twice in a row. Touch reactions: a small startle when poked, a dip into a head pat, a huff when frustrated, a nod for an idea. The author's own hand gestures play in and out and hold while needed: hand on chest after an answer, a raised finger for an idea, the foxtail when smug. Models imported earlier keep working and use the old finger toggle; import the folder again to get the gestures. Reduced motion keeps her still.
+- **She keeps herself busy.** After about 45 s of quiet idling with nobody moving the pointer, she plays a longer piece every minute or so: the author's own idle animation for the model (the one VTube Studio plays when tracking is lost), playing with the foxtail, looking around, dozing off and jerking awake, a big stretch and yawn, humming and swaying, or a hand on her chest and a smile. Moving the pointer or touching her stops it at once. The author's animation needs the model folder imported again.
+- **Her tail is sensitive.** Stroke her tail (Live2D model) and she blushes, squeezes her eyes shut and dodges away from your hand, looking back at it; keep doing it and she gets cross. Only the visible tail counts, not the parts hidden behind her legs or skirt.
+- **Touch in the theatre.** Head pats, tail touches and pokes now work in the theatre too, with her mood mark above her head. Clicking her is a poke and does not turn the page; the dialogue box, the backdrop and the keyboard still do.
+- **Touch polish.** A head pat no longer makes her raise a hand to her chest; carried, she hangs from her collar, flaps her paws for a moment, then gives up and dangles, swinging behind your hand; let go and she drops, squashes on landing and complains she is dizzy (no more hands folding back); a chest touch covers with one hand only.
+- **Pick her up.** Dragging her lifts her a little and she swings around her collar pivot, swinging behind your hand and settling after you let go. She is startled at first and flustered if you hold on (“P-put me down!”); with the Live2D model her head tries to stay upright, both elbows bend and her hands lift, and she lands with a small squash. Works with the illustrations too; reduced motion turns the swing off.
+- **Smoother animation.** While a hand gesture, a touch reaction or a drag is moving, or while she is following the pointer, the model draws at up to 60 fps when this computer can afford it; slow idling stays at 30. The theatre draws at up to 60. Frames are now paced evenly on 120/144 Hz screens.
+- **Release ZIP cleanup.** Remove the 18 obsolete lib/assets PNG copies and omit duplicate source assets from release archives; development originals, npm asset exports and all embedded fallback illustrations are retained. Added checksum, archive-content and isolated-install smoke checks.
+- **Live2D model (optional).** Import the free DeepSeek-chan (大肥鱼) Live2D model in Settings › Character model and she moves for real: breathing, blinking, hair and tail physics, and a mouth that moves while text appears. Her states use the model's own switches: a loading spinner while thinking, a raised finger for an idea, the steel bowl for a rice break, swirly eyes when dizzy, blushing, a dark face when frustrated, and more. It works on the desktop and in the theatre. The original illustrations stay the default until a model is imported, return whenever the switch is off, and are used if WebGL or the runtime is unavailable.
+- **The model is not included.** Its terms do not allow redistributing the files, so download it from the author (神宫凉子) and pick its folder. Only the files she needs are kept, in this device's browser storage; 4096 px textures are scaled to 2048 px on import. Only this model is accepted, because her expressions are made for it. Credits: art and parts 神宫凉子, Live2D rigging 霓虹猫_NeonNeko.
+- **Runtime.** The official Live2D Cubism Web Framework 5-r.5 and Cubism Core 6.0.1 are embedded and only start once a model is shown (about 450 KB). To stay light on the CPU the model renders at 30 fps on the desktop, 60 fps in the theatre, 15 fps while DSH is in the background and not at all while hidden. Clicks follow her outline, so the empty corners of her box reach DSH.
+- **Lighter while streaming.** Theatre pages are measured once per character instead of re-measuring every line for every new piece of text, and only while the theatre is open. In a 10-second streamed answer the plugin's script time fell from about 880 ms to about 110 ms.
+- **Lighter while idle.** The overlay no longer re-renders every second (only while a model is working, otherwise every 15 s and exactly when a pricing period or announcement changes); the pricing period and its label are computed once per minute; the host page is re-read only after it changes. Pointer moves anywhere in DSH no longer wake the companion.
+- **Swaying clothes at 30 fps** (15 fps while DSH is in the background, and not redrawn at all when reduced motion keeps her still): about 45% less drawing, with the same look.
+- **Cleanup.** Removed the unused blink, gaze and mouth-oscillation timers from the state machine, the old `mad` pose alias and other unused functions, a duplicated animation and an unused style, the build's copy of the artwork into `lib/assets` (about 25 MB nobody read), the build's sync from the author's old desktop folder, and 7.7 MB of image data from the generated type declarations. Scene and music validation now share one list with the preferences.
+- Tests: 155 pass (cleanup removed three tests of deleted code and added an idle-notification check; Live2D motion adds gaze, idle-event, performance, gait, pulse, dodge, gesture, touch, carry and import checks).
 
 ### [v0.6.0] - 2026-11-01
 
@@ -141,7 +172,38 @@ _Nothing yet._
 
 ### 尚未发布
 
-_暂无。_
+### [v0.7.0] - 2026-11-10
+
+- **安装修复与发布检查。** 核对八个历史 ZIP，新增仅替换安装工具的修复小包，保留旧版运行文件；发布前在 Windows 构建并验证启动器、实际压缩包和解压后安装，只上传已检查的包。说明 Live2D 可选导入及正常升级保留本机模型。
+
+- **点击稳定与腿部缓冲。** 10 CSS px 内的拖动抖动不触发拎起，真实拖动保留原抓取偏移，取消点身体后强制归拢光标造成的下移。悬空时膝盖内并、小腿稍展开；落地轻微屈膝、脚底留在地面，替代 Live2D 整图挤压，并取消额外落地脉冲和松手滑动。局部网格每次 Core 更新前精确还原，复用固定缓冲并同步裁剪蒙版，无需重新导入模型。155 项测试、构建和严格类型检查通过；真实模型几何与静态姿态已检查，窗口工具仍无法初始化，DSH 动态观感及 GPU 帧耗时待验收。
+
+- **手臂轨迹与后领悬挂。** 用原模型网格校准完整路径：屏幕左臂顺时针抬起、右臂逆时针，放下各自反向沿同一侧回落；正向小臂短弧替代绕身体内侧的负向长弧。四阶段统一到纯悬挂控制器：上提拉伸、短暂挣扎、放松垂挂、下落触地压缩；后领作为旋转支点，地面提示缩小变淡，快速再抓取保留旋转／缩放后的完整画面。修复长时间悬挂后松手反而再次抬臂。147 项测试与严格类型检查通过；真实模型网格已校准，窗口控制工具启动失败，交互观感和 GPU 帧耗时尚未验收。
+
+- **轻移与手部表现。** 游荡改为轻微侧向漂移，去掉正面踏步；拎起时双肘弯曲抬手，保留上身反应，不再蹬腿或大幅晃动骨盆。快速再抓取从可见位置接手、补偿旋转中心变化、不消费上一轮拖动的排队帧；拖动优先于游荡／落地缓动，暂时停用模糊阴影，复用命中检测数据。
+- **胸部点击反应。** 点击 Live2D 可见胸部时脸红、抬手遮挡并提醒“请不要碰这里”。桌宠与剧场均可触发，有冷却；从胸部拖动不会误触，剧场不会翻页，遮住胸部的手正常拦截命中。无需新增模型文件或重新导入。当前 147 项测试、构建和严格类型检查通过；仍未完成真实硬件帧耗时对比。
+
+- **缩放与拎起修正。** 调节大小时固定设置面板，角色在面板旁以脚部附近为锚点缩放；拎起使用校准后的手臂动画输入和头部反向补偿，不额外蹬腿，松手平滑回落。
+- **桌宠待机负载。** 长待机表演保持桌宠 30 帧预算，短手势过渡、触摸和拖拽仍可到 60 帧。动画时间与帧率调度分开，修正高刷新率下时间余量重复计入；动作曲线一次建立索引，避免逐帧扫描和临时数组，移除冗余帧缓冲查询。147 项测试通过，含 3 分钟运行循环与 5 分钟计时模拟；尚未完成真实 GPU 帧耗时分析。
+
+- **稳定性与闲置开销。** 隐藏／离开视图时停止动画帧请求，解码缓存到期显式释放位图，丢失 WebGL 上下文后重新创建模型。旧导入缺少手势时提示重新导入；修复 pnpm 构建策略占位配置，卸载前备份并保留同组其他插件。验证：131 项 Node 测试及隔离安装／打包检查。
+- **Live2D 大小与动作。** 桌宠／剧场各自保存模型大小（60–200%，默认 120%／115%），剧场设置可直接调整；桌宠放大后仍限制在窗口内。
+- **Live2D 动得更像活的。** 头、身体、胯、腿、头发和裙摆改由模型自带的物理驱动（相当于 VTube Studio 送进去的追踪输入），转头和摆动终于看得出来了。看鼠标时眼睛先到、头随后、身体再跟着头转；鼠标停住几秒后她就回去做自己的事。待机时偶尔换脚调整重心、往前探、伸个懒腰、往旁边瞄一眼、歪头或深呼吸，每次间隔 6–15 秒，不会连续重复同一个。触摸反馈：被戳时吓一小跳，摸头时把头低下来蹭，抓狂时哼一声别过脸，想到点子时点头。作者做的原生手势会完整地进入、保持、退出：回答完抚胸，灵光一闪竖手指，得意时拿出狗尾草。以前导入的模型照常可用，仍用旧的竖指开关；重新导入一次文件夹即可启用原生手势。减弱动效时保持静止。
+- **待机久了会自己找事做。** 安静待机约 45 秒、也没人动鼠标后，她大约每一分钟演一段：作者为模型做的待机动画（VTube Studio 丢失追踪时播放的那段）、摆弄狗尾草、东张西望、打瞌睡后猛然惊醒、伸懒腰打哈欠、闭眼哼歌摇摆，或抚胸微笑。一动鼠标或碰她就立刻停下。作者的待机动画需要重新导入一次模型文件夹。
+- **尾巴很敏感。** 摸她的尾巴（Live2D 模型），她会脸红、闭紧眼睛，从你的手边躲开并回头看；一直摸她会生气。只算看得见的尾巴，藏在腿和裙子后面的部分不算。
+- **剧场里也能互动。** 剧场中同样可以摸头、摸尾巴和戳她，头顶会出现情绪符号。点她算戳，不会翻页；对话框、背景和键盘照常翻页。
+- **触摸细节修正。** 摸头不再抬手抚胸；拎起时从后领吊起，先举着小爪子扑腾，过一会儿放弃挣扎垂下来、跟着你的手摆；松手后先落下、触地一蹲，再抱怨头晕（不再像手折到背后）；点胸只用一只手捂住。
+- **可以把她拎起来。** 拖动时她会被轻轻提起，围绕后领挂点、跟在手后面摆动，松手后慢慢停稳。一开始是吓一跳，拎久了会害羞着急（“放、放我下来啦！”）；Live2D 模型下头会努力保持正，双肘弯曲、抬手轻动，落地时轻轻一蹲。插图模式同样会摆动；减弱动效时不摆。
+- **动画更顺滑。** 手势过渡、触摸反应、拖动进行时，或她正跟着鼠标看时，只要这台电脑负担得起，模型最高 60 帧；平静待机仍是 30 帧。剧场最高 60 帧。120/144 Hz 屏幕上的帧间隔也更均匀了。
+- **安装包精简。** 清除 lib/assets 的 18 份废弃 PNG 副本，发布 ZIP 不再重复打包源码 assets；开发原图、npm 素材导出和全部内嵌插图回退保留。新增校验和、包内容和隔离安装检查。
+- **Live2D 模型（可选）。** 在 设置 › 角色模型 中导入免费的 DeepSeek-chan（大肥鱼）Live2D 模型后，她会真正动起来：呼吸、眨眼、头发和尾巴的物理摆动，文字出现时嘴巴跟着动。各种状态使用模型自带的开关：思考时头上转加载圈，灵光一闪竖起食指，吃饭时顶上大钢盆，眩晕是圈圈眼，还有脸红、抓狂黑脸等。桌宠和剧场都生效。未导入模型时仍默认使用原版插图；关闭开关、或 WebGL / 运行库不可用时也会自动回到插图。
+- **插件不附带模型。** 模型的使用须知不允许重新分发文件，请从作者（神宫凉子）的发布页下载，然后选择模型文件夹。插件只保留需要的文件，存在本机浏览器存储里；导入时把 4096 像素的贴图缩小到 2048。只接受这个模型，因为她的表情是按它设计的。署名：原画及拆分 神宫凉子，Live2D 建模 霓虹猫_NeonNeko。
+- **运行库。** 内嵌官方 Live2D Cubism Web Framework 5-r.5 与 Cubism Core 6.0.1（约 450 KB），显示模型时才启动。为了不占太多 CPU，桌宠 30 帧、剧场 60 帧，DSH 在后台时 15 帧，页面隐藏时停止。点击范围跟随她的轮廓，外框里的空白处仍可以点到 DSH。
+- **流式输出更省。** 剧场分页改为每个字符只测量一次宽度，不再每来一段文字就把每一行重新测一遍；而且只在剧场打开时才分页。一段 10 秒的流式回答，插件脚本耗时从约 880 毫秒降到约 110 毫秒。
+- **空闲更省。** 界面不再每秒整体重绘（只在模型工作时每秒更新，平时每 15 秒一次，并在计费时段或播报到点时准时更新）；计费时段与标签每分钟只计算一次；宿主页面只在变化后才重新读取。在 DSH 任意位置移动鼠标不再唤醒桌宠。
+- **裙摆飘动改为 30 帧**（DSH 在后台时 15 帧，减弱动效时静止不重绘）：绘制量减少约 45%，观感不变。
+- **代码清理。** 删除状态机里已不再使用的眨眼、视线与嘴型振荡计时器，旧的 `mad` 姿态别名和其他无人调用的函数，一处重复定义的动画和一个无用样式；构建不再把插图复制进 `lib/assets`（约 25 MB，没有任何地方读取），不再从作者旧桌面目录同步原图，生成的类型声明去掉 7.7 MB 图片数据。场景和曲目校验与偏好设置共用同一份列表。
+- 测试：155 项通过（清理时删除了 3 个只测已删代码的测试，新增空闲通知检查；Live2D 动作新增注视、待机事件、待机表演、步态、触摸反馈、躲闪、原生手势、触摸识别、拎起与导入检查）。
 
 ### [v0.6.0] - 2026-11-01
 

@@ -1,6 +1,6 @@
 import React from 'react'
 import { DialogueContent } from './DialogueContent.js'
-import { LivingPuppet } from './LivingPuppet.js'
+import { LivingPuppet, type Live2DBinding, type PuppetTouch } from './LivingPuppet.js'
 import type { Preferences } from './preferences.js'
 import type { PetStatusInfo } from './types.js'
 import type { HistoryEntry } from './experience.js'
@@ -20,7 +20,7 @@ export interface TheatreViewProps {
   status: PetStatusInfo
   lang: string
   petName: string
-  puppet: { imgSrc: string; poseName: string; poseScale: number; isMaiden: boolean; live?: boolean; motion?: number; emote?: Emote; emoteKey?: number }
+  puppet: { imgSrc: string; poseName: string; poseScale: number; isMaiden: boolean; live?: boolean; motion?: number; emote?: Emote; emoteKey?: number; live2d?: Live2DBinding; onTouch?: (touch: PuppetTouch) => void }
   phase: string | null
   tier: { tier: 'peak' | 'valley'; label: string; until: string } | null
   uiHidden: boolean
@@ -80,6 +80,7 @@ export interface TheatreViewProps {
     uploadBgm: (file: File) => void
     removeBgm: () => void
     setSpeed: (speed: Preferences['speed']) => void
+    setLive2DScale: (scale: number) => void
     setFontSize: (size: number) => void
     toggleTypewriter: () => void
     toggleLive: () => void
@@ -240,6 +241,12 @@ function settingsPanel(v: TheatreViewProps) {
         aria-label={t('字号', 'Text size')} style={{ '--fill': fontPercent + '%' } as React.CSSProperties}
         onChange={e => on.setFontSize(Number(e.target.value))} />
     </label>
+    {v.puppet.live2d && <label className="theatreField">
+      <span>{t('剧场模型大小', 'Theatre model size')} <b>{Math.round(p.live2dTheatreScale * 100)}%</b></span>
+      <input type="range" className="theatreRange" min="0.6" max="2" step="0.05" value={p.live2dTheatreScale}
+        aria-label={t('剧场模型大小', 'Theatre model size')} style={{ '--fill': ((p.live2dTheatreScale - 0.6) / 1.4 * 100) + '%' } as React.CSSProperties}
+        onChange={e => on.setLive2DScale(Number(e.target.value))} />
+    </label>}
     {themeSwitch(p.typewriter, t('打字机效果', 'Typewriter text'), on.toggleTypewriter)}
     {themeSwitch(p.autoAdvance, t('读完自动翻页', 'Auto-advance pages'), on.toggleAuto, 'A')}
     {themeSwitch(!p.muted, t('人物音效', 'Character sounds'), on.toggleMute, 'M')}
@@ -288,7 +295,7 @@ export function TheatreView(v: TheatreViewProps) {
     </div>}
 
     <div {...common} data-whale-pet="stage" data-expanded={v.expanded} data-theatre-hidden={v.uiHidden} data-immersive={v.scene.immersive} style={sceneStyle} className={'galgameCharacterCentered ' + (v.puppet.isMaiden ? 'galgameCharacterMaiden' : 'galgameCharacterChibi')}>
-      <LivingPuppet poseName={v.puppet.poseName} poseScale={v.puppet.poseScale} imgSrc={v.puppet.imgSrc} isMaiden={v.puppet.isMaiden} isGalGameMode={true} mouthOpenRatio={status.mouthOpenRatio} state={status.state} live={v.puppet.live} motion={v.puppet.motion} emote={v.puppet.emote} emoteKey={v.puppet.emoteKey} />
+      <LivingPuppet poseName={v.puppet.poseName} poseScale={v.puppet.poseScale} imgSrc={v.puppet.imgSrc} isMaiden={v.puppet.isMaiden} isGalGameMode={true} state={status.state} live={v.puppet.live} motion={v.puppet.motion} emote={v.puppet.emote} emoteKey={v.puppet.emoteKey} live2d={v.puppet.live2d} onTouch={v.puppet.onTouch} />
     </div>
 
     {!v.uiHidden && <div {...common} data-whale-pet="hud" className="theatreHud" onPointerDown={on.unlock}>

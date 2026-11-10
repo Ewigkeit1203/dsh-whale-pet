@@ -35,3 +35,28 @@ test('preferences survive reload, reject malformed values and tolerate unavailab
     else Reflect.deleteProperty(globalThis, 'localStorage')
   }
 })
+
+
+test('Live2D desktop and theatre size preferences persist independently and reject invalid values', () => {
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+  let value = '{}'
+  Object.defineProperty(globalThis,'localStorage',{configurable:true,value:{getItem:()=>value,setItem:(_:string,s:string)=>{value=s}}})
+  try {
+    const defaults = readPreferences()
+    assert.equal(defaults.live2dWidgetScale,1.2)
+    assert.equal(defaults.live2dTheatreScale,1.15)
+    savePreferences({...defaults,live2dWidgetScale:1.7,live2dTheatreScale:.8})
+    assert.equal(readPreferences().live2dWidgetScale,1.7)
+    assert.equal(readPreferences().live2dTheatreScale,.8)
+    assert.equal(readPreferences().scale,defaults.scale,'illustration size is unchanged')
+    value = JSON.stringify({live2dWidgetScale:99,live2dTheatreScale:-4})
+    assert.equal(readPreferences().live2dWidgetScale,2)
+    assert.equal(readPreferences().live2dTheatreScale,.6)
+    value = JSON.stringify({live2dWidgetScale:'bad',live2dTheatreScale:null})
+    assert.equal(readPreferences().live2dWidgetScale,1.2)
+    assert.equal(readPreferences().live2dTheatreScale,1.15)
+  } finally {
+    if(original) Object.defineProperty(globalThis,'localStorage',original)
+    else Reflect.deleteProperty(globalThis,'localStorage')
+  }
+})

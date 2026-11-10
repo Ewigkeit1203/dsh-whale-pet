@@ -1,0 +1,9 @@
+{
+  "Version": 3,
+  "Parameters": [
+    { "Id": "key3", "GroupId": "", "Name": "3. 圈圈眼" },
+    { "Id": "key8", "GroupId": "", "Name": "8. 加载" },
+    { "Id": "key10", "GroupId": "", "Name": "10. 大钢盆" },
+    { "Id": "ParamAngleX", "GroupId": "", "Name": "AngleX" }
+  ]
+}

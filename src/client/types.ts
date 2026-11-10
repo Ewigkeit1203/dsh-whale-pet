@@ -17,18 +17,6 @@ export type PetPose =
   | 'think3'
   | 'think4'
   | 'think5'
-  | 'mad' // backwards compatibility alias for sajiao
-
-export interface PetPosition {
-  x: number
-  y: number
-  side: 'left' | 'right'
-}
-
-export interface GazeOffset {
-  x: number // -1.0 (left) to 1.0 (right)
-  y: number // -1.0 (up) to 1.0 (down)
-}
 
 /** One balance field. Amounts are decimal strings exactly as the host returned them. */
 export type WalletRead =
@@ -65,8 +53,5 @@ export interface PetStatusInfo {
   isInputFocused: boolean
   isGalGameMode: boolean
   autoGalGameOnChat: boolean
-  mouthOpenRatio: number // 0.0 (closed) to 1.0 (open)
-  blinkRatio: number     // 0.0 (open) to 1.0 (closed)
-  gazeOffset: GazeOffset
   latestDialogue: string
 }

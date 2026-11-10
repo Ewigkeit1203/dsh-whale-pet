@@ -1,7 +1,7 @@
 <a id="top"></a>
 # 大肥鱼 — dsh-whale-pet
 
-[使用截图 / Screenshots](#screenshots) | [English](#english) | [中文说明](#chinese) | [Releases / 下载](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) | [Changelog / 更新日志](CHANGELOG.md) | [v0.6.0 notes / 发布说明](docs/releases/v0.6.0.md) | [Docs / 文档](docs/README.md)
+[使用截图 / Screenshots](#screenshots) | [English](#english) | [中文说明](#chinese) | [Releases / 下载](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) | [Changelog / 更新日志](CHANGELOG.md) | [v0.7.0 notes / 发布说明](docs/releases/v0.7.0.md) | [Docs / 文档](docs/README.md)
 
 <a id="screenshots"></a>
 ## 使用截图 / Screenshots
@@ -75,7 +75,7 @@ The product name is **大肥鱼** in both languages; `dsh-whale-pet` remains the
 
 ### New in v0.6.0
 
-- **Swaying clothes.** Her skirt, hair ends and tail sway gently through WebGL; her face is never distorted. Settings › Companionship › Swaying clothes turns it off. (A real Live2D model is planned.)
+- **Swaying clothes.** Her skirt, hair ends and tail sway gently through WebGL; her face is never distorted. Settings › Companionship › Swaying clothes turns it off. (With the optional Live2D model imported, the model's own physics moves her instead.)
 - **Six new expressions** that follow the dialogue page by page, with a little hop and a mood mark (♥ ✦ ♪ 💧 ! ? 💢); also used for head pats, finished answers, announcements, idle moments and a poke easter egg.
 - **Visual-novel touches:** characters fade in one by one, a whale-tail click-wait mark, and backgrounds that follow the time of day.
 - The bundle is now about 7.6 MB (was 18.9 MB), and the theatre chips sit below the DSH title bar.
@@ -85,7 +85,7 @@ The product name is **大肥鱼** in both languages; `dsh-whale-pet` remains the
 - **A proper visual-novel stage.** Larger centred portrait with a soft entrance, breathing and light pooled at her feet; a deep-blue glass dialogue box with a name tag; Skip (or hold Ctrl) races to the last page.
 - **Remembered.** Background, music on/off, track and volume are saved; your picture and music stay in this browser (IndexedDB) and come back next time.
 
-Full notes: [v0.6.0](docs/releases/v0.6.0.md).
+Full notes: [v0.7.0](docs/releases/v0.7.0.md).
 
 ### v0.5.2 Hotfix
 
@@ -112,7 +112,9 @@ Eighteen illustrations are embedded: five random thinking poses, inspiration, an
 
 ### Install or upgrade
 
-1. Download **dsh-whale-pet-v0.6.0.zip** from [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases).
+Old installers in v0.1.0–v0.6.0 may fail on Windows. Prefer the latest full package or use the separate installer repair package beside an existing `lib` folder. See [installation recovery](docs/INSTALLATION_RECOVERY.md).
+
+1. Download **dsh-whale-pet-v0.7.0.zip** from [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases).
 2. Extract the entire archive into a permanent folder, such as `D:\dsh-whale-pet`.
 3. Run `install.bat`, then open DSH or press **Ctrl + R** in its window.
 4. Upgrade in the same folder, or rerun the installer if you moved the plugin. Keep the extracted files in place.
@@ -140,6 +142,10 @@ Run `uninstall.bat` and refresh DSH to remove the plugin from the profile. Saved
 - **Theatre chips (top left):** music (tracks, play/pause, volume, your own file), background (time of day, four scenes, Transparent, your picture, shuffle) and theatre settings (text speed, size, typewriter, auto, sounds).
 - Shortcuts: hold **Alt** to click through her, **Alt+W** hides or shows her, **Alt+T** toggles the theatre. In the theatre: ←/→, Enter, hold **Ctrl** to skip, **L** log, **A** auto, **H** hide, **M** sound, **Esc** closes menus first.
 - Keyboard: Tab to her and press Enter to open Settings.
+
+### Live2D model (optional)
+
+大肥鱼 can use the free **DeepSeek-chan (大肥鱼) Live2D model** by 神宫凉子 (art and parts) and 霓虹猫_NeonNeko (Live2D rigging). The model's terms do not allow redistributing its files, so it is **not included**: download it from the author's page ([神宫凉子 on Bilibili](https://space.bilibili.com/13737731)), extract it, then open Settings › Character model › Import the model folder and pick the folder that contains `大肥鱼.model3.json`. The files stay in this DSH environment on this device; normal plugin upgrades preserve the imported model. Clearing app data or changing machines may require importing again. Live2D is optional and the runtime is already included in the plugin. Turn the switch off at any time to see the original illustrations again. Please credit the model's creators when you share content made with it.
 
 ### Compatibility and privacy
 
@@ -169,6 +175,7 @@ The build compiles the views, state, host adapter, CSS and all 12 PNGs into `lib
 ### Contributors and acknowledgements
 
 - **[Ewigkeit1203](https://github.com/Ewigkeit1203)** — creator, character concept, product direction and acceptance testing.
+- **[神宫凉子](https://space.bilibili.com/13737731)** — art and parts of the free DeepSeek-chan (大肥鱼) Live2D model; **霓虹猫_NeonNeko** — its Live2D rigging, physics and animations. The model is not part of this project and is not redistributed here.
 - **Antigravity (Google DeepMind)** — AI-assisted architecture and initial implementation.
 - **GPT 6.1Sol / Codex (OpenAI)** — AI-assisted v0.4.0 engineering, interaction design, stability work, tests and release documentation.
 - **Claude Sonnet 5.5 (Anthropic)** — AI-assisted product review and UI/UX recommendations; advisory contribution.
@@ -179,7 +186,7 @@ See the [contribution guide](CONTRIBUTING.md) for PR review, release approval an
 
 ### License
 
-[MIT](LICENSE) for code. See [artwork permissions](ASSETS_LICENSE.md) and [contribution rules](CONTRIBUTING.md).
+[MIT](LICENSE) for code. See [artwork permissions](ASSETS_LICENSE.md) and [contribution rules](CONTRIBUTING.md). The embedded Live2D Cubism Core and Framework have their own licenses; see [third-party notices](docs/THIRD_PARTY_NOTICES.md).
 
 [Back to top](#top) | [中文说明](#chinese)
 
@@ -196,7 +203,7 @@ See the [contribution guide](CONTRIBUTING.md) for PR review, release approval an
 
 ### v0.6.0 新体验
 
-- **裙摆飘动。** 裙摆、发梢和尾巴用 WebGL 轻轻摆动，脸部不会变形；可在 设置 › 陪伴 › 裙摆飘动 中关闭。（之后会换成真正的 Live2D 模型。）
+- **裙摆飘动。** 裙摆、发梢和尾巴用 WebGL 轻轻摆动，脸部不会变形；可在 设置 › 陪伴 › 裙摆飘动 中关闭。（导入可选的 Live2D 模型后，改由模型自带的物理驱动。）
 - **六个新表情**，剧场里逐页跟随台词变化，小跳一下并冒出情绪符号（♥ ✦ ♪ 💧 ! ? 💢）；摸头、回答完成、峰谷播报、闲置时以及戳戳彩蛋里也会用到。
 - **GalGame 细节：** 文字逐字淡入、鲸尾点击提示，背景跟随时间切换。
 - 运行包缩小到约 7.6 MB（原 18.9 MB）；剧场按钮移到 DSH 标题栏下方。
@@ -206,7 +213,7 @@ See the [contribution guide](CONTRIBUTING.md) for PR review, release approval an
 - **真正的 GalGame 舞台。** 立绘更大、居中，带淡入、呼吸和脚下的场景光；深蓝毛玻璃对话框配名字标签；「快进」（或按住 Ctrl）直接跳到最后一段。
 - **自动记住。** 背景、音乐开关、曲目和音量都会保存；你的图片和音乐只保存在本机浏览器（IndexedDB），下次打开自动恢复。
 
-完整说明见 [v0.6.0 发布说明](docs/releases/v0.6.0.md)。
+完整说明见 [v0.7.0 发布说明](docs/releases/v0.7.0.md)。
 
 ### v0.5.2 快速更新
 
@@ -233,7 +240,9 @@ See the [contribution guide](CONTRIBUTING.md) for PR review, release approval an
 
 ### 安装或升级
 
-1. 从 [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) 下载 **dsh-whale-pet-v0.6.0.zip**。
+旧版 v0.1.0–v0.6.0 的安装脚本在 Windows 上可能失败。建议更新完整插件；需要保留旧功能时可使用单独的安装器修复包。详见[安装问题与旧版本修复](docs/INSTALLATION_RECOVERY.md)。
+
+1. 从 [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) 下载 **dsh-whale-pet-v0.7.0.zip**。
 2. 完整解压到固定文件夹，例如 `D:\dsh-whale-pet`。
 3. 双击 `install.bat`，再打开 DSH，或在已打开的窗口中按 **Ctrl + R** 刷新。
 4. 升级时覆盖同一目录中的插件文件；若换了目录，请重新运行安装脚本。解压后的文件需要保留。
@@ -261,6 +270,10 @@ React 与 Cordis 由 DSH 提供，普通用户无需 Node.js、npm 或额外素�
 - **剧场左上角小按钮**：音乐（曲目、播放/暂停、音量、本地音乐）、背景（跟随时间、四套场景、透明、我的背景、随机）和剧场设置（文字速度、字号、打字机、自动翻页、音效）。
 - 快捷键：按住 **Alt** 可点穿她，**Alt+W** 隐藏或显示她，**Alt+T** 开关剧场。剧场里：←/→、Enter，按住 **Ctrl** 快进，**L** 回顾，**A** 自动，**H** 隐藏界面，**M** 音效，**Esc** 先关闭菜单。
 - 键盘：用 Tab 聚焦到她，按 Enter 打开设置。
+
+### Live2D 模型（可选）
+
+大肥鱼可以使用免费的 **DeepSeek-chan（大肥鱼）Live2D 模型**（原画及拆分：神宫凉子；Live2D 建模：霓虹猫_NeonNeko）。模型使用须知不允许重新分发模型文件，所以插件**不附带模型**：请从作者的发布页下载（[神宫凉子的 B 站主页](https://space.bilibili.com/13737731)），完整解压后，打开 设置 › 角色模型 › 导入模型文件夹，选择含有 `大肥鱼.model3.json` 的文件夹。文件保存在当前 DSH 的本机存储中，正常升级插件会保留已导入的模型；清理应用数据、换电脑或换存储环境后可能需要重新导入。Live2D 是可选项，运行库已包含在插件中。随时可以关闭开关，回到原版插图。使用模型公开发布内容时，请按作者要求注明模型来源和制作人员。
 
 ### 兼容性与隐私
 
@@ -290,6 +303,7 @@ node --check lib/client.js
 ### 贡献者与致谢
 
 - **[Ewigkeit1203](https://github.com/Ewigkeit1203)**：项目发起人、人设原案、产品方向与体验验收。
+- **[神宫凉子](https://space.bilibili.com/13737731)**：免费 DeepSeek-chan（大肥鱼）Live2D 模型的原画及拆分；**霓虹猫_NeonNeko**：该模型的 Live2D 建模、物理与动作。模型不属于本项目，本仓库不重新分发模型文件。
 - **Antigravity (Google DeepMind)**：AI 辅助架构设计与初期实现。
 - **GPT 6.1Sol / Codex (OpenAI)**：AI 辅助 v0.4.0 工程、交互设计、稳定性修复、测试与发布文档。
 - **Claude Sonnet 5.5（Anthropic）**：AI 辅助产品评审、界面审查及路线图建议；提供产品建议。
@@ -302,6 +316,6 @@ node --check lib/client.js
 
 ### 开源许可证
 
-代码采用 [MIT License](LICENSE)。美术权限见[授权说明](ASSETS_LICENSE.md)，投稿见[贡献指南](CONTRIBUTING.md)。
+代码采用 [MIT License](LICENSE)。美术权限见[授权说明](ASSETS_LICENSE.md)，投稿见[贡献指南](CONTRIBUTING.md)。内嵌的 Live2D Cubism Core 与 Framework 适用各自的许可，见[第三方声明](docs/THIRD_PARTY_NOTICES.md)。
 
 [返回顶部](#top) | [English](#english)

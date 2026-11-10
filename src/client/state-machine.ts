@@ -1,4 +1,4 @@
-import type { PetState, PetForm, PetPose, PetStatusInfo, GazeOffset, BalanceSnapshot } from './types.js'
+import type { PetState, PetForm, PetPose, PetStatusInfo, BalanceSnapshot } from './types.js'
 
 export interface StateMachineListener {
   (status: PetStatusInfo): void
@@ -56,10 +56,7 @@ const SAJIAO_LONELY_DIALOGUES = [
 ]
 
 export class PetStateMachine {
-  private paused = false
-  public setPaused(paused: boolean): void { this.paused = paused }
   private disposed = false
-  private blinkStepTimer: ReturnType<typeof setTimeout> | null = null
   private state: PetState = 'IDLE'
   private form: PetForm = 'maiden'
   private pose: PetPose = 'default'
@@ -81,14 +78,9 @@ export class PetStateMachine {
   /** Last time a balance source reported, even when values were unchanged (UI freshness only). */
   private balancesCheckedAt: number | null = null
   private hostBalance: BalanceSnapshot | null = null
-  private mouthOpenRatio = 0
-  private blinkRatio = 0
-  private gazeOffset: GazeOffset = { x: 0, y: 0 }
 
   private speechTimer: ReturnType<typeof setTimeout> | null = null
   private debounceTimer: ReturnType<typeof setTimeout> | null = null
-  private animationTimer: ReturnType<typeof setInterval> | null = null
-  private blinkTimer: ReturnType<typeof setTimeout> | null = null
   private thinkingCycleTimer: ReturnType<typeof setTimeout> | null = null
   private madTimer: ReturnType<typeof setTimeout> | null = null
   private eatingTimer: ReturnType<typeof setTimeout> | null = null
@@ -101,7 +93,6 @@ export class PetStateMachine {
 
   constructor() {
     this.speech = this.getRandomDialogue('IDLE')
-    this.startLivingAnimationLoops()
     this.scheduleInactivityCheck()
   }
 
@@ -122,9 +113,6 @@ export class PetStateMachine {
       isInputFocused: this.isInputFocused,
       isGalGameMode: this.isGalGameMode,
       autoGalGameOnChat: this.autoGalGameOnChat,
-      mouthOpenRatio: this.mouthOpenRatio,
-      blinkRatio: this.blinkRatio,
-      gazeOffset: { ...this.gazeOffset },
       latestDialogue: this.latestDialogue || this.speech,
     }
   }
@@ -154,70 +142,13 @@ export class PetStateMachine {
     return list[Math.floor(Math.random() * list.length)]
   }
 
-  private startLivingAnimationLoops(): void {
-    let mouthPhase = 0
-    this.animationTimer = setInterval(() => {
-      if (this.paused) return
-      if (this.isStreaming || this.state === 'ANSWERING' || this.state === 'EATING') {
-        mouthPhase += 0.35
-        const raw = (Math.sin(mouthPhase) + 1) / 2
-        this.mouthOpenRatio = Math.min(1, Math.max(0, raw * 0.9))
-        this.notify()
-      } else if (this.mouthOpenRatio > 0) {
-        this.mouthOpenRatio = Math.max(0, this.mouthOpenRatio - 0.15)
-        this.notify()
-      }
-    }, 60)
-
-    const scheduleNextBlink = () => {
-      const delay = 3200 + Math.random() * 2400
-      if (this.disposed) return
-      this.blinkTimer = setTimeout(() => {
-        this.performBlinkCycle(() => {
-          if (Math.random() < 0.25) {
-            this.blinkStepTimer = setTimeout(() => {
-              this.performBlinkCycle(scheduleNextBlink)
-            }, 100)
-          } else {
-            scheduleNextBlink()
-          }
-        })
-      }, delay)
-    }
-    scheduleNextBlink()
-  }
-
-  private performBlinkCycle(onComplete: () => void): void {
-    if (this.disposed) return
-    if (this.paused) { this.blinkStepTimer = setTimeout(onComplete, 1000); return }
-    if (this.isReasoning) {
-      this.blinkRatio = 0.5
-      this.notify()
-      this.blinkStepTimer = setTimeout(() => {
-        this.blinkRatio = 0
-        this.notify()
-        onComplete()
-      }, 400)
-      return
-    }
-
-    this.blinkRatio = 1.0
-    this.notify()
-
-    this.blinkStepTimer = setTimeout(() => {
-      this.blinkRatio = 0.0
-      this.notify()
-      this.blinkStepTimer = setTimeout(onComplete, 120)
-    }, 90)
-  }
-
   public resetActivity(): void {
     if (this.inactivityTimer !== null) {
       clearTimeout(this.inactivityTimer)
       this.inactivityTimer = null
     }
 
-    if (this.isLongSajiao && (this.pose === 'sajiao' || this.pose === 'mad')) {
+    if (this.isLongSajiao && this.pose === 'sajiao') {
       this.isLongSajiao = false
       if (this.madTimer !== null) {
         clearTimeout(this.madTimer)
@@ -255,7 +186,7 @@ export class PetStateMachine {
     this.madTimer = setTimeout(() => {
       this.madTimer = null
       this.isLongSajiao = false
-      if (this.pose === 'sajiao' || this.pose === 'mad') {
+      if (this.pose === 'sajiao') {
         this.pose = 'default'
         this.speech = this.getRandomDialogue('IDLE')
         this.notify()
@@ -285,13 +216,6 @@ export class PetStateMachine {
     this.resetActivity()
     if (this.isInputFocused === focused) return
     this.isInputFocused = focused
-
-    if (focused) {
-      this.gazeOffset.y = 0.65
-    } else {
-      this.gazeOffset.y = 0
-    }
-
     this.recomputeState()
   }
 
@@ -336,7 +260,7 @@ export class PetStateMachine {
     }
 
     this.lastThinkingPose = nextPose
-    if (this.pose !== 'sajiao' && this.pose !== 'mad') {
+    if (this.pose !== 'sajiao') {
       this.pose = nextPose
       this.notify()
     }
@@ -449,10 +373,6 @@ export class PetStateMachine {
     }, durationMs)
   }
 
-  public triggerMad(): void {
-    this.triggerSajiao(false)
-  }
-
   public triggerSajiao(isLong: boolean = false): void {
     this.resetActivity()
     if (this.madTimer !== null) {
@@ -469,13 +389,11 @@ export class PetStateMachine {
     this.madTimer = setTimeout(() => {
       this.madTimer = null
       this.isLongSajiao = false
-      if (this.pose === 'sajiao' || this.pose === 'mad') {
+      if (this.pose === 'sajiao') {
         if (this.isStreaming) {
           this.pose = 'answering'
         } else if (this.isReasoning) {
           this.pose = this.lastThinkingPose || 'think1'
-        } else if (this.isStreaming) {
-          this.pose = 'answering'
         } else if (this.isEatingPostOutput || this.isEatingWandering) {
           this.pose = 'eating'
         } else {
@@ -487,24 +405,9 @@ export class PetStateMachine {
     }, duration)
   }
 
-  public setPose(pose: PetPose): void {
-    this.pose = pose
-    this.notify()
-  }
-
   public setLatestDialogue(text: string): void {
     if (this.latestDialogue === text) return
     this.latestDialogue = text
-    this.notify()
-  }
-
-  public setGazeOffset(offset: GazeOffset): void {
-    const clampedX = Math.max(-1, Math.min(1, offset.x))
-    const clampedY = Math.max(-1, Math.min(1, offset.y))
-    if (Math.abs(this.gazeOffset.x - clampedX) < 0.02 && Math.abs(this.gazeOffset.y - clampedY) < 0.02) {
-      return
-    }
-    this.gazeOffset = { x: clampedX, y: clampedY }
     this.notify()
   }
 
@@ -513,19 +416,11 @@ export class PetStateMachine {
     this.notify()
   }
 
-  public toggleAutoGalGameOnChat(): void {
-    this.setAutoGalGameOnChat(!this.autoGalGameOnChat)
-  }
-
   public setForm(form: PetForm): void {
     this.resetActivity()
     if (this.form === form) return
     this.form = form
     this.notify()
-  }
-
-  public toggleForm(): void {
-    this.setForm(this.form === 'chibi' ? 'maiden' : 'chibi')
   }
 
   public setGalGameMode(enabled: boolean): void {
@@ -598,14 +493,14 @@ export class PetStateMachine {
 
   private commitState(nextState: PetState): void {
     this.state = nextState
-    if (this.pose !== 'sajiao' && this.pose !== 'mad') {
+    if (this.pose !== 'sajiao') {
       this.speech = this.getRandomDialogue(nextState)
     }
     this.notify()
 
     if (this.speechTimer !== null) clearTimeout(this.speechTimer)
     this.speechTimer = setTimeout(() => {
-      if (this.pose !== 'sajiao' && this.pose !== 'mad') {
+      if (this.pose !== 'sajiao') {
         this.speech = this.getRandomDialogue(this.state)
         this.notify()
       }
@@ -614,8 +509,6 @@ export class PetStateMachine {
 
   public dispose(): void {
     this.disposed = true
-    if (this.blinkStepTimer !== null) clearTimeout(this.blinkStepTimer)
-    this.blinkStepTimer = null
     if (this.debounceTimer !== null) {
       clearTimeout(this.debounceTimer)
       this.debounceTimer = null
@@ -623,14 +516,6 @@ export class PetStateMachine {
     if (this.speechTimer !== null) {
       clearTimeout(this.speechTimer)
       this.speechTimer = null
-    }
-    if (this.animationTimer !== null) {
-      clearInterval(this.animationTimer)
-      this.animationTimer = null
-    }
-    if (this.blinkTimer !== null) {
-      clearTimeout(this.blinkTimer)
-      this.blinkTimer = null
     }
     if (this.thinkingCycleTimer !== null) {
       clearTimeout(this.thinkingCycleTimer)

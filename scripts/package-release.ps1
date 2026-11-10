@@ -1,4 +1,4 @@
-﻿param([string]$OutputDirectory = 'dist')
+param([string]$OutputDirectory = 'dist')
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $package = Get-Content -LiteralPath (Join-Path $projectRoot 'package.json') -Raw | ConvertFrom-Json
@@ -7,10 +7,9 @@ $distRoot = Join-Path $projectRoot $OutputDirectory
 New-Item -ItemType Directory -Path $distRoot -Force | Out-Null
 $stage = Join-Path $distRoot ('stage-' + $version + '-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $stage | Out-Null
-foreach ($directory in @('lib', 'assets')) {
-    Copy-Item -LiteralPath (Join-Path $projectRoot $directory) -Destination $stage -Recurse
-}
-$files = @('package.json', 'cordis.yml', 'install.bat', 'uninstall.bat', 'README.md', 'CHANGELOG.md', 'ASSETS_LICENSE.md', 'CONTRIBUTING.md', 'LICENSE')
+# Character artwork is already embedded in lib/client.js; source assets stay in the repository.
+Copy-Item -LiteralPath (Join-Path $projectRoot 'lib') -Destination $stage -Recurse
+$files = @('package.json', 'cordis.yml', 'install.bat', 'install.ps1', 'uninstall.bat', 'README.md', 'CHANGELOG.md', 'ASSETS_LICENSE.md', 'CONTRIBUTING.md', 'LICENSE')
 foreach ($file in $files) {
     Copy-Item -LiteralPath (Join-Path $projectRoot $file) -Destination $stage
 }
@@ -19,17 +18,28 @@ New-Item -ItemType Directory -Path $docsDestination -Force | Out-Null
 Get-ChildItem -LiteralPath (Join-Path $projectRoot 'docs') | Where-Object { $_.Name -ne 'handover' -and $_.Name -notlike '*_REVIEW_IMPLEMENTATION.md' } | ForEach-Object {
     Copy-Item -LiteralPath $_.FullName -Destination $docsDestination -Recurse
 }
-$zip = Join-Path $distRoot ('dsh-whale-pet-v' + $version + '.zip')
-Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -Force
-$hasher = [Security.Cryptography.SHA256]::Create()
-$zipStream = [IO.File]::OpenRead($zip)
-try { $hash = ([BitConverter]::ToString($hasher.ComputeHash($zipStream))).Replace('-', '').ToLowerInvariant() }
-finally { $zipStream.Dispose(); $hasher.Dispose() }
-[IO.File]::WriteAllText($zip + '.sha256', $hash + '  ' + (Split-Path -Leaf $zip) + "`n", [Text.UTF8Encoding]::new($false))
+function Write-ReleaseArchive([string]$Directory, [string]$Name) {
+    $zip = Join-Path $distRoot $Name
+    Compress-Archive -Path (Join-Path $Directory '*') -DestinationPath $zip -Force
+    $hasher = [Security.Cryptography.SHA256]::Create()
+    $zipStream = [IO.File]::OpenRead($zip)
+    try { $hash = ([BitConverter]::ToString($hasher.ComputeHash($zipStream))).Replace('-', '').ToLowerInvariant() }
+    finally { $zipStream.Dispose(); $hasher.Dispose() }
+    [IO.File]::WriteAllText($zip + '.sha256', $hash + '  ' + (Split-Path -Leaf $zip) + "`n", [Text.UTF8Encoding]::new($false))
+    Write-Output ('Release package: ' + $zip)
+    Write-Output ('SHA256: ' + $hash)
+}
+Write-ReleaseArchive $stage ('dsh-whale-pet-v' + $version + '.zip')
+# A sibling directory inside our own stage keeps cleanup bounded to one verified tree.
+$repair = Join-Path $stage 'installer-fix'
+New-Item -ItemType Directory -Path $repair | Out-Null
+foreach ($file in @('install.bat', 'install.ps1', 'uninstall.bat')) {
+    Copy-Item -LiteralPath (Join-Path $projectRoot $file) -Destination $repair
+}
+Copy-Item -LiteralPath (Join-Path $projectRoot 'docs/INSTALLATION_RECOVERY.md') -Destination $repair
+Write-ReleaseArchive $repair ('dsh-whale-pet-installer-fix-v' + $version + '.zip')
 # Delete only the verified staging directory created within this project's dist/.
 $resolvedStage = [IO.Path]::GetFullPath($stage)
 $resolvedDist = [IO.Path]::GetFullPath($distRoot).TrimEnd('\') + '\'
 if (-not $resolvedStage.StartsWith($resolvedDist, [StringComparison]::OrdinalIgnoreCase)) { throw 'Unexpected staging path' }
 Remove-Item -LiteralPath $resolvedStage -Recurse -Force
-Write-Output ('Release package: ' + $zip)
-Write-Output ('SHA256: ' + $hash)

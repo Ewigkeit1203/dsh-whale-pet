@@ -1,3 +1,6 @@
+import { isSceneId, type SceneId } from './scenes.js'
+import { isBgmTrack, type BgmTrackId } from './bgm.js'
+
 export interface Preferences {
   userName: string
   petName: string
@@ -25,21 +28,25 @@ export interface Preferences {
   form: 'maiden' | 'chibi'
   autoGalGame: boolean
   /** Theatre background (see scenes.ts); 'none' shows DSH through a soft blur. */
-  scene: 'auto' | 'study' | 'lab' | 'cafe' | 'seaside' | 'none' | 'custom'
+  scene: SceneId
   /** Pick a different background each time the theatre opens. */
   sceneShuffle: boolean
   /** Background music plays while the theatre is open (bgm.ts). */
   bgmOn: boolean
-  bgmTrack: 'daily' | 'calm' | 'night' | 'custom'
+  bgmTrack: BgmTrackId
   bgmVolume: number
   /** Swaying skirt, hair ends and tail (WebGL); the face is never deformed. */
   liveMotion: boolean
+  /** Use the imported Live2D model instead of the illustrations (no effect until one is imported). */
+  live2d: boolean
+  live2dWidgetScale: number
+  live2dTheatreScale: number
   x?: number
   y?: number
 }
 export const PREFERENCES_KEY = 'dsh-whale-pet.preferences.v1'
 export function defaultPreferences(): Preferences {
-  const defaults: Preferences = { userName: '你', petName: '大肥鱼', fontSize: 17, speed: 'medium', docked: false, onboardingDone: false, notifications: false, ricePrice: 1, language: 'zh', theme: 'light', wandering: true, quiet: false, muted: true, volume: 0.2, typewriter: true, reminders: true, peakNotice: true, scale: 1, opacity: 1, reading: 'pages', autoAdvance: false, form: 'maiden', autoGalGame: true, scene: 'auto', sceneShuffle: false, bgmOn: false, bgmTrack: 'daily', bgmVolume: 0.45, liveMotion: true }
+  const defaults: Preferences = { userName: '你', petName: '大肥鱼', fontSize: 17, speed: 'medium', docked: false, onboardingDone: false, notifications: false, ricePrice: 1, language: 'zh', theme: 'light', wandering: true, quiet: false, muted: true, volume: 0.2, typewriter: true, reminders: true, peakNotice: true, scale: 1, opacity: 1, reading: 'pages', autoAdvance: false, form: 'maiden', autoGalGame: true, scene: 'auto', sceneShuffle: false, bgmOn: false, bgmTrack: 'daily', bgmVolume: 0.45, liveMotion: true, live2d: true, live2dWidgetScale: 1.2, live2dTheatreScale: 1.15 }
   return defaults
 }
 export function readPreferences(): Preferences {
@@ -47,7 +54,7 @@ export function readPreferences(): Preferences {
   try {
     const p = JSON.parse(localStorage.getItem(PREFERENCES_KEY) || '{}')
     if (!p || typeof p !== 'object') return defaults
-    for (const key of ['wandering', 'quiet', 'autoAdvance', 'autoGalGame', 'muted', 'typewriter', 'reminders', 'peakNotice', 'docked', 'onboardingDone', 'notifications', 'sceneShuffle', 'bgmOn', 'liveMotion'] as const) if (typeof p[key] === 'boolean') defaults[key] = p[key]
+    for (const key of ['wandering', 'quiet', 'autoAdvance', 'autoGalGame', 'muted', 'typewriter', 'reminders', 'peakNotice', 'docked', 'onboardingDone', 'notifications', 'sceneShuffle', 'bgmOn', 'liveMotion', 'live2d'] as const) if (typeof p[key] === 'boolean') defaults[key] = p[key]
     for (const key of ['userName', 'petName'] as const) if (typeof p[key] === 'string' && p[key].trim()) defaults[key] = p[key].trim().slice(0, 24)
     if (['slow', 'medium', 'fast', 'instant'].includes(p.speed)) defaults.speed = p.speed
     if (Number.isFinite(p.fontSize)) defaults.fontSize = Math.min(24, Math.max(14, p.fontSize))
@@ -60,9 +67,12 @@ export function readPreferences(): Preferences {
     if (typeof p.scale === 'number' && Number.isFinite(p.scale)) defaults.scale = Math.min(1.3, Math.max(0.5, p.scale))
     if (typeof p.opacity === 'number' && Number.isFinite(p.opacity)) defaults.opacity = Math.min(1, Math.max(0.35, p.opacity))
     if (typeof p.volume === 'number' && Number.isFinite(p.volume)) defaults.volume = Math.min(1, Math.max(0, p.volume))
-    if (['auto', 'study', 'lab', 'cafe', 'seaside', 'none', 'custom'].includes(p.scene)) defaults.scene = p.scene
-    if (['daily', 'calm', 'night', 'custom'].includes(p.bgmTrack)) defaults.bgmTrack = p.bgmTrack
+    if (isSceneId(p.scene)) defaults.scene = p.scene
+    if (isBgmTrack(p.bgmTrack)) defaults.bgmTrack = p.bgmTrack
     if (typeof p.bgmVolume === 'number' && Number.isFinite(p.bgmVolume)) defaults.bgmVolume = Math.min(1, Math.max(0, p.bgmVolume))
+    for (const key of ['live2dWidgetScale', 'live2dTheatreScale'] as const) {
+      if (typeof p[key] === 'number' && Number.isFinite(p[key])) defaults[key] = Math.min(2, Math.max(0.6, p[key]))
+    }
     if (Number.isFinite(p.x)) defaults.x = p.x
     if (Number.isFinite(p.y)) defaults.y = p.y
   } catch { /* Storage may be disabled by the host. */ }

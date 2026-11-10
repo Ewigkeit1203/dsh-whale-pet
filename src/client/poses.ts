@@ -37,6 +37,18 @@ export const POSE_META: Record<string, PoseMeta> = {
   DaFeiYu: { aspect: 1, scale: 0.46 },
 }
 
+/**
+ * The imported Live2D model is not an illustration, so it is kept out of POSE_META.
+ * `aspect` is the runtime's framing of 大肥鱼 (replaced by the measured value once it loads);
+ * `scale` matches her head size to Maid's.
+ */
+export const LIVE2D_POSE_META: PoseMeta = { aspect: 0.5773, scale: 1 }
+
+/** Pose metadata for the Live2D model with its measured aspect. */
+export function live2dPoseMeta(aspect: number | null): PoseMeta {
+  return { ...LIVE2D_POSE_META, aspect: aspect && aspect > 0.2 && aspect < 2 ? aspect : LIVE2D_POSE_META.aspect }
+}
+
 /** Stage width relative to its height; wide enough for every maiden pose at its calibrated scale. */
 export const STAGE_ASPECT = 0.64
 
@@ -55,11 +67,17 @@ export interface SpriteGeometry {
   imageLeft: number
 }
 
-export function spriteGeometry(pose: string, viewportHeight: number, userScale: number): SpriteGeometry {
-  const meta = POSE_META[pose] ?? POSE_META.Maid
+export function spriteGeometry(pose: string, viewportHeight: number, userScale: number, override?: PoseMeta): SpriteGeometry {
+  const meta = override ?? POSE_META[pose] ?? POSE_META.Maid
   const stageHeight = Math.round(baseSpriteHeight(viewportHeight) * userScale)
   const stageWidth = Math.round(stageHeight * STAGE_ASPECT)
   const imageHeight = Math.round(stageHeight * meta.scale)
   const imageWidth = Math.round(imageHeight * meta.aspect)
   return { stageWidth, stageHeight, imageWidth, imageHeight, imageLeft: Math.round((stageWidth - imageWidth) / 2) }
+}
+
+/** Fit the full desktop model inside the viewport; illustration sizing is unchanged. */
+export function live2dWidgetGeometry(width: number, height: number, scale: number, aspect: number | null): SpriteGeometry {
+  const safeScale = Math.min(scale, Math.max(0.1, height - 96) / baseSpriteHeight(height), Math.max(0.1, width - 32) / (baseSpriteHeight(height) * STAGE_ASPECT))
+  return spriteGeometry('Live2D', height, safeScale, live2dPoseMeta(aspect))
 }

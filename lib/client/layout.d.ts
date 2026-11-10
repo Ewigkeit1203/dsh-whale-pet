@@ -83,6 +83,11 @@ export declare function placeGroupX(x: number, petWidth: number, viewportWidth: 
     fits: boolean;
 };
 export declare function layoutGroup(input: GroupInput): GroupLayout;
+/** Keep the controls still while changing size; grow beside them, anchored at the feet.
+ * The anchor lasts until the panel closes, the viewport changes or the pet is dragged.
+ * Releasing a slider must not cause a second layout jump.
+ */
+export declare function layoutResizedGroup(input: GroupInput, anchor: GroupLayout, bottom: number): GroupLayout;
 /** Idle wait is bounded but independently sampled for every stroll. */
 export declare function nextWanderDelay(random?: number): number;
 /** Sample the entire usable host viewport. Avoid almost-stationary destinations. */

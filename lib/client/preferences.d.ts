@@ -1,3 +1,5 @@
+import { type SceneId } from './scenes.js';
+import { type BgmTrackId } from './bgm.js';
 export interface Preferences {
     userName: string;
     petName: string;
@@ -28,15 +30,19 @@ export interface Preferences {
     form: 'maiden' | 'chibi';
     autoGalGame: boolean;
     /** Theatre background (see scenes.ts); 'none' shows DSH through a soft blur. */
-    scene: 'auto' | 'study' | 'lab' | 'cafe' | 'seaside' | 'none' | 'custom';
+    scene: SceneId;
     /** Pick a different background each time the theatre opens. */
     sceneShuffle: boolean;
     /** Background music plays while the theatre is open (bgm.ts). */
     bgmOn: boolean;
-    bgmTrack: 'daily' | 'calm' | 'night' | 'custom';
+    bgmTrack: BgmTrackId;
     bgmVolume: number;
     /** Swaying skirt, hair ends and tail (WebGL); the face is never deformed. */
     liveMotion: boolean;
+    /** Use the imported Live2D model instead of the illustrations (no effect until one is imported). */
+    live2d: boolean;
+    live2dWidgetScale: number;
+    live2dTheatreScale: number;
     x?: number;
     y?: number;
 }

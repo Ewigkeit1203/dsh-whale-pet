@@ -255,8 +255,6 @@ body.dsh-galgame-mode [data-composer-seat] { opacity: 0 !important; transform: t
 [data-whale-pet] .petReadingNav button:not(:disabled):hover { background: var(--wp-control-hover); color: var(--wp-ink); }
 [data-whale-pet] .petSinglePage { font-variant-numeric: tabular-nums; }
 [data-whale-pet] .petNavSpacer { flex: 1; }
-[data-whale-pet] .petNextTriangle { color: var(--wp-accent); font-size: 10px; animation: wpNext 1.1s ease-in-out infinite; pointer-events: none; }
-@keyframes wpNext { 50% { opacity: .3; transform: translateY(2px); } }
 [data-whale-pet] .petSkipReveal { color: var(--wp-accent) !important; }
 
 [data-whale-pet] .galgameComposerArea { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; }

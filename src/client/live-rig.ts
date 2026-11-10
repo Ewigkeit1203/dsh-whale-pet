@@ -150,6 +150,10 @@ export class LiveRig {
   private epoch = performance.now()
   private cache = new Map<string, Promise<HTMLImageElement>>()
   private pixelHeight = 0
+  /** Time of the last drawn frame, for the frame-rate cap. */
+  private lastDraw = 0
+  /** Something changed that a still (reduced-motion) picture must show. */
+  private dirty = true
   input: LiveInput = { motion: 1 }
   onReady: (() => void) | null = null
   onFail: (() => void) | null = null
@@ -245,6 +249,7 @@ export class LiveRig {
       this.previous = this.current
       this.current = skin
       this.fadeStart = performance.now()
+      this.dirty = true
       this.resizeCanvas()
       this.draw(performance.now())
       this.onReady?.()
@@ -312,6 +317,7 @@ export class LiveRig {
     if (this.canvas.width !== width || this.canvas.height !== height) {
       this.canvas.width = width
       this.canvas.height = height
+      this.dirty = true
     }
     this.pixelHeight = height
   }
@@ -321,8 +327,16 @@ export class LiveRig {
     this.running = true
     const loop = (now: number) => {
       if (!this.running) return
-      this.draw(now)
       this.frame = requestAnimationFrame(loop)
+      // The hem sways slowly: 30 fps looks the same as 60 and halves the work; 15 fps while DSH is in the
+      // background. With reduced motion the picture is still, so it is drawn only when it changes.
+      const still = this.input.motion <= 0 && !this.previous
+      if (still && !this.dirty) return
+      const fps = typeof document !== 'undefined' && typeof document.hasFocus === 'function' && !document.hasFocus() ? 15 : 30
+      if (!still && !this.previous && now - this.lastDraw < 1000 / fps - 2) return
+      this.lastDraw = now
+      this.dirty = false
+      this.draw(now)
     }
     this.frame = requestAnimationFrame(loop)
   }

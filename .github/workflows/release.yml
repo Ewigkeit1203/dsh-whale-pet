@@ -1,58 +1,79 @@
-# Publishes a GitHub Release when a version tag (v*) is pushed.
-# The archive matches scripts/package-release.ps1 (lib, assets, docs without
-# handover notes, install scripts and top-level documents) plus a SHA-256 file.
-# Release notes are docs/releases/<tag>.md (bilingual); an existing release is
-# never overwritten. Pushing the tag is the owner's release approval.
+# Only version tags publish; ordinary source pushes do not create a Release.
+# Publish exactly the Windows-built archives that passed the smoke checks.
 name: Release
 
 on:
   push:
+    branches: ['main']
     tags: ['v*']
+  pull_request:
 
 permissions:
   contents: write
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '11.25.0'
 
-      - name: Check version and notes
+      - name: Check version and release notes
+        shell: pwsh
         run: |
-          set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
-          VERSION="$(node -p "require('./package.json').version")"
-          if [ "v${VERSION}" != "${TAG}" ]; then echo "package.json is ${VERSION}, tag is ${TAG}"; exit 1; fi
-          test -f "docs/releases/${TAG}.md"
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and "v$version" -ne $env:GITHUB_REF_NAME) { throw 'Version tag does not match package.json' }
+          if (-not (Test-Path -LiteralPath "docs/releases/v$version.md")) { throw 'Missing release notes' }
+
+      - name: Build and check source
+        shell: pwsh
+        run: |
+          pnpm install --frozen-lockfile
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          pnpm run build
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          pnpm run typecheck
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          pnpm test
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
           node --check lib/client.js
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
-      - name: Build archive
+      - name: Check Windows launchers
+        shell: powershell
+        run: ./tests/install.test.ps1
+
+      - name: Build and verify both download archives
+        shell: powershell
         run: |
-          set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
-          ZIP="dsh-whale-pet-${TAG}.zip"
-          STAGE="$(mktemp -d)"
-          cp -r lib assets "${STAGE}/"
-          cp package.json cordis.yml install.bat uninstall.bat README.md CHANGELOG.md ASSETS_LICENSE.md CONTRIBUTING.md LICENSE "${STAGE}/"
-          mkdir "${STAGE}/docs"
-          for entry in docs/*; do
-            name="$(basename "${entry}")"
-            case "${name}" in handover|*_REVIEW_IMPLEMENTATION.md) continue ;; esac
-            cp -r "${entry}" "${STAGE}/docs/"
-          done
-          (cd "${STAGE}" && zip -qr -X "${GITHUB_WORKSPACE}/${ZIP}" .)
-          sha256sum "${ZIP}" > "${ZIP}.sha256"
-          cat "${ZIP}.sha256"
+          & ./scripts/package-release.ps1
+          $tag = "v$((Get-Content package.json -Raw | ConvertFrom-Json).version)"
+          & ./tests/package-release.test.ps1 -PackagePath "dist/dsh-whale-pet-$tag.zip"
+
+      - name: Keep checked candidates
+        uses: actions/upload-artifact@v4
+        with:
+          name: checked-release-downloads
+          path: |
+            dist/*.zip
+            dist/*.sha256
 
       - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
-          NOTES="docs/releases/${TAG}.md"
-          TITLE="$(head -n 1 "${NOTES}" | sed -E 's/^# +//; s/^(v[0-9.]+) · /\1 · 大肥鱼 — /')"
-          if gh release view "${TAG}" >/dev/null 2>&1; then echo "Release ${TAG} already exists; not overwriting."; exit 1; fi
-          gh release create "${TAG}" "dsh-whale-pet-${TAG}.zip" "dsh-whale-pet-${TAG}.zip.sha256" \
-            --title "${TITLE}" --notes-file "${NOTES}" --verify-tag
+          $tag = $env:GITHUB_REF_NAME
+          $notes = "docs/releases/$tag.md"
+          $title = (Get-Content -LiteralPath $notes -Encoding UTF8 -TotalCount 1) -replace '^# +', ''
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) { throw "Release $tag already exists; not overwriting" }
+          gh release create $tag "dist/dsh-whale-pet-$tag.zip" "dist/dsh-whale-pet-$tag.zip.sha256" "dist/dsh-whale-pet-installer-fix-$tag.zip" "dist/dsh-whale-pet-installer-fix-$tag.zip.sha256" --title $title --notes-file $notes --verify-tag
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }

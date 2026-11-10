@@ -1,4 +1,5 @@
 import React from 'react';
+import { type Live2DBinding, type PuppetTouch } from './LivingPuppet.js';
 import type { Preferences } from './preferences.js';
 import type { PetStatusInfo } from './types.js';
 import type { HistoryEntry } from './experience.js';
@@ -37,6 +38,8 @@ export interface TheatreViewProps {
         motion?: number;
         emote?: Emote;
         emoteKey?: number;
+        live2d?: Live2DBinding;
+        onTouch?: (touch: PuppetTouch) => void;
     };
     phase: string | null;
     tier: {
@@ -116,6 +119,7 @@ export interface TheatreViewProps {
         uploadBgm: (file: File) => void;
         removeBgm: () => void;
         setSpeed: (speed: Preferences['speed']) => void;
+        setLive2DScale: (scale: number) => void;
         setFontSize: (size: number) => void;
         toggleTypewriter: () => void;
         toggleLive: () => void;

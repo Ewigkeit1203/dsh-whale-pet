@@ -1,6 +1,21 @@
-import React from 'react'
 import type { Preferences } from './preferences.js'
 import type { WalletView } from './wallet.js'
+import { LIVE2D_CREDIT } from './live2d-package.js'
+
+/** What Settings shows about the imported Live2D model. */
+export interface Live2DSettings {
+  /** This build carries Cubism Core and the runtime. */
+  bundled: boolean
+  state: 'checking' | 'none' | 'importing' | 'ready' | 'failed'
+  name?: string
+  bytes?: number
+  progress?: [number, number]
+  /** Why the last import or load failed (already phrased for the user). */
+  message?: string
+  /** The model is what she is drawn with right now. */
+  active: boolean
+  needsReimport?: boolean
+}
 
 export interface SettingsPanelProps {
   p: Preferences
@@ -15,13 +30,17 @@ export interface SettingsPanelProps {
   notify: () => void
   close: () => void
   openTheatre: () => void
+  live2d: Live2DSettings
+  importLive2D: (files: File[]) => void
+  removeLive2D: () => void
+  onSizeStart?: () => void
 }
 
 const SIZE_STEPS = [0.5, 0.75, 1, 1.15, 1.3]
 const SIZE_NAMES = ['XS', 'S', 'M', 'L', 'XL']
 
 /** Plain render function (no hooks): header, scrollable body, fixed footer. */
-export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, quiet, reset, doctor, notify, close, openTheatre }: SettingsPanelProps) {
+export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, quiet, reset, doctor, notify, close, openTheatre, live2d, importLive2D, removeLive2D, onSizeStart }: SettingsPanelProps) {
   const t = (zh: string, en: string) => p.language === 'en' ? en : zh
   const selected = SIZE_STEPS.reduce((best, v) => Math.abs(v - p.scale) < Math.abs(best - p.scale) ? v : best)
   const sizeIndex = SIZE_STEPS.indexOf(selected)
@@ -79,8 +98,8 @@ export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, q
           </div>
           <div className="petField petFieldStack"><label className="petFieldLabel" id="pet-scale-label">{t('大小', 'Size')}<span className="petValue">{SIZE_NAMES[sizeIndex]}</span></label>
             <div className="petSizeSlider">
-              <input type="range" min="0" max="4" step="1" value={sizeIndex} aria-labelledby="pet-scale-label" aria-valuetext={Math.round(selected * 100) + '%'} onChange={e => update({ scale: SIZE_STEPS[Number(e.target.value)] })} />
-              <div className="petSizeDots">{SIZE_STEPS.map((v, i) => <button key={v} className={i === 2 ? 'default' : ''} type="button" title={SIZE_NAMES[i]} aria-label={t('大小 ', 'Size ') + SIZE_NAMES[i]} aria-pressed={v === selected} onClick={() => update({ scale: v })}><i /></button>)}</div>
+              <input onPointerDown={onSizeStart} onKeyDown={onSizeStart} type="range" min="0" max="4" step="1" value={sizeIndex} aria-labelledby="pet-scale-label" aria-valuetext={Math.round(selected * 100) + '%'} onChange={e => update({ scale: SIZE_STEPS[Number(e.target.value)] })} />
+              <div className="petSizeDots">{SIZE_STEPS.map((v, i) => <button key={v} className={i === 2 ? 'default' : ''} type="button" title={SIZE_NAMES[i]} aria-label={t('大小 ', 'Size ') + SIZE_NAMES[i]} aria-pressed={v === selected} onPointerDown={onSizeStart} onKeyDown={onSizeStart} onClick={() => update({ scale: v })}><i /></button>)}</div>
             </div>
           </div>
           <div className="petField petFieldStack"><label className="petFieldLabel" htmlFor="pet-opacity">{t('透明度', 'Opacity')}<span className="petValue">{Math.round(p.opacity * 100)}%</span></label>
@@ -90,6 +109,36 @@ export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, q
             <input id="pet-font" type="range" min="14" max="24" step="0.1" value={p.fontSize} aria-valuetext={p.fontSize + 'px'} onChange={e => update({ fontSize: Number(e.target.value) })} />
           </div>
           {toggle(p.docked, docked => update({ docked }), t('贴边探头', 'Peek from the edge'), { hint: t('只露出上半身', 'Only the upper half shows') })}
+        </div>
+      </details>
+
+      <details className="petSettingsGroup">
+        <summary>{t('角色模型', 'Character model')}</summary>
+        <div className="petGroupBody">
+          <p className="petModelStatus" data-state={live2d.state}>{
+            !live2d.bundled ? t('这个版本不含 Live2D 运行库，继续使用插图。', 'This build has no Live2D runtime; illustrations are used.')
+            : live2d.state === 'checking' ? t('正在读取本机保存的模型……', 'Reading the saved model…')
+            : live2d.state === 'importing' ? t(`正在导入 ${live2d.progress?.[0] ?? 0} / ${live2d.progress?.[1] ?? '…'}（贴图会缩小到 2048）`, `Importing ${live2d.progress?.[0] ?? 0} / ${live2d.progress?.[1] ?? '…'} (textures are scaled to 2048)`)
+            : live2d.state === 'ready' ? (live2d.active ? t(`正在使用 Live2D：${live2d.name}（${((live2d.bytes ?? 0) / 1048576).toFixed(1)} MB）`, `Using Live2D: ${live2d.name} (${((live2d.bytes ?? 0) / 1048576).toFixed(1)} MB)`) : t(`已导入 ${live2d.name}，当前显示插图。`, `${live2d.name} is imported; illustrations are shown.`))
+            : live2d.state === 'failed' ? live2d.message
+            : t('未导入 Live2D 模型，正在使用插图。', 'No Live2D model imported; illustrations are used.')
+          }</p>
+          {live2d.needsReimport && <p className="petModelStatus">{t('当前模型仍可使用。请重新导入原模型文件夹，以启用完整手势和作者待机动作。', 'Your model still works. Reimport the original model folder to enable all gestures and the authored idle animation.')}</p>}
+          {live2d.bundled && <>
+            {(['live2dWidgetScale', 'live2dTheatreScale'] as const).map(key => <label key={key} className="petField petFieldStack">
+              <span className="petFieldLabel">{key === 'live2dWidgetScale' ? t('桌宠模型大小', 'Desktop model size') : t('剧场模型大小', 'Theatre model size')}<span className="petValue">{Math.round(p[key] * 100)}%</span></span>
+              <input onPointerDown={onSizeStart} onKeyDown={onSizeStart} type="range" min="0.6" max="2" step="0.05" value={p[key]} aria-label={key === 'live2dWidgetScale' ? t('桌宠模型大小', 'Desktop model size') : t('剧场模型大小', 'Theatre model size')} onChange={e => update({ [key]: Number(e.target.value) })} />
+            </label>)}
+            <small>{t('模型大小单独保存；桌宠同时受外观大小影响，并自动限制在窗口内。', 'Model sizes are saved separately. Desktop size also follows Appearance and fits the window.')}</small>
+            <label className="petWide petFilePick" data-disabled={live2d.state === 'importing' || undefined}>
+              <input type="file" multiple {...{ webkitdirectory: '', directory: '' }} disabled={live2d.state === 'importing'} onChange={e => { const files = Array.from(e.target.files ?? []); e.target.value = ''; if (files.length) importLive2D(files) }} />
+              <strong>{live2d.state === 'ready' ? t('重新导入模型文件夹', 'Import the model folder again') : t('导入模型文件夹', 'Import the model folder')}</strong>
+              <small>{t('选择含「大肥鱼.model3.json」的文件夹，只保存在本机', 'Pick the folder with 大肥鱼.model3.json; it stays on this device')}</small>
+            </label>
+            {live2d.name && toggle(p.live2d, live2d => update({ live2d }), t('使用 Live2D 模型', 'Use the Live2D model'), { disabled: live2d.state === 'importing', hint: t('关闭后显示原版插图', 'Off shows the original illustrations') })}
+            {live2d.name && live2d.state !== 'importing' && <button type="button" className="petWide" onClick={removeLive2D}><strong>{t('移除模型', 'Remove the model')}</strong><small>{t('从本机删除导入的文件', 'Delete the imported files from this device')}</small></button>}
+          </>}
+          <p className="petCredit">{t(`模型 ${LIVE2D_CREDIT.model} · 原画及拆分 ${LIVE2D_CREDIT.art} · Live2D 建模 ${LIVE2D_CREDIT.rigging}。模型由作者免费配布，插件不附带模型文件，请从`, `Model ${LIVE2D_CREDIT.model} · art ${LIVE2D_CREDIT.art} · Live2D rigging ${LIVE2D_CREDIT.rigging}. The model is shared free by its author; the plugin does not include it. Download it from `)}<a href={LIVE2D_CREDIT.page} target="_blank" rel="noreferrer">{t(`${LIVE2D_CREDIT.art}的 B 站主页`, `${LIVE2D_CREDIT.art}'s Bilibili page`)}</a>{t('下载。', '.')}</p>
         </div>
       </details>
 
@@ -110,7 +159,7 @@ export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, q
             <strong>{p.quiet ? t('结束安静模式', 'End quiet mode') : t('安静模式', 'Quiet mode')}</strong>
             <small>{p.quiet ? t('恢复之前的音效与游荡设置', 'Restore previous sound and wandering') : t('暂停闲聊、音效和游荡', 'Pause chatter, sounds and wandering')}</small>
           </button>
-          {toggle(p.liveMotion, liveMotion => update({ liveMotion }), t('裙摆飘动', 'Swaying clothes'), { hint: t('裙摆、发梢和尾巴轻轻摆动', 'Skirt, hair ends and tail sway gently') })}
+          {toggle(p.liveMotion, liveMotion => update({ liveMotion }), t('裙摆飘动', 'Swaying clothes'), { disabled: live2d.active, hint: live2d.active ? t('Live2D 模型自带物理摆动', 'The Live2D model has its own physics') : t('裙摆、发梢和尾巴轻轻摆动', 'Skirt, hair ends and tail sway gently') })}
           {toggle(p.wandering, wandering => update({ wandering }), t('闲置时散步', 'Wander when idle'), { disabled: p.quiet })}
           {toggle(p.reminders, reminders => update({ reminders }), t('午饭和熬夜提醒', 'Lunch & late-night reminders'))}
           {toggle(p.peakNotice, peakNotice => update({ peakNotice }), t('峰谷时段播报', 'Peak / off-peak announcements'), { hint: t('切换到梁文峰 / 梁文谷时间时告诉你', 'Tell you when API pricing switches') })}

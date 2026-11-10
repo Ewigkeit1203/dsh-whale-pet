@@ -4,14 +4,21 @@ import { paginateText, revealDelay, diagnosticReport } from './usability.js'
 import { dialogueBlocks, readConversationLog, type HistoryEntry } from './experience.js'
 import { readPreferences, savePreferences, quietPreset, defaultPreferences, type Preferences } from './preferences.js'
 import { FEATURES, effectiveForm } from './features.js'
-import { POSE_META, spriteGeometry } from './poses.js'
-import { LAYOUT, layoutGroup, clampPet, wanderDestination, nextWanderDelay, placeGroupX, groupFits, type PanelSide } from './layout.js'
+import { POSE_META, spriteGeometry, live2dWidgetGeometry } from './poses.js'
+import { layoutGroup, layoutResizedGroup, type GroupLayout, clampPet, wanderDestination, nextWanderDelay, placeGroupX, groupFits, type PanelSide } from './layout.js'
 import { walletView } from './wallet.js'
 import { PetVoice, appendedSpeech, speakableText } from './voice.js'
 import { tariffAt, type Tier } from './peak.js'
 import { SCENES, sceneMeta, sceneSvg, sceneUrl, shuffleScene, timeOfDayScene, type SceneId } from './scenes.js'
 import { BgmPlayer, BGM_TRACKS, cycleBgmTrack, type BgmTrackId } from './bgm.js'
-import { checkMedia, saveMedia, loadMedia, deleteMedia } from './media-store.js'
+import { checkMedia, saveMedia, loadMedia, deleteMedia, saveLive2DModel, loadLive2DModel, deleteLive2DModel, type StoredLive2D } from './media-store.js'
+import { importLive2DFiles, live2dSourceFor, live2dNeedsReimport } from './live2d-package.js'
+import { live2dLookFor } from './live2d-look.js'
+import { live2dBundled } from './live2d-loader.js'
+import type { Live2DSettings } from './SettingsPanel.js'
+import type { Live2DBinding, PuppetTouch } from './LivingPuppet.js'
+import { PokeCounter, TailPatience, DRAG_THRESHOLD, type TouchRegion } from './touch.js'
+import type { CarryGrab } from './carry.js'
 import { detectEmotion, EMOTION_POSE, emoteFor, type Emote, type Emotion } from './emotion.js'
 import { LiveRig } from './live-rig.js'
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
@@ -43,15 +50,27 @@ export interface PetOverlayProps {
   stateMachine: PetStateMachine
 }
 
+/** One shared measuring context and a per-font cache of character widths. */
+let dialogueMeasure: { context: CanvasRenderingContext2D | null; font: number; widths: Map<string, number> } | null = null
+function dialogueCharWidth(font: number): ((character: string) => number) | undefined {
+  if (!dialogueMeasure) {
+    const context = typeof document.createElement === 'function' ? document.createElement('canvas').getContext('2d') : null
+    dialogueMeasure = { context, font: 0, widths: new Map() }
+  }
+  const cache = dialogueMeasure
+  if (!cache.context) return undefined
+  if (cache.font !== font) { cache.font = font; cache.widths.clear(); cache.context.font = font + 'px "Microsoft YaHei", "PingFang SC", sans-serif' }
+  return character => {
+    let width = cache.widths.get(character)
+    if (width === undefined) { width = cache.context!.measureText(character).width; cache.widths.set(character, width) }
+    return width
+  }
+}
+
 /** Measured pagination; code blocks stay whole so they can scroll inside their card. */
 function paginateDialogue(text: string, width: number, height: number, font: number): string[] {
-  const blocks = dialogueBlocks(text)
-  let measure: ((text: string) => number) | undefined
-  if (typeof document.createElement === 'function') {
-    const context = document.createElement('canvas').getContext('2d')
-    if (context) { context.font = font + 'px "Microsoft YaHei", "PingFang SC", sans-serif'; measure = value => context.measureText(value).width }
-  }
-  return blocks.flatMap(block => block.kind === 'code' ? ['```' + (block.language || '') + '\n' + block.text + '\n```'] : paginateText(block.text, width, height, font, measure))
+  const charWidth = dialogueCharWidth(font)
+  return dialogueBlocks(text).flatMap(block => block.kind === 'code' ? ['```' + (block.language || '') + '\n' + block.text + '\n```'] : paginateText(block.text, width, height, font, charWidth))
 }
 
 /** Artwork for reactions and per-page expressions. */
@@ -69,14 +88,10 @@ const nextFrame = (callback: () => void): void => {
   else callback()
 }
 
-/**
- * Fields the views actually draw. Blink is not drawn, mouth only matters as
- * "talking or not" and gaze is quantised, so animation ticks and every pointer
- * move no longer re-render the whole overlay.
- */
+/** Fields the views actually draw; a status update that changes none of them does not re-render. */
 function statusRenderKey(s: PetStatusInfo): string {
   return [s.state, s.form, s.pose, s.speech, s.reasoningText.length, s.reasoningText.slice(-24), s.latestDialogue.length, s.latestDialogue.slice(-24),
-    s.isReasoning, s.isStreaming, s.isInputFocused, s.isGalGameMode, s.autoGalGameOnChat, s.mouthOpenRatio > 0.15,
+    s.isReasoning, s.isStreaming, s.isInputFocused, s.isGalGameMode, s.autoGalGameOnChat,
     s.balancesKnown, s.toppedUpBalance, s.grantedBalance,
     s.hostBalance?.status, s.hostBalance?.updatedAt, s.hostBalance ? JSON.stringify([s.hostBalance.toppedUp, s.hostBalance.granted]) : ''].join('\u0001')
 }
@@ -100,17 +115,18 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [revealed, setRevealed] = useState(0)
   const [toast, setToast] = useState('')
-  const [affection, setAffection] = useState<'pat' | 'dizzy' | 'float' | ''>('')
+  const [affection, setAffection] = useState<'pat' | 'tail' | 'dizzy' | 'float' | ''>('')
   // v0.6.0 expressions: short reactions (pat, answer finished, announcements, idle glances)
   // and the theatre's per-page expression with its mood mark.
   const [reaction, setReaction] = useState<{ pose: string; emote: Emote; until: number; key: number } | null>(null)
   const [pageEmotion, setPageEmotion] = useState<{ emotion: Emotion; emote: Emote; key: number }>({ emotion: 'neutral', emote: null, key: 0 })
   const [liveSupported] = useState(() => LiveRig.supported())
   const emoteSeq = useRef(0)
-  // Easter egg: poke her quickly and she gets puzzled, then frustrated.
-  const pokeTimes = useRef<number[]>([])
-  const pokeCooldown = useRef(0)
-  const [poke, setPoke] = useState<'' | 'curious' | 'angry'>('')
+  // Touch (touch.ts): poke her quickly and she gets puzzled, then frustrated; her tail is sensitive.
+  const pokes = useRef(new PokeCounter())
+  const chestTouchAt = useRef(-Infinity)
+  const tailPatience = useRef(new TailPatience())
+  const [poke, setPoke] = useState<'' | 'curious' | 'angry' | 'tail' | 'chest'>('')
   const [clock, setClock] = useState(() => Date.now())
   const voiceRef = useRef<PetVoice | null>(null)
   if (!voiceRef.current) voiceRef.current = new PetVoice()
@@ -118,7 +134,6 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const revealIdentity = useRef({ page: -1, text: '' })
   const startedAt = useRef(0)
   const lunchDay = useRef('')
-  const headPat = useRef({ x: 0, direction: 0, turns: 0, time: 0, cooldown: 0 })
   const [pageBox, setPageBox] = useState({ width: 760, height: 140 })
   const [doctor, setDoctor] = useState('')
   const [ghost, setGhost] = useState(false)
@@ -131,8 +146,16 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const [reduceMotion, setReduceMotion] = useState(false)
   const previousStream = useRef(false)
   const [isDragging, setIsDragging] = useState(false)
+  // Picked up (a drag that really moves): where she was grabbed, and whether she has been held a while.
+  const [held, setHeld] = useState<CarryGrab | null>(null)
+  const [heldLong, setHeldLong] = useState(false)
+  const [landed, setLanded] = useState(false)
+  const liftedAt = useRef(0)
+  const carrySequence = useRef(0)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [sizeAnchor, setSizeAnchor] = useState<{ layout: GroupLayout; bottom: number } | null>(null)
+  const currentSizeLayout = useRef<{ layout: GroupLayout; bottom: number } | null>(null)
   const [isBouncing, setIsBouncing] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const [currentPageIndex, setCurrentPageIndex] = useState(0)
@@ -148,7 +171,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const dragFrameRef = useRef<{ x: number; y: number } | null>(null)
   const previousTierRef = useRef<Tier | null>(null)
   const isDraggingRef = useRef(false)
-  const dragStartRef = useRef<{ startX: number; startY: number; petX: number; petY: number; startTime: number; maxDistance: number; distance: number; lastX: number; lastY: number; lastMove: number; vx: number; vy: number } | null>(null)
+  const dragStartRef = useRef<{ startX: number; startY: number; petX: number; petY: number; startTime: number; maxDistance: number; distance: number; lastX: number; lastY: number; lastMove: number; vx: number; vy: number; region?: TouchRegion | null; element?: Element; started?: boolean; lifted?: boolean } | null>(null)
   const wanderPositionRef = useRef(position)
   wanderPositionRef.current = position
   const [wanderRequest, setWanderRequest] = useState(0)
@@ -200,6 +223,24 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     ({ IDLE: 'I’m right here with you.', PEEKING: 'I’m listening. What’s on your mind?', REASONING: 'Let me think this through…', ANSWERING: 'Putting the answer together for you…', EATING: 'Time for a little rice break!', WANDERING: 'Taking a little stroll…' }[status.state])
   const phaseLabel = ({ IDLE: t('待机', 'Ready'), PEEKING: t('倾听中', 'Listening'), REASONING: t('思考中', 'Thinking'), ANSWERING: t('回答中', 'Answering'), EATING: t('休息中', 'Resting'), WANDERING: t('散步中', 'Strolling') }[status.state])
 
+  // ---- Live2D model (imported by the user, kept in IndexedDB) -----------------
+  const [live2dRecord, setLive2dRecord] = useState<StoredLive2D | null>(null)
+  const [live2dState, setLive2dState] = useState<Omit<Live2DSettings, 'bundled' | 'active'>>({ state: 'checking' })
+  const [live2dAspect, setLive2dAspect] = useState<number | null>(null)
+  const [live2dFailure, setLive2dFailure] = useState<string | null>(null)
+  const [live2dIncluded] = useState(() => live2dBundled())
+  const live2dSource = useMemo(() => live2dRecord ? live2dSourceFor(live2dRecord) : null, [live2dRecord])
+  useEffect(() => {
+    let alive = true
+    if (!live2dIncluded) { setLive2dState({ state: 'none' }); return }
+    void loadLive2DModel().then(record => {
+      if (!alive) return
+      setLive2dRecord(record)
+      setLive2dState(record ? { state: 'ready', name: record.name, bytes: record.bytes } : { state: 'none' })
+    })
+    return () => { alive = false }
+  }, [])
+
   // ---- Geometry -------------------------------------------------------------
   const renderForm = FEATURES.chibiForm ? status.form : 'maiden'
   const isMaiden = renderForm === 'maiden'
@@ -207,10 +248,12 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     if (!isMaiden) return [CHIBI_DATA_URI, 'DaFeiYu']
     if (affection === 'dizzy' && !status.isStreaming) return [DIZZY_DATA_URI, 'Dizzy']
     const busy = status.isStreaming || status.isReasoning
-    if (reaction && (!busy || affection === 'pat') && EXPRESSION_SRC[reaction.pose]) return [EXPRESSION_SRC[reaction.pose], reaction.pose]
+    // Carried: startled, then flustered. Thinking and answering keep their own pose.
+    if (held && !busy) return heldLong ? [EXPRESSION_SRC.shy, 'shy'] : [EXPRESSION_SRC.surprised, 'surprised']
+    if (reaction && (!busy || affection === 'pat' || affection === 'tail') && EXPRESSION_SRC[reaction.pose]) return [EXPRESSION_SRC[reaction.pose], reaction.pose]
     if (affection === 'pat') return [SAJIAO_DATA_URI, 'sajiao']
     if (status.isGalGameMode && !busy && pageEmotion.emotion !== 'neutral') { const pose = EMOTION_POSE[pageEmotion.emotion]; return [EXPRESSION_SRC[pose], pose] }
-    if (status.pose === 'sajiao' || status.pose === 'mad') return [SAJIAO_DATA_URI, 'sajiao']
+    if (status.pose === 'sajiao') return [SAJIAO_DATA_URI, 'sajiao']
     if (status.isStreaming) return [ANSWERING_DATA_URI, 'Answering']
     if (status.pose === 'eating' || status.state === 'EATING') return [BAIFAN_DATA_URI, 'baifan']
     if (status.pose === 'answering' || status.state === 'ANSWERING') return [ANSWERING_DATA_URI, 'Answering']
@@ -224,19 +267,38 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     return [MAID_DATA_URI, 'Maid']
   }
   const [currentImgSrc, hitPose] = resolveCharacter()
-  const geometry = spriteGeometry(hitPose, viewport.height, preferences.scale)
+  const live2dOn = Boolean(preferences.live2d && live2dSource && !live2dFailure && isMaiden && live2dIncluded)
+  // Once the model has framed itself, the box follows its proportions (the illustration shows while it loads).
+  const geometry = live2dOn ? live2dWidgetGeometry(viewport.width, viewport.height, preferences.scale * preferences.live2dWidgetScale, live2dAspect) : spriteGeometry(hitPose, viewport.height, preferences.scale)
+  const live2dSleepy = preferences.reminders && new Date(clock).getHours() >= 1 && new Date(clock).getHours() < 5 && status.state === 'IDLE'
+  const live2dLook = useMemo(() => live2dLookFor(hitPose, { sleepy: live2dSleepy, state: status.state, held: Boolean(held), heldKey: held?.key, guardChest: poke === 'chest' }), [hitPose, live2dSleepy, status.state, held, poke])
+  const live2dBinding = useMemo<Live2DBinding | undefined>(() => live2dOn && live2dSource ? {
+    source: live2dSource,
+    scale: status.isGalGameMode ? preferences.live2dTheatreScale : 1,
+    look: live2dLook,
+    onReady: aspect => setLive2dAspect(aspect),
+    onFail: reason => {
+      setLive2dFailure(reason)
+      setLive2dState(previous => ({ ...previous, state: 'failed', message: live2dFailureText(reason) }))
+    },
+  } : undefined, [live2dOn, live2dSource, live2dLook, status.isGalGameMode, preferences.live2dTheatreScale])
   const stageW = geometry.stageWidth
   const stageH = geometry.stageHeight
   const docked = preferences.docked
   const petBox = docked
     ? { x: viewport.width - stageW - 12, y: Math.round(viewport.height - stageH * DOCK_PEEK) }
     : position
-  const group = isSettingsOpen ? layoutGroup({
+  const groupInput = {
     viewportWidth: viewport.width, viewportHeight: viewport.height, composerTop,
     pet: { x: petBox.x, y: petBox.y, width: stageW, height: stageH },
     previousSide: sideRef.current, petPinned: docked,
-  }) : null
-  const petPos = group && group.mode === 'tethered' ? group.pet : petBox
+  }
+  const group = isSettingsOpen ? sizeAnchor
+    ? layoutResizedGroup(groupInput, sizeAnchor.layout, sizeAnchor.bottom)
+    : layoutGroup(groupInput) : null
+  const petPos = group ? group.pet : petBox
+  currentSizeLayout.current = group ? { layout: group, bottom: petPos.y + stageH } : null
+  useEffect(() => { setSizeAnchor(null) }, [isSettingsOpen, viewport.width, viewport.height, composerTop, docked])
   const imageTop = stageH - geometry.imageHeight
 
   constrainRef.current = (x: number, y: number) => {
@@ -258,7 +320,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   useEffect(() => {
     if (!group) return
     sideRef.current = group.side
-    if (group.mode === 'tethered' && !docked && !isDraggingRef.current && (group.pet.x !== position.x || group.pet.y !== position.y)) setPosition(group.pet)
+    if (!docked && !isDraggingRef.current && (group.pet.x !== position.x || group.pet.y !== position.y)) setPosition(group.pet)
   }, [group?.side, group?.mode, group?.pet.x, group?.pet.y, docked])
 
   useEffect(() => {
@@ -313,7 +375,6 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   }, [stateMachine])
 
   // At most one render per frame, and only when something drawn changed.
-  // (Pointer gaze is not drawn: the portrait does not follow the mouse.)
   useEffect(() => {
     const unsubscribe = stateMachine.subscribe(next => {
       const key = statusRenderKey(next)
@@ -349,7 +410,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   useEffect(() => {
     const media = window.matchMedia?.('(prefers-reduced-motion: reduce)')
     const motion = () => setReduceMotion(media?.matches ?? false)
-    const visibility = () => { const active = !document.hidden && document.hasFocus(); setForeground(active); stateMachine.setPaused(!active); if (!active) voiceRef.current?.silence() }
+    const visibility = () => { const active = !document.hidden && document.hasFocus(); setForeground(active); if (!active) voiceRef.current?.silence() }
     motion(); visibility()
     media?.addEventListener('change', motion)
     window.addEventListener('focus', visibility); window.addEventListener('blur', visibility); document.addEventListener('visibilitychange', visibility)
@@ -361,7 +422,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       } else setDimmed(false)
     }
     window.addEventListener('pointermove', reading, { passive: true }); window.addEventListener('wheel', reading, { passive: true })
-    return () => { if (timer) clearTimeout(timer); stateMachine.setPaused(false); media?.removeEventListener('change', motion); window.removeEventListener('focus', visibility); window.removeEventListener('blur', visibility); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pointermove', reading); window.removeEventListener('wheel', reading) }
+    return () => { if (timer) clearTimeout(timer); media?.removeEventListener('change', motion); window.removeEventListener('focus', visibility); window.removeEventListener('blur', visibility); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pointermove', reading); window.removeEventListener('wheel', reading) }
   }, [stateMachine])
   useEffect(() => {
     if (previousStream.current && !status.isStreaming && !status.isReasoning && !foreground && preferences.notifications && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
@@ -380,8 +441,9 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   // ---- Theatre reading ------------------------------------------------------
   // Without an answer yet the theatre shows her own line, with the user's chosen names.
   const dialogueSource = status.latestDialogue && status.latestDialogue !== status.speech ? status.latestDialogue : preferences.language === 'zh' ? address(companionSpeech) : companionSpeech
-  const dialoguePages = useMemo(() => paginateDialogue(dialogueSource, pageBox.width, pageBox.height, preferences.fontSize),
-    [dialogueSource, pageBox, preferences.fontSize])
+  // Pages exist only on the theatre stage; the desktop companion never needs them.
+  const dialoguePages = useMemo(() => status.isGalGameMode ? paginateDialogue(dialogueSource, pageBox.width, pageBox.height, preferences.fontSize) : [dialogueSource],
+    [status.isGalGameMode, dialogueSource, pageBox, preferences.fontSize])
 
   useEffect(() => {
     const cur = status.latestDialogue || status.speech
@@ -433,10 +495,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     else if (followTextRef.current) box.scrollTop = box.scrollHeight
   }, [currentPageIndex, status.latestDialogue, status.isGalGameMode, preferences.reading])
 
-  useEffect(() => {
-    const timer = setInterval(() => { if (!document.hidden) setClock(Date.now()) }, 1000)
-    return () => { clearInterval(timer); voiceRef.current?.dispose() }
-  }, [])
+  useEffect(() => () => voiceRef.current?.dispose(), [])
 
   // ---- Voice ----------------------------------------------------------------
   const voiceAllowed = !preferences.muted && !preferences.quiet && preferences.volume > 0 && foreground && !uiHidden && !logOpen
@@ -552,6 +611,12 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     setReaction({ pose, emote, until: Date.now() + ms, key })
     later(() => setReaction(current => current && current.key === key ? null : current), ms)
   }
+  useEffect(() => {
+    setHeldLong(false)
+    if (!held) return
+    const timer = setTimeout(() => setHeldLong(true), 2500)
+    return () => clearTimeout(timer)
+  }, [held])
   // Answer finished: an expression read from its last lines, then the usual rice break.
   const finishedStream = useRef(false)
   useEffect(() => {
@@ -593,8 +658,27 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     }
     previousPose.current = pose
   }, [status.pose, voiceAllowed])
+  // The clock drives elapsed time, pricing period, reminders and staleness. It ticks every second only
+  // while a model is working (the elapsed counter); otherwise every 15 s, plus an exact wake-up when an
+  // announcement ends or the pricing period changes. A tick re-renders the whole overlay, so this matters.
+  const clockBusy = status.isReasoning || status.isStreaming
+  useEffect(() => {
+    const tick = () => { if (!document.hidden) setClock(Date.now()) }
+    const timer = setInterval(tick, clockBusy ? 1000 : 15000)
+    document.addEventListener('visibilitychange', tick)
+    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', tick) }
+  }, [clockBusy])
+  const clockMinute = Math.floor(clock / 60000)
+  const tariff = useMemo(() => tariffAt(clock), [clockMinute])
+  useEffect(() => {
+    const now = Date.now()
+    const due = [tierAnnounce?.until ?? 0, tariff.nextChange ?? 0].filter(at => at > now)
+    if (!due.length) return
+    const timer = setTimeout(() => setClock(Date.now()), Math.min(...due) - now + 50)
+    return () => clearTimeout(timer)
+  }, [tierAnnounce, tariff.nextChange])
   // 梁文峰 / 梁文谷: announce once on load and at every switch.
-  const tierNow = tariffAt(clock).tier
+  const tierNow = tariff.tier
   useEffect(() => {
     const previous = previousTierRef.current
     previousTierRef.current = tierNow
@@ -625,15 +709,6 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     if (menuTimerRef.current) clearTimeout(menuTimerRef.current)
     menuTimerRef.current = later(() => setIsMenuOpen(false), 750)
   }, [])
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (status.isInputFocused || isDraggingRef.current) return
-      stateMachine.setGazeOffset({ x: (e.clientX - window.innerWidth / 2) / (window.innerWidth / 2), y: (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2) })
-    }
-    window.addEventListener('mousemove', handleMouseMove, { passive: true })
-    return () => window.removeEventListener('mousemove', handleMouseMove)
-  }, [status.isInputFocused, stateMachine])
 
   // Every idle wait is sampled afresh; paused/busy modes never accumulate a backlog.
   useEffect(() => {
@@ -682,15 +757,22 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   }, [status.state, wanderRequest, stateMachine])
 
   // ---- Drag, click, inertia --------------------------------------------------
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+  const handleMouseDown = useCallback((e: React.MouseEvent, region?: TouchRegion | null) => {
     if (status.isGalGameMode || e.button !== 0) return
     // Do not take focus from the host composer (and do not arm the keyboard focus ring) on a mouse press.
     e.preventDefault?.()
     stateMachine.resetActivity()
+    // Interrupt settling/wandering at the visible position, not its CSS destination.
+    const element = e.currentTarget?.closest('[data-whale-pet="widget"]')
+    const rect = element?.getBoundingClientRect()
+    const origin = rect && Number.isFinite(rect.left) ? { x: rect.left, y: rect.top } : petPos
+    setPosition(origin)
+    dragFrameRef.current = null
+    setSizeAnchor(null)
     isDraggingRef.current = true
     setIsDragging(true)
     stateMachine.setWandering(false)
-    dragStartRef.current = { startX: e.clientX, startY: e.clientY, petX: petPos.x, petY: petPos.y, startTime: Date.now(), maxDistance: 0, distance: 0, lastX: e.clientX, lastY: e.clientY, lastMove: Date.now(), vx: 0, vy: 0 }
+    dragStartRef.current = { startX: e.clientX, startY: e.clientY, petX: origin.x, petY: origin.y, region, element: element ?? undefined, startTime: Date.now(), maxDistance: 0, distance: 0, lastX: e.clientX, lastY: e.clientY, lastMove: Date.now(), vx: 0, vy: 0 }
   }, [petPos.x, petPos.y, status.isGalGameMode, stateMachine])
 
   useEffect(() => {
@@ -707,12 +789,21 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       const dx = e.clientX - drag.startX
       const dy = e.clientY - drag.startY
       drag.maxDistance = Math.max(drag.maxDistance, Math.hypot(dx, dy))
-      if (preferences.docked) return
+      if (preferences.docked || drag.maxDistance < DRAG_THRESHOLD) return
+      drag.started = true
+      if (!drag.lifted && !isSettingsOpen && !reduceMotion) {
+        const rect = drag.element?.getBoundingClientRect()
+        const from = rect ? { x: rect.left, y: rect.top } : { x: drag.petX, y: drag.petY }
+        drag.lifted = true; liftedAt.current = Date.now()
+        setHeld({ x: e.clientX, y: e.clientY, from, key: ++carrySequence.current })
+      }
       // Coalesce to one position update per frame; fast drags fire far more events than frames.
       const pending = dragFrameRef.current
       dragFrameRef.current = { x: drag.petX + dx, y: drag.petY + dy }
       if (pending) return
       nextFrame(() => {
+        // A callback from a released drag must never consume the next drag's input.
+        if (dragStartRef.current !== drag) return
         const target = dragFrameRef.current
         dragFrameRef.current = null
         if (target && isDraggingRef.current) setPosition(constrainRef.current(target.x, target.y))
@@ -720,17 +811,27 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     }
     const handleMouseUp = (e: MouseEvent) => {
       const drag0 = dragStartRef.current
-      if (drag0 && drag0.maxDistance >= 6 && !preferences.docked) setPosition(constrainRef.current(drag0.petX + e.clientX - drag0.startX, drag0.petY + e.clientY - drag0.startY))
+      if (drag0?.started && !preferences.docked) {
+        const end = { x: drag0.petX + e.clientX - drag0.startX, y: drag0.petY + e.clientY - drag0.startY }
+        setPosition(constrainRef.current(end.x, end.y))
+      }
       dragFrameRef.current = null
       isDraggingRef.current = false
       setIsDragging(false)
+      setHeld(null)
+      // Carried for a while: once she is back on her feet, a dizzy sigh.
+      if (liftedAt.current && Date.now() - liftedAt.current > 1500) {
+        setLanded(true)
+        later(() => setLanded(false), 2600)
+      }
+      liftedAt.current = 0
       const drag = dragStartRef.current
       if (drag) {
         const dist = Math.max(drag.maxDistance, Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY))
         const duration = Date.now() - drag.startTime
-        if (dist >= 6 && !preferences.docked) {
+        if (drag.started && !preferences.docked) {
           const dizzy = drag.distance > 900 && duration < 2500
-          if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches && Date.now() - drag.lastMove < 100) {
+          if (!drag.lifted && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches && Date.now() - drag.lastMove < 100) {
             const vx = Math.max(-30, Math.min(30, drag.vx * 70))
             const vy = Math.max(-20, Math.min(20, drag.vy * 70))
             setPosition(previous => constrainRef.current(previous.x + vx, previous.y + vy))
@@ -738,31 +839,20 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
           setAffection(dizzy ? 'dizzy' : 'float')
           later(() => setAffection(''), dizzy ? 2400 : 800)
         }
-        if (dist < 6 && duration < 380) {
+        if (!drag.started && dist < DRAG_THRESHOLD && duration < 380 && drag.region === 'chest') {
+          touchHer({ kind: 'chest', side: 1 })
+        } else if (!drag.started && dist < DRAG_THRESHOLD && duration < 380) {
           setIsBouncing(true)
           later(() => setIsBouncing(false), 480)
-          stateMachine.triggerMad()
+          stateMachine.triggerSajiao()
           // The first click toggles Settings; quick follow-up clicks are pokes.
-          const now = Date.now()
-          const pokes = pokeTimes.current.filter(time => now - time < 2500).concat(now)
-          pokeTimes.current = pokes
-          if (pokes.length === 1 && now >= pokeCooldown.current) setIsSettingsOpen(previous => !previous)
+          if (pokeHer()) setIsSettingsOpen(previous => !previous)
           else setIsSettingsOpen(false)
-          if (now < pokeCooldown.current) { /* still frustrated */ }
-          else if (pokes.length >= 6) {
-            pokeTimes.current = []
-            pokeCooldown.current = now + 4000
-            setPoke('angry'); react('angry', 'anger', 3200)
-            later(() => setPoke(current => current === 'angry' ? '' : current), 3200)
-          } else if (pokes.length === 3) {
-            setPoke('curious'); react('surprised', 'question', 1800)
-            later(() => setPoke(current => current === 'curious' ? '' : current), 1800)
-          }
         }
       }
       dragStartRef.current = null
     }
-    const cancelDrag = () => { isDraggingRef.current = false; setIsDragging(false); dragStartRef.current = null }
+    const cancelDrag = () => { isDraggingRef.current = false; setIsDragging(false); setHeld(null); dragStartRef.current = null; dragFrameRef.current = null }
     window.addEventListener('mousemove', handleMouseMove)
     window.addEventListener('blur', cancelDrag)
     window.addEventListener('mouseup', handleMouseUp)
@@ -771,7 +861,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       window.removeEventListener('mouseup', handleMouseUp)
       window.removeEventListener('blur', cancelDrag)
     }
-  }, [isDragging, stateMachine, preferences.docked])
+  }, [isDragging, stateMachine, preferences.docked, isSettingsOpen, reduceMotion])
 
   // ---- Theatre handlers -----------------------------------------------------
   const handleAdvancePage = () => {
@@ -825,7 +915,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   }
 
   const displayDialogue = preferences.reading === 'scroll' ? dialogueSource : dialoguePages[currentPageIndex] || dialoguePages[0] || ''
-  const characters = useMemo(() => Array.from(displayDialogue), [displayDialogue])
+  const characters = useMemo(() => status.isGalGameMode ? Array.from(displayDialogue) : [], [status.isGalGameMode, displayDialogue])
   const canReveal = preferences.typewriter && preferences.speed !== 'instant' && !reduceMotion && status.latestDialogue.length <= 600 && !/```|\|.*\|/.test(displayDialogue)
   const isRevealing = canReveal && preferences.reading === 'pages' && revealed < characters.length
   const visibleText = isRevealing ? characters.slice(0, revealed).join('') : displayDialogue
@@ -916,23 +1006,23 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   }
   const unlockAudio = () => { if (!preferences.muted && !preferences.quiet) voiceRef.current?.unlock(); if (wantBgm) bgmRef.current?.unlock() }
   const toggleMute = () => { if (preferences.muted) voiceRef.current?.unlock(); else voiceRef.current?.silence(); update({ muted: !preferences.muted }) }
-  const codeText = dialogueBlocks(status.latestDialogue).filter(block => block.kind === 'code').map(block => block.text).join('\n\n')
+  const codeText = useMemo(() => dialogueBlocks(status.latestDialogue).filter(block => block.kind === 'code').map(block => block.text).join('\n\n'), [status.latestDialogue])
   const nativeSpeed = useMemo(() => {
     const value = document.querySelector('[data-tokens-per-second]')?.getAttribute('data-tokens-per-second')
     return value && Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : null
   }, [clock])
   const elapsed = startedAt.current ? Math.max(0, (clock - startedAt.current) / 1000).toFixed(1) : null
-  const tariff = tariffAt(clock)
   const localeTag = preferences.language === 'en' ? 'en-GB' : 'zh-CN'
-  const clockLabel = (ms: number | null) => {
-    if (ms === null) return ''
-    const d = new Date(ms)
+  // Formatting dates is costly; the label only changes with the period, the language or the day.
+  const nextChangeLabel = useMemo(() => {
+    if (tariff.nextChange === null) return ''
+    const d = new Date(tariff.nextChange)
     const time = d.toLocaleTimeString(localeTag, { hour: '2-digit', minute: '2-digit', hour12: false })
     return d.toDateString() === new Date(clock).toDateString() ? time : d.toLocaleDateString(localeTag, { weekday: 'short' }) + ' ' + time
-  }
+  }, [tariff.nextChange, localeTag, clockMinute])
   const tierShort = tariff.tier === 'peak' ? t('峰', 'Peak') : t('谷', 'Off-peak')
   const tierName = tariff.tier === 'peak' ? t('梁文峰时间', 'Liang Wenfeng time') : t('梁文谷时间', 'Liang Wengu time')
-  const tierUntil = tariff.nextChange !== null ? t(`至 ${clockLabel(tariff.nextChange)}`, `until ${clockLabel(tariff.nextChange)}`) : ''
+  const tierUntil = tariff.nextChange !== null ? t(`至 ${nextChangeLabel}`, `until ${nextChangeLabel}`) : ''
   const tierRule = t('北京时间工作日 9:00–12:00、14:00–18:00 为高峰；其余时间及周末、法定节假日为空闲（半价）。', 'Peak: Beijing time, weekdays 09:00–12:00 and 14:00–18:00. Other hours, weekends and Chinese public holidays are off-peak at half price.')
   const tierLine = (tier: Tier) => tier === 'peak'
     ? t('现在是梁文峰时间！API 高峰价，省着点用哦～', 'It’s Liang Wenfeng time! Peak API pricing — go easy.')
@@ -945,8 +1035,13 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     wasLow.current = wallet.low
   }, [wallet.low])
   const hour = new Date(clock).getHours()
-  const contextualSpeech = poke === 'angry' ? t('别戳啦！再戳我真的要生气了！', 'Stop poking me! I’m getting really mad!')
+  const contextualSpeech = poke === 'chest' ? t('呀！请、请不要碰这里……', 'Ah! Please don’t touch me there…')
+    : poke === 'angry' ? t('别戳啦！再戳我真的要生气了！', 'Stop poking me! I’m getting really mad!')
     : poke === 'curious' ? t('唔？主人是在戳我吗？', 'Hm? Are you poking me?')
+    : poke === 'tail' ? t('呀！尾、尾巴不可以随便摸啦……', 'Eek! N-not the tail…')
+    : held && heldLong ? t('放、放我下来啦！脚都够不着地了……', 'P-put me down! My feet can’t reach the floor…')
+    : landed ? t('哈啊啊……在空中晃得头好晕……', 'Haaah… all that swinging made me dizzy…')
+    : held ? t('哇啊！被、被拎起来了……', 'Whoa! I’m being lifted…')
     : affection === 'pat' ? t('嘿嘿……最喜欢主人摸摸头啦～', 'Hehe… I love head pats!')
     : affection === 'dizzy' ? t('头好晕……深海漩涡出现啦！', 'Whoa… a deep-sea whirlpool!')
     : tierAnnouncing ? tierLine(tierAnnounce!.tier)
@@ -955,26 +1050,87 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     : wallet.low && status.state === 'IDLE' ? t('深海算力快见底啦，记得看看余额哦。', 'Credit is getting low. Check your balance.')
     : companionSpeech
 
-  const patHead = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (event.buttons || isDraggingRef.current) return
-    const rect = event.currentTarget.getBoundingClientRect()
-    const headTop = rect.top + imageTop + geometry.imageHeight * 0.03
-    const headBottom = rect.top + imageTop + geometry.imageHeight * 0.3
-    if (event.clientX < rect.left + rect.width * 0.25 || event.clientX > rect.left + rect.width * 0.75 || event.clientY < headTop || event.clientY > headBottom) return
-    const sample = headPat.current, now = Date.now(), dx = event.clientX - sample.x
-    if (now < sample.cooldown || Math.abs(dx) < 8) return
-    if (now - sample.time > 700) sample.turns = 0
-    const direction = Math.sign(dx)
-    if (direction !== sample.direction) sample.turns++
-    sample.x = event.clientX; sample.direction = direction; sample.time = now
-    if (sample.turns >= 5) {
-      sample.turns = 0; sample.cooldown = now + 4000
-      setAffection('pat'); stateMachine.resetActivity()
-      react(['proud', 'shy', 'sajiao', 'proud'][Math.floor(Math.random() * 4)], 'heart', 2000)
-      if (voiceAllowed) voiceRef.current?.cue('jelly')
-      later(() => setAffection(''), 2000)
-    }
+  // ---- Touch (desktop and theatre) -------------------------------------------
+  const showMood = (mood: typeof poke, pose: string, emote: Emote, ms: number) => {
+    setPoke(mood); react(pose, emote, ms)
+    later(() => setPoke(current => current === mood ? '' : current), ms)
   }
+  /** Counts a poke; true when it was a plain first click. */
+  function pokeHer(): boolean {
+    const { first, mood } = pokes.current.tap(Date.now())
+    if (mood === 'angry') showMood('angry', 'angry', 'anger', 3200)
+    else if (mood === 'curious') showMood('curious', 'surprised', 'question', 1800)
+    return first
+  }
+  const touchHer = (touch: PuppetTouch) => {
+    if (isDraggingRef.current) return
+    // Only the theatre reports pokes (the widget's clicks go through its drag handler).
+    if (touch.kind === 'chest') {
+      const now = Date.now()
+      if (now - chestTouchAt.current < 3200) return
+      chestTouchAt.current = now
+      stateMachine.resetActivity()
+      setIsSettingsOpen(false)
+      setBubbleHidden(false)
+      showMood('chest', 'shy', 'sweat', 3200)
+      if (status.isGalGameMode) flash(t('呀！请、请不要碰这里……', 'Ah! Please don’t touch me there…'))
+      return
+    }
+    if (touch.kind === 'poke') { pokeHer(); return }
+    stateMachine.resetActivity()
+    if (touch.kind === 'pat') {
+      setAffection('pat')
+      // No proud here: with the model it would raise a hand to her chest, which reads oddly as a reaction to a pat.
+      react(['sajiao', 'shy', 'happy'][Math.floor(Math.random() * 3)], 'heart', 2000)
+      if (voiceAllowed) voiceRef.current?.cue('jelly')
+      later(() => setAffection(current => current === 'pat' ? '' : current), 2000)
+      return
+    }
+    // Tail: shy and she dodges (the model moves away by itself); touched again and again, she gets cross.
+    if (tailPatience.current.touch(Date.now()) === 'angry') { showMood('angry', 'angry', 'anger', 3000); return }
+    setAffection('tail')
+    showMood('tail', 'shy', 'sweat', 2600)
+    if (voiceAllowed) voiceRef.current?.cue('tap')
+    later(() => setAffection(current => current === 'tail' ? '' : current), 2600)
+  }
+
+  // ---- Live2D import / removal ------------------------------------------------
+  const live2dFailureText = (reason: string): string => ({
+    'no-model': t('没有找到 .model3.json，请选择模型所在的整个文件夹。', 'No .model3.json found. Pick the whole model folder.'),
+    incomplete: t('模型文件不完整（缺少 moc3 或贴图），请完整解压后再导入。', 'The model is incomplete (moc3 or textures missing). Extract it fully and try again.'),
+    'not-dafeiyu': t('这不是大肥鱼的 Live2D 模型。插件的表情和动作是为 DeepSeek-chan（大肥鱼）准备的。', 'This is not the 大肥鱼 Live2D model. Her expressions are made for DeepSeek-chan (大肥鱼).'),
+    'bad-json': t('模型描述文件无法读取。', 'The model description could not be read.'),
+    image: t('贴图无法读取。', 'A texture could not be read.'),
+    storage: t('本机存储空间不足或不可用，模型没有保存。', 'Local storage is full or unavailable; the model was not saved.'),
+    'core-failed': t('Live2D 运行库启动失败，请刷新 DSH 后重试。', 'Live2D could not start. Reload DSH and retry.'),
+    'core-missing': t('Live2D 运行库没有加载，已改用插图。', 'The Live2D runtime did not load; illustrations are shown.'),
+    'core-timeout': t('Live2D 运行库启动超时，已改用插图。', 'The Live2D runtime took too long to start; illustrations are shown.'),
+    'no-webgl': t('当前环境不支持 WebGL，已改用插图。', 'WebGL is not available; illustrations are shown.'),
+    'moc-version': t('模型版本比 Live2D 运行库新，已改用插图。', 'The model is newer than the Live2D runtime; illustrations are shown.'),
+    'context-lost': t('显卡上下文丢失，已改用插图。重新打开设置里的开关可再试一次。', 'The graphics context was lost; illustrations are shown. Toggle the model off and on to retry.'),
+  } as Record<string, string>)[reason] ?? t('Live2D 模型加载失败，已改用插图。', 'The Live2D model failed to load; illustrations are shown.')
+  const importLive2D = async (files: File[]) => {
+    setLive2dState({ state: 'importing', progress: [0, 0] })
+    try {
+    const result = await importLive2DFiles(files, (done, total) => setLive2dState({ state: 'importing', progress: [done, total] }))
+    if (!result.ok) { setLive2dState(live2dRecord ? { state: 'failed', name: live2dRecord.name, bytes: live2dRecord.bytes, message: live2dFailureText(result.error) } : { state: 'failed', message: live2dFailureText(result.error) }); return }
+    if (!(await saveLive2DModel(result.record))) { setLive2dState({ state: 'failed', message: live2dFailureText('storage') }); return }
+    setLive2dFailure(null)
+    setLive2dAspect(null)
+    setLive2dRecord(result.record)
+    setLive2dState({ state: 'ready', name: result.record.name, bytes: result.record.bytes })
+    update({ live2d: true })
+    flash(t('Live2D 模型已导入', 'Live2D model imported'))
+    } catch (error) { setLive2dState({ state: 'failed', name: live2dRecord?.name, message: live2dFailureText('storage') }); console.warn('[dsh-whale-pet][live2d] import failed', error) }
+  }
+  const removeLive2D = async () => {
+    await deleteLive2DModel()
+    setLive2dRecord(null)
+    setLive2dFailure(null)
+    setLive2dAspect(null)
+    setLive2dState({ state: 'none' })
+  }
+  const live2dSettings: Live2DSettings = { bundled: live2dIncluded, ...live2dState, needsReimport: live2dNeedsReimport(live2dRecord), active: live2dOn && live2dAspect !== null }
 
   const lang = preferences.language === 'zh' ? 'zh-CN' : 'en'
   const openTheatre = () => { setIsSettingsOpen(false); stateMachine.setGalGameMode(true) }
@@ -983,6 +1139,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     p: { ...preferences, autoGalGame: status.autoGalGameOnChat }, wallet, detached: group?.mode === 'detached',
     tier: { tier: tariff.tier, name: tierName, until: tierUntil, rule: tierRule, holidayDataMissing: tariff.holidayDataMissing },
     update: (patch: Partial<Preferences>) => { update(patch); if (patch.autoGalGame !== undefined) stateMachine.setAutoGalGameOnChat(patch.autoGalGame) },
+    onSizeStart: () => setSizeAnchor(previous => previous ?? currentSizeLayout.current),
     toggleMute,
     quiet: () => setPreferences(previous => quietPreset(previous)),
     reset: () => {
@@ -1001,10 +1158,13 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     },
     close: () => setIsSettingsOpen(false),
     openTheatre,
+    live2d: live2dSettings,
+    importLive2D: (files: File[]) => { void importLive2D(files) },
+    removeLive2D: () => { void removeLive2D() },
   })
   // The panel does not depend on the pet's position, so a drag never rebuilds it.
   const settingsPanel = useMemo(() => isSettingsOpen ? SettingsPanel(settingsProps()) : null,
-    [isSettingsOpen, preferences, status.autoGalGameOnChat, JSON.stringify(wallet), tariff.tier, tierUntil, tariff.holidayDataMissing, group?.mode, viewport.width, viewport.height])
+    [isSettingsOpen, preferences, status.autoGalGameOnChat, JSON.stringify(wallet), tariff.tier, tierUntil, tariff.holidayDataMissing, group?.mode, viewport.width, viewport.height, JSON.stringify(live2dSettings), live2dRecord])
 
   // ---- Theatre: background, music and upload handlers ----------------------------
   const pickScene = (id: string) => {
@@ -1083,7 +1243,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   if (status.isGalGameMode) {
     return TheatreView({
       t, p: preferences, status, lang, petName,
-      puppet: { imgSrc: currentImgSrc, poseName: hitPose, poseScale: (POSE_META[hitPose] ?? POSE_META.Maid).scale, isMaiden, live: preferences.liveMotion && liveSupported, motion: reduceMotion ? 0 : 1, emote: pageEmotion.emote ?? reaction?.emote ?? null, emoteKey: pageEmotion.emote ? pageEmotion.key : reaction?.key ?? 0 },
+      puppet: { imgSrc: currentImgSrc, poseName: hitPose, poseScale: (POSE_META[hitPose] ?? POSE_META.Maid).scale, isMaiden, live: preferences.liveMotion && liveSupported, motion: reduceMotion ? 0 : 1, emote: reaction?.emote ?? pageEmotion.emote ?? null, emoteKey: reaction?.emote ? reaction.key : pageEmotion.emote ? pageEmotion.key : 0, live2d: live2dBinding, onTouch: touchHer },
       tier: preferences.peakNotice ? { tier: tariff.tier, label: tierName, until: tierUntil } : null,
       phase: status.isStreaming || status.isReasoning ? phaseLabel + (elapsed !== null ? ' · ' + elapsed + 's' : '') + (nativeSpeed !== null ? ' · ' + nativeSpeed.toFixed(1) + ' tokens/s' : '') : null,
       uiHidden, expanded, logOpen, history,
@@ -1137,6 +1297,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
         uploadBgm: file => void uploadBgm(file),
         removeBgm: () => void removeBgm(),
         setSpeed: speed => update({ speed }),
+        setLive2DScale: size => update({ live2dTheatreScale: Math.min(2, Math.max(0.6, size)) }),
         setFontSize: size => update({ fontSize: Math.min(24, Math.max(14, Math.round(size))) }),
         toggleTypewriter: () => update({ typewriter: !preferences.typewriter }),
         toggleLive: () => update({ liveMotion: !preferences.liveMotion }),
@@ -1168,7 +1329,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       key="widget"
       data-ghost={ghost && !isSettingsOpen} data-hidden={petHidden}
       data-paused={!foreground || reduceMotion} data-dimmed={dimmed && !isSettingsOpen} data-docked={docked}
-      data-dragging={isDragging || undefined} data-settling={affection === 'float' || affection === 'dizzy' || undefined}
+      data-sizing={Boolean(sizeAnchor) || undefined} data-dragging={isDragging || undefined} data-settling={affection === 'float' || affection === 'dizzy' || undefined}
       data-wandering={status.state === 'WANDERING' || undefined}
       data-whale-pet="widget" data-pet-theme={preferences.theme} lang={lang}
       className="petWidget"
@@ -1218,7 +1379,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
           </div>}
         </div>
 
-        {!preferences.quiet && (!bubbleHidden || tierAnnouncing) && (status.speech || tierAnnouncing) && !isSettingsOpen && (
+        {!preferences.quiet && (!bubbleHidden || tierAnnouncing) && (status.speech || tierAnnouncing || poke === 'chest') && !isSettingsOpen && (
           <div style={{ fontSize: Math.max(12, preferences.fontSize - 3), top: `${imageTop + Math.round(geometry.imageHeight * 0.1)}px` }} className="speechBubble" data-side={bubbleSide}
             onClick={() => stateMachine.setGalGameMode(true)} role="button" tabIndex={0} title={t('点击进入剧场', 'Click to open the theatre')}
             onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); stateMachine.setGalGameMode(true) } }}>
@@ -1232,7 +1393,6 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
 
         <div
           data-sleepy={preferences.reminders && hour >= 1 && hour < 5 && status.state === 'IDLE'}
-          onMouseMove={patHead}
           className={'petSpriteSize' + (isBouncing ? ' qBounce' : '') + (affection ? ' petReaction-' + affection : '')}
           style={{ width: `${stageW}px`, height: `${stageH}px` }}
           tabIndex={0}
@@ -1246,15 +1406,17 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
             imgSrc={currentImgSrc}
             isMaiden={isMaiden}
             isGalGameMode={false}
-            mouthOpenRatio={status.mouthOpenRatio}
-            state={reaction ? 'IDLE' : status.state}
+            state={reaction && !status.isStreaming && !status.isReasoning ? 'IDLE' : status.state}
             box={{ width: geometry.imageWidth, height: geometry.imageHeight, left: geometry.imageLeft }}
             live={preferences.liveMotion && liveSupported}
             motion={reduceMotion ? 0 : 1}
             emote={reaction?.emote ?? null}
             emoteKey={reaction?.key ?? 0}
+            live2d={live2dBinding}
             opacity={puppetOpacity}
             onMouseDown={handleMouseDown}
+            onTouch={touchHer}
+            held={held}
           />
         </div>
       </div>

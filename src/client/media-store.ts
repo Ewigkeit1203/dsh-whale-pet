@@ -88,3 +88,33 @@ export async function loadMedia(slot: MediaSlot): Promise<StoredMedia | null> {
 export async function deleteMedia(slot: MediaSlot): Promise<boolean> {
   return (await mediaRequest<boolean>('readwrite', store => store.delete(slot))) === true
 }
+
+// ---- Imported Live2D model (live2d-package.ts) --------------------------------
+
+/** Key of the imported Live2D model in the same object store; one model at a time. */
+export const LIVE2D_MEDIA_KEY = 'live2d'
+
+export interface StoredLive2D {
+  modelPath: string
+  files: Record<string, Blob>
+  expressions: Record<string, string>
+  idleMotion?: string
+  motions?: Record<string, string>
+  name: string
+  bytes: number
+  savedAt: number
+}
+
+export async function saveLive2DModel(record: StoredLive2D): Promise<boolean> {
+  return (await mediaRequest<boolean>('readwrite', store => store.put(record, LIVE2D_MEDIA_KEY))) === true
+}
+
+export async function loadLive2DModel(): Promise<StoredLive2D | null> {
+  const record = await mediaRequest<StoredLive2D>('readonly', store => store.get(LIVE2D_MEDIA_KEY))
+  if (!record || typeof record !== 'object' || typeof record.modelPath !== 'string' || !record.files || !(record.files[record.modelPath] instanceof Blob)) return null
+  return record
+}
+
+export async function deleteLive2DModel(): Promise<boolean> {
+  return (await mediaRequest<boolean>('readwrite', store => store.delete(LIVE2D_MEDIA_KEY))) === true
+}

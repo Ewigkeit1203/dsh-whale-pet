@@ -1,0 +1,4 @@
+Live2D Cubism Web Framework 5-r.5
+Source: https://github.com/Live2D/CubismWebFramework
+Commit: d4da0aa07e47d2c1e4f5fa7ea6047861ea5e5d0b
+Unmodified copy of src/ and Shaders/. License: Live2D Open Software License (LICENSE.md).

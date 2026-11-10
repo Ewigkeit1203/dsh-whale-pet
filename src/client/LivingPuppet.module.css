@@ -1,7 +1,10 @@
 /* ==========================================================================
-   Character puppet. Layers: .puppetRoot (gaze parallax, inline transform)
+   Character puppet. Layers: .puppetRoot (position, opacity)
    → .puppetCanvas (breathing / talking / state motion) → img (sized only).
    ========================================================================== */
+/* A cheap unrotated ground cue; its opacity/scale follow the existing carry RAF. */
+[data-whale-pet] .carryGroundShadow { position: absolute; bottom: -4px; left: 50%; width: 34%; height: 12px; border-radius: 50%; background: radial-gradient(ellipse, rgba(8,30,60,.55), transparent 70%); opacity: 0; pointer-events: none; }
+[data-whale-pet="stage"] .carryGroundShadow { display: none; }
 [data-whale-pet] .puppetRoot { position: absolute; inset: 0; user-select: none; -webkit-user-select: none; }
 [data-whale-pet="widget"] .puppetRoot { filter: drop-shadow(0 8px 14px rgba(8, 30, 60, .22)); }
 [data-whale-pet] .puppetCanvas { position: absolute; inset: 0; transform-origin: 50% 100%; animation: wpBreathe 3.6s ease-in-out infinite; }
@@ -41,6 +44,17 @@
   transform: translateX(-50%);
 }
 
+/* Live2D model (imported by the user): it breathes and moves itself, so the CSS motion stops.
+   Until its first frame the canvas is invisible and the illustration shows. */
+[data-whale-pet] .live2dCanvas { position: absolute; bottom: 0; display: block; max-width: none; pointer-events: none; opacity: 0; transition: opacity .3s ease; }
+[data-whale-pet] .live2dCanvas[data-state="ready"] { opacity: 1; }
+[data-whale-pet] .live2dHit { top: auto; background: transparent; }
+[data-whale-pet] .puppetCanvas.puppetCanvasLive2D { animation: none; }
+[data-whale-pet="widget"] .puppetCanvas.puppetCanvasLive2D[data-state="REASONING"] .characterBase { filter: none; }
+[data-whale-pet="stage"] .live2dCanvas { left: 0; transform: translateX(-50%); }
+/* Theatre: she can be patted, poked and (Live2D) her tail touched; only her outline takes the pointer. */
+[data-whale-pet="stage"] .characterBase.puppetTouchable { pointer-events: auto; cursor: pointer; }
+
 /* Mood marks (♥ ✦ ♪ 💧 ! ? 💢) above her head, placed from the pose's face box. */
 [data-whale-pet] .puppetBox { position: absolute; bottom: 0; pointer-events: none; }
 [data-whale-pet="stage"] .puppetBoxStage { left: 0; height: calc(var(--stage-h) * var(--pose-scale, 1)); aspect-ratio: var(--pose-aspect, .6); transform: translateX(-50%); }
@@ -67,3 +81,5 @@
 @keyframes wpEmoteFloat { to { transform: translateY(-5px) rotate(6deg); } }
 @keyframes wpSweat { 0% { transform: none; opacity: 1; } 80% { transform: translateY(40%); opacity: 1; } 100% { transform: translateY(50%); opacity: 0; } }
 @keyframes wpAnger { to { transform: scale(1.18); } }
+
+[data-whale-pet] .live2dSurface { display: block; width: 100%; height: 100%; pointer-events: none; }

@@ -1,12 +1,9 @@
-import type { PetForm, PetPose, PetStatusInfo, GazeOffset, BalanceSnapshot } from './types.js';
+import type { PetForm, PetStatusInfo, BalanceSnapshot } from './types.js';
 export interface StateMachineListener {
     (status: PetStatusInfo): void;
 }
 export declare class PetStateMachine {
-    private paused;
-    setPaused(paused: boolean): void;
     private disposed;
-    private blinkStepTimer;
     private state;
     private form;
     private pose;
@@ -28,13 +25,8 @@ export declare class PetStateMachine {
     /** Last time a balance source reported, even when values were unchanged (UI freshness only). */
     private balancesCheckedAt;
     private hostBalance;
-    private mouthOpenRatio;
-    private blinkRatio;
-    private gazeOffset;
     private speechTimer;
     private debounceTimer;
-    private animationTimer;
-    private blinkTimer;
     private thinkingCycleTimer;
     private madTimer;
     private eatingTimer;
@@ -48,8 +40,6 @@ export declare class PetStateMachine {
     subscribe(listener: StateMachineListener): () => void;
     private notify;
     private getRandomDialogue;
-    private startLivingAnimationLoops;
-    private performBlinkCycle;
     resetActivity(): void;
     private scheduleInactivityCheck;
     private triggerInactivitySajiao;
@@ -67,15 +57,10 @@ export declare class PetStateMachine {
     /** End a stroll independently of the optional eating reaction. Busy model states keep priority. */
     finishWandering(eat?: boolean): void;
     finishWanderingWithEating(durationMs?: number): void;
-    triggerMad(): void;
     triggerSajiao(isLong?: boolean): void;
-    setPose(pose: PetPose): void;
     setLatestDialogue(text: string): void;
-    setGazeOffset(offset: GazeOffset): void;
     setAutoGalGameOnChat(enabled: boolean): void;
-    toggleAutoGalGameOnChat(): void;
     setForm(form: PetForm): void;
-    toggleForm(): void;
     setGalGameMode(enabled: boolean): void;
     toggleGalGameMode(): void;
     setWandering(wandering: boolean): void;

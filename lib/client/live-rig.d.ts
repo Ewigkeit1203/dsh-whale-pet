@@ -46,6 +46,10 @@ export declare class LiveRig {
     private epoch;
     private cache;
     private pixelHeight;
+    /** Time of the last drawn frame, for the frame-rate cap. */
+    private lastDraw;
+    /** Something changed that a still (reduced-motion) picture must show. */
+    private dirty;
     input: LiveInput;
     onReady: (() => void) | null;
     onFail: (() => void) | null;
