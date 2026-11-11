@@ -153,7 +153,7 @@ Run `uninstall.bat` and refresh DSH to remove the plugin from the profile. Saved
 
 ### Live2D model (optional)
 
-大肥鱼 can use the free **DeepSeek-chan (大肥鱼) Live2D model** by 神宫凉子 (art and parts) and 霓虹猫_NeonNeko (Live2D rigging). The model's terms do not allow redistributing its files, so it is **not included**: download it from the author's page ([神宫凉子 on Bilibili](https://space.bilibili.com/13737731)), extract it, then open Settings › Character model › Import the model folder and pick the folder that contains `大肥鱼.model3.json`. The files stay in this DSH environment on this device; normal plugin upgrades preserve the imported model. Clearing app data or changing machines may require importing again. Live2D is optional and the runtime is already included in the plugin. Turn the switch off at any time to see the original illustrations again. Please credit the model's creators when you share content made with it.
+大肥鱼 can use the free **DeepSeek-chan (大肥鱼) Live2D model** by 神宫凉子 (art and parts) and 霓虹猫_NeonNeko (Live2D rigging). The model's terms do not allow redistributing its files, so it is **not included**: download it from the author's page ([get the model](https://gf.bilibili.com/item/detail/1109618072?noTitleBar=1&from=mall-up_itemDetail&msource=cps_comments_13737731_cont-1-117527753588880&track_id=__BGMT__)), extract it, then open Settings › Character model › Import the model folder and pick the folder that contains `大肥鱼.model3.json`. The files stay in this DSH environment on this device; normal plugin upgrades preserve the imported model. Clearing app data or changing machines may require importing again. Live2D is optional and the runtime is already included in the plugin. Turn the switch off at any time to see the original illustrations again. Please credit the model's creators when you share content made with it.
 
 ### Compatibility and privacy
 
@@ -185,10 +185,9 @@ The build compiles the views, state, host adapter, CSS and all 12 PNGs into `lib
 - **[Ewigkeit1203](https://github.com/Ewigkeit1203)** — creator, character concept, product direction and acceptance testing.
 - **[神宫凉子](https://space.bilibili.com/13737731)** — art and parts of the free DeepSeek-chan (大肥鱼) Live2D model; **霓虹猫_NeonNeko** — its Live2D rigging, physics and animations. The model is not part of this project and is not redistributed here.
 - **Antigravity (Google DeepMind)** — AI-assisted architecture and initial implementation.
-- **GPT 6.1Sol / Codex (OpenAI)** — AI-assisted v0.4.0 engineering, interaction design, stability work, tests and release documentation.
-- **Claude Sonnet 5.5 (Anthropic)** — AI-assisted product review and UI/UX recommendations; advisory contribution.
-- **Gemini 4 Argon (Google)** — AI-assisted product review, theatre layout and visual interaction proposals; advisory contribution.
-- **Claude Opus 5.5 (Anthropic)** — AI-assisted v0.5.0 frontend: pet and settings group layout with edge handling, rebuilt settings panel and footer, per-pose portrait calibration, balance through DSH's account service with honest states, the 梁文峰 / 梁文谷 pricing-period announcements, render-performance work, theatre layout, a new Web Audio character voice, the design-token stylesheet rewrite and the related regression tests; the theatre update: illustrated scenes with crossfades, live-performed seamless background music, the visual-novel dialogue box, Skip and local picture/music storage; v0.6.0: WebGL swaying clothes, dialogue-driven expressions and mood marks, the poke easter egg, Senren＊Banka-style text and click-wait polish, and WebP asset embedding.
+- **GPT 6.1sol / Codex (OpenAI)** — AI backend engineering and technical design.
+- **Gemini 4 Argon (Google)** — AI product management and product direction.
+- **Claude Opus 5.5 (Anthropic)** — AI frontend engineering and interface implementation.
 
 See the [contribution guide](CONTRIBUTING.md) for PR review, release approval and AI-art requirements. Contributions and reports are welcome through [Issues](https://github.com/Ewigkeit1203/dsh-whale-pet/issues) and pull requests. Include your DSH version and reproduction steps; omit private conversations and credentials.
 
@@ -289,7 +288,7 @@ React 与 Cordis 由 DSH 提供，普通用户无需 Node.js、npm 或额外素�
 
 ### Live2D 模型（可选）
 
-大肥鱼可以使用免费的 **DeepSeek-chan（大肥鱼）Live2D 模型**（原画及拆分：神宫凉子；Live2D 建模：霓虹猫_NeonNeko）。模型使用须知不允许重新分发模型文件，所以插件**不附带模型**：请从作者的发布页下载（[神宫凉子的 B 站主页](https://space.bilibili.com/13737731)），完整解压后，打开 设置 › 角色模型 › 导入模型文件夹，选择含有 `大肥鱼.model3.json` 的文件夹。文件保存在当前 DSH 的本机存储中，正常升级插件会保留已导入的模型；清理应用数据、换电脑或换存储环境后可能需要重新导入。Live2D 是可选项，运行库已包含在插件中。随时可以关闭开关，回到原版插图。使用模型公开发布内容时，请按作者要求注明模型来源和制作人员。
+大肥鱼可以使用免费的 **DeepSeek-chan（大肥鱼）Live2D 模型**（原画及拆分：神宫凉子；Live2D 建模：霓虹猫_NeonNeko）。模型使用须知不允许重新分发模型文件，所以插件**不附带模型**：请从作者的发布页下载（[获取页面](https://gf.bilibili.com/item/detail/1109618072?noTitleBar=1&from=mall-up_itemDetail&msource=cps_comments_13737731_cont-1-117527753588880&track_id=__BGMT__)），完整解压后，打开 设置 › 角色模型 › 导入模型文件夹，选择含有 `大肥鱼.model3.json` 的文件夹。文件保存在当前 DSH 的本机存储中，正常升级插件会保留已导入的模型；清理应用数据、换电脑或换存储环境后可能需要重新导入。Live2D 是可选项，运行库已包含在插件中。随时可以关闭开关，回到原版插图。使用模型公开发布内容时，请按作者要求注明模型来源和制作人员。
 
 ### 兼容性与隐私
 
@@ -321,10 +320,9 @@ node --check lib/client.js
 - **[Ewigkeit1203](https://github.com/Ewigkeit1203)**：项目发起人、人设原案、产品方向与体验验收。
 - **[神宫凉子](https://space.bilibili.com/13737731)**：免费 DeepSeek-chan（大肥鱼）Live2D 模型的原画及拆分；**霓虹猫_NeonNeko**：该模型的 Live2D 建模、物理与动作。模型不属于本项目，本仓库不重新分发模型文件。
 - **Antigravity (Google DeepMind)**：AI 辅助架构设计与初期实现。
-- **GPT 6.1Sol / Codex (OpenAI)**：AI 辅助 v0.4.0 工程、交互设计、稳定性修复、测试与发布文档。
-- **Claude Sonnet 5.5（Anthropic）**：AI 辅助产品评审、界面审查及路线图建议；提供产品建议。
-- **Gemini 4 Argon（Google）**：AI 辅助产品评审、剧场布局与视觉交互方案；提供产品建议。
-- **Claude Opus 5.5（Anthropic）**：AI 辅助 v0.5.0 前端：角色与设置面板整体布局及贴边处理、设置面板与底部区域重做、逐姿态立绘校准、通过 DSH 账户服务读取余额并如实显示状态、梁文峰 / 梁文谷时段播报、渲染性能优化、剧场布局、新的 Web Audio 人物音效、基于设计变量的样式重写及相应回归测试；剧场更新：插画场景与交叉淡入、实时演奏的无缝背景音乐、GalGame 对话框、快进以及本地图片 / 音乐存储；v0.6.0：WebGL 裙摆飘动、随台词变化的表情与情绪符号、戳戳彩蛋、千恋＊万花风格的文字与点击提示打磨，以及 WebP 立绘内嵌。
+- **GPT 6.1sol / Codex (OpenAI)**：AI 后端工程与技术设计。
+- **Gemini 4 Argon (Google)**：AI 产品管理与产品方向。
+- **Claude Opus 5.5（Anthropic）**：AI 前端工程与界面实现。
 
 欢迎阅读[贡献指南](CONTRIBUTING.md)：代码经 PR 审查与测试后才可合并，发布须由项目负责人确认；接受形象统一、来源与授权清楚的 AI 美术。
 
