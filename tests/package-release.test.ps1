@@ -23,7 +23,7 @@ try {
     if (($prefix -join ',') -ne '239,187,191') { throw 'Windows PowerShell script needs UTF-8 BOM' }
     $reader = [IO.StreamReader]::new($entries['lib/client.js'].Open())
     try { $bundle = $reader.ReadToEnd() } finally { $reader.Dispose() }
-    if ([regex]::Matches($bundle, 'data:image/(?:webp|png);base64,').Count -ne 18) { throw 'Embedded illustration fallback is incomplete' }
+    if ([regex]::Matches($bundle, 'data:image/(?:webp|png);base64,').Count -ne 20) { throw 'Embedded illustration fallback is incomplete' }
     if ((Test-Path -LiteralPath (Join-Path $projectRoot 'vendor/live2d/Core/live2dcubismcore.min.js')) -and -not $bundle.Contains('function __dshLoadCubismCore()')) { throw 'Live2D runtime is missing' }
     $hasher = [Security.Cryptography.SHA256]::Create()
     $stream = [IO.File]::OpenRead($zipPath)
@@ -45,7 +45,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Extracted browser bundle has invalid syntax' }
 if ($LASTEXITCODE -ne 0) { throw 'Extracted uninstallation failed' }
 $remaining = [IO.File]::ReadAllText((Join-Path $fixture 'profile/cordis.patch.yml'))
 if ($remaining.Contains('id: dsh-whale-pet') -or $remaining.Trim() -ne '[]') { throw 'Uninstall did not leave an empty profile list' }
-Write-Output 'PASS: runtime files, 18 embedded illustrations, optional Live2D runtime, exclusions, checksum and isolated install/uninstall'
+Write-Output 'PASS: runtime files, 20 embedded illustrations, optional Live2D runtime, exclusions, checksum and isolated install/uninstall'
 Write-Output ('Smoke fixture: ' + $fixture)
 
 
