@@ -20,6 +20,7 @@ export interface Live2DLookContext {
     held?: boolean;
     heldKey?: number;
     guardChest?: boolean;
+    edgePeek?: boolean;
 }
 /** Look for a pose name from PetOverlay's resolveCharacter(); unknown poses stay neutral. */
 export declare function live2dLookFor(pose: string, context?: Live2DLookContext): Live2DLook;

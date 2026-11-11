@@ -31,6 +31,9 @@ export const POSE_RIG: Record<string, RigPose> = {
   surprised: { face: [0.4297, 0.1074, 0.5586, 0.1803], top: 0.0026, bottom: 0.9967 },
   proud: { face: [0.4297, 0.0814, 0.5635, 0.1647], top: 0.002, bottom: 0.9967 },
   happy: { face: [0.4268, 0.1029, 0.5576, 0.1784], top: 0.0033, bottom: 0.9948 },
+  // v0.7.0 art: carried (arms up) and the peeking close-up (its right side is the edge she holds).
+  carry: { face: [0.47, 0.165, 0.645, 0.245], top: 0, bottom: 0.9945 },
+  peek: { face: [0.45, 0.27, 0.86, 0.47], top: 0.0079, bottom: 0.9934 },
   // Imported Live2D model in its rest pose (measured on the framed render).
   Live2D: { face: [0.42, 0.075, 0.58, 0.15], top: 0.02, bottom: 1 },
 }

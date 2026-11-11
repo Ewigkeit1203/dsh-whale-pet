@@ -144,3 +144,18 @@ test('Resizing keeps the controls fixed, preserves the feet and reverses without
   assert.ok(next.pet.x >= 16 && next.pet.x + 300 <= 484)
   assert.ok(next.pet.y >= 90 && next.pet.y + 440 <= 534)
 })
+
+
+test('Peeking picture (no Live2D) sits flush with the right edge, upright, clear of the corner toolbar and a composer', async () => {
+  const {peekArtPosition} = await import('../lib/client/layout.js')
+  const stage = {width: 307, height: 480}, image = {imageLeft: 52, imageWidth: 203, imageHeight: 221}
+  for (const [vw, vh] of [[1280, 800], [800, 600], [420, 520]]) {
+    const p = peekArtPosition(300, stage, image, vw, vh)
+    assert.equal(p.x + image.imageLeft + image.imageWidth, vw, 'right side of the picture on the window edge')
+    const top = p.y + stage.height - image.imageHeight
+    assert.ok(top >= 0 && top + image.imageHeight <= vh - 120 + 1e-9 || vh - image.imageHeight - 120 < 90, 'above the corner toolbar')
+  }
+  const composer = {left: 400, right: 1270, top: 600, bottom: 760}
+  const p = peekArtPosition(500, stage, image, 1280, 800, {composer})
+  assert.ok(p.y + stage.height <= composer.top, 'above a composer that reaches the right edge')
+})

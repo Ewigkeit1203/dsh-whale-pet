@@ -14,7 +14,7 @@ export interface Live2DSource {
 }
 
 /** Short touch reactions (live2d-motion.ts). */
-export type Live2DPulse = 'startle' | 'nod' | 'huff' | 'pat' | 'dodge' | 'land'
+export type Live2DPulse = 'startle' | 'nod' | 'huff' | 'pat' | 'dodge' | 'land' | 'perk' | 'wrap'
 /** Parts of her that react to touch. */
 export type Live2DRegion = 'head' | 'tail' | 'chest' | 'body'
 
@@ -51,6 +51,10 @@ export interface Live2DLook {
   heldKey?: number
   /** A chest touch: cover up and ask the player to stop. */
   guardChest?: boolean
+  /** Right-side peek: a native arm reaches from her waist beyond the window edge. */
+  edgePeek?: boolean
+  /** The model is reasoning: she looks aside, shifts sides and hums to herself (live2d-motion.ts). */
+  thinking?: boolean
   /** Native hand gesture held while this look lasts; its fallback toggle is used for older imports. */
   gesture?: 'chest' | 'point' | 'grass'
 }
@@ -80,6 +84,8 @@ export interface Live2DStage {
   setMotion(scale: number): void
   /** Frames per second (default 30; 15 while the window is in the background). */
   setFrameRate(fps: number): void
+  /** Power saving: never above 30 fps, 20 while idle and 10 in the background. */
+  setPowerSave(on: boolean): void
   /** CSS clip-path matching her current outline, or null until measured. */
   onHull: ((clipPath: string) => void) | null
   onFail: ((reason: string) => void) | null

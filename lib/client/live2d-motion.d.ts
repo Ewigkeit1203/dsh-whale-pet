@@ -17,7 +17,12 @@
  * - after a while idle with nobody watching, longer performances like an
  *   idle animation (playing with the foxtail, dozing off, humming …), which
  *   stop as soon as the pointer moves;
- * - short pulses for touch reactions (startle, nod, huff, pat, dodge).
+ * - short pulses for touch reactions (startle, nod, huff, pat, dodge);
+ * - conversation body language: she listens while the user types (looks at the
+ *   input box, leans in, nods at pauses), thinks while the model reasons (looks
+ *   aside, changes sides, hums), talks in phrases while it answers (a beat at
+ *   the end of each phrase, weight from one side to the other) and rounds the
+ *   answer off with a nod and a smile.
  * Breathing, a very small base sway and a gentle gliding sway are added on top.
  *
  * Pure and deterministic for a given seed, so it is tested in Node.
@@ -47,10 +52,27 @@ export interface Live2DDrive {
     gesture: Live2DGesture | null;
     /** Chest-cover weight (0..1); the runtime puts her left hand to her chest with the rig's animation inputs. */
     armCover: number;
+    /** Arm pose from idle events, performances and thinking (rig animation inputs, 0 = at rest); zero while a gesture, carry or chest cover owns the arms. */
+    arms: {
+        lu: number;
+        lf: number;
+        lw: number;
+        ru: number;
+        rf: number;
+        rw: number;
+    };
     /** Carried: how far the paws are up (0..1); they flap while she struggles and drop once she gives up. */
     armLift: number;
     /** True while something quick is moving (pulse or performance): worth a higher frame rate. */
     lively: boolean;
+    /** Wandering: she swims across instead of walking. `float` 0..1 lifts her feet off the ground (legs together, hanging); `touchdown` 0..1 is the knee bend as she lands. */
+    float: number;
+    touchdown: number;
+    /** Whole-figure lean into the travel direction in degrees (positive: head towards screen right), and a slow bob -1..1. */
+    swimTilt: number;
+    swimBob: number;
+    /** In conversation, an arm is in transit or she just nodded: smoother frames if this machine draws cheaply. */
+    moving: boolean;
     /** Name of the idle event in progress, for tests and debugging. */
     event: string;
     /** Name of the performance in progress ('author' is the model's own tracking-lost animation). */
@@ -74,11 +96,32 @@ export interface Live2DDriveInput {
     } | null;
     /** 0..1 while text is being spoken. */
     talking: number;
+    /** While wandering: how fast she is travelling across the screen, -1 (left) .. 1 (right). */
+    travel?: number;
+    /** Local hour 0–23: which performances suit the time of day, and how soon she gets drowsy. */
+    hour?: number;
+    /** The user is typing in the host: where the input box is relative to her face (-1..1, y up) and seconds since the last keystroke. */
+    typing?: {
+        x: number;
+        y: number;
+        since: number;
+    } | null;
 }
 export declare const LIVE2D_TAU: {
     eye: number;
     head: number;
     body: number;
+};
+/**
+ * Head, body and arms follow their targets as damped springs [angular frequency rad/s, damping ratio]:
+ * a spring starts from rest and eases in (a one-pole filter starts at full speed, which reads as a
+ * puppet being jerked), and with damping below 1 it settles with a small overshoot. The arms are
+ * critically damped so they never overshoot into a pose that was not checked on the model.
+ */
+export declare const LIVE2D_SPRING: {
+    readonly head: readonly [7, 0.8];
+    readonly body: readonly [3.8, 0.85];
+    readonly arm: readonly [9, 1];
 };
 /** Share of the head turn that the body (PositionX/Z) follows. */
 export declare const LIVE2D_BODY_FOLLOW = 0.45;
@@ -88,7 +131,24 @@ export declare const LIVE2D_GIVE_UP_AFTER: number;
 /** Seconds of quiet idling before the first performance, and the gap between performances. */
 export declare const LIVE2D_PERFORMANCE_AFTER = 45;
 export declare const LIVE2D_PERFORMANCE_GAP: readonly [40, 80];
-type Offsets = Partial<Record<'ax' | 'ay' | 'az' | 'px' | 'py' | 'pz' | 'lean' | 'breath' | 'ex' | 'ey' | 'smile' | 'brow' | 'eyeOpen' | 'gaze' | 'mouth', number>>;
+/** Wandering: lean of the whole figure at full speed (degrees), lift and bob as fractions of her height, and the screen speed (CSS px/s) that counts as full speed. */
+export declare const LIVE2D_SWIM: {
+    tilt: number;
+    lift: number;
+    bob: number;
+    speed: number;
+};
+/** Conversation: how long after the last keystroke she keeps listening, the typing pause that earns a nod,
+ * the length of a spoken phrase, how long she stays on one side while thinking, and what counts as a long answer. */
+export declare const LIVE2D_CHAT: {
+    listenFor: number;
+    nodAfter: number;
+    phrase: readonly [1.3, 3.5];
+    thinkSide: readonly [4, 7];
+    minAnswer: number;
+    longAnswer: number;
+};
+type Offsets = Partial<Record<'ax' | 'ay' | 'az' | 'px' | 'py' | 'pz' | 'lean' | 'breath' | 'ex' | 'ey' | 'smile' | 'brow' | 'eyeOpen' | 'gaze' | 'mouth' | 'lu' | 'lf' | 'lw' | 'ru' | 'rf' | 'rw', number>>;
 interface IdleEventDef {
     name: string;
     duration: readonly [number, number];
@@ -106,6 +166,14 @@ interface PerformanceDef {
     };
 }
 export declare const LIVE2D_PERFORMANCES: readonly PerformanceDef[];
+/** How likely a performance is at an hour of the day (1 = as usual): sleepy ones at night, gazing in the afternoon, humming in the evening. */
+export declare function performanceBias(name: string, hour: number | undefined): number;
+/** Quiet seconds before she starts to get drowsy (by day, at night) and how long the eyelids take to sink. */
+export declare const LIVE2D_DROWSY: {
+    day: number;
+    night: number;
+    over: number;
+};
 interface PulseDef {
     duration: number;
     at(side: number, u: number): Offsets;
@@ -121,6 +189,10 @@ export declare class Live2DDriver {
     private eye;
     private head;
     private body;
+    private headV;
+    private bodyV;
+    private armP;
+    private armV;
     private walk;
     private idle;
     private wobble;
@@ -134,6 +206,9 @@ export declare class Live2DDriver {
     private quiet;
     private nextPerformanceAt;
     private lastPerformance;
+    private earlierPerformance;
+    private drowsy;
+    private wasDrowsy;
     private performance;
     private performanceWeight;
     private authorIdle;
@@ -147,9 +222,31 @@ export declare class Live2DDriver {
     private heldFor;
     private armLift;
     private coverWeight;
+    /** Conversation: listening, thinking and speaking weights and their small clocks. */
+    private listen;
+    private listenAt;
+    private typedSince;
+    private listenNodAt;
+    private think;
+    private wasThinking;
+    private thinkSide;
+    private thinkLean;
+    private thinkNextAt;
+    private thinkHumAt;
+    private thinkFor;
+    private armFree;
+    private travel;
+    private wasWalking;
+    private landAt;
+    private spokenFor;
+    private phraseEndAt;
+    private beatAt;
+    private beatKind;
+    private speakSide;
+    private speakLean;
     constructor(seed?: number);
     /** Starts a touch reaction (side: where the touch came from, +1 right / -1 left); ignored while the same one is cooling down. */
-    pulse(kind: Live2DPulse, side?: number): boolean;
+    pulse(kind: Live2DPulse, side?: number, gain?: number): boolean;
     /** Swing angle while she is carried (degrees); the canvas itself is rotated by the overlay. */
     setDangle(angle: number, velocity?: {
         x: number;
@@ -158,7 +255,7 @@ export declare class Live2DDriver {
     /** The model's own "tracking lost" idle animation (脱捕), sampled by the runtime; 0 removes it. */
     setAuthorIdle(duration: number): void;
     private stopPerformance;
-    update({ dt, motion, look, pointer, talking, landingHandled }: Live2DDriveInput): Live2DDrive;
+    update({ dt, motion, look, pointer, talking, typing, hour, travel, landingHandled }: Live2DDriveInput): Live2DDrive;
 }
 /** Enter / exit animations shipped with the model, by gesture. */
 export declare const LIVE2D_GESTURES: {

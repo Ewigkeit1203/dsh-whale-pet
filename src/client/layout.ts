@@ -15,6 +15,41 @@
  *
  * All values are CSS pixels. Pure functions only: no DOM access.
  */
+export interface EdgePeekRoom {
+  /** Keep the existing right-side composer avoidance. */
+  composer?: { left: number; right: number; top: number; bottom: number }
+}
+
+/** Peeking from the right edge: what shows sits below the top bar and above the corner toolbar (120 px). */
+export const PEEK_EDGE = { top: 90, toolbar: 120, composerGap: 16 } as const
+
+/**
+ * Top of the visible part while peeking, wanted at `top` and `height` tall: clear of the corner toolbar, and
+ * above a composer that reaches within `reach` px of the right edge if the two would overlap.
+ */
+function peekTop(top: number, height: number, reach: number, viewportWidth: number, viewportHeight: number, room: EdgePeekRoom): number {
+  let next = Math.max(PEEK_EDGE.top, Math.min(top, viewportHeight - height - PEEK_EDGE.toolbar))
+  const c = room.composer
+  if (c && c.right > viewportWidth - reach && next + height > c.top && next < c.bottom) next = Math.max(PEEK_EDGE.top, c.top - height - PEEK_EDGE.composerGap)
+  return Math.max(0, Math.min(next, viewportHeight - height))
+}
+
+/** Live2D: leans out from behind the right edge, the rest of her (still connected) off-screen. */
+export function rightPeekPosition(y: number, width: number, imageHeight: number, viewportWidth: number, viewportHeight: number, room: EdgePeekRoom = {}): { x: number; y: number } {
+  const head = imageHeight * 0.065
+  return { x: Math.round(viewportWidth - width / 2 - head), y: peekTop(y, imageHeight * 0.4, imageHeight * 0.3, viewportWidth, viewportHeight, room) }
+}
+
+/**
+ * The peeking picture (no Live2D): its right side is the edge she holds, so it sits flush against the
+ * window's right edge, upright.
+ */
+export function peekArtPosition(y: number, stage: { width: number; height: number }, image: { imageLeft: number; imageWidth: number; imageHeight: number }, viewportWidth: number, viewportHeight: number, room: EdgePeekRoom = {}): { x: number; y: number } {
+  const above = stage.height - image.imageHeight
+  const top = peekTop(y + above, image.imageHeight, image.imageWidth, viewportWidth, viewportHeight, room)
+  return { x: Math.round(viewportWidth - image.imageLeft - image.imageWidth), y: Math.round(top - above) }
+}
+
 export interface Box { x: number; y: number; width: number; height: number }
 export type PanelSide = 'left' | 'right'
 

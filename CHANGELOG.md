@@ -7,7 +7,21 @@
 <a name="english"></a>
 ## English
 
-### Unreleased
+### [v0.8.0] - 2026-11-11
+
+- **Peek from the right edge.** Peek in the hover menu (beside Quiet mode, with its shortcut shown) or **Alt+P**, which can be re-recorded in Settings, sends her behind the right edge of the window, half out of sight and clear of the conversation and the composer; press again and she returns to her previous spot. Peeking pauses wandering and chatter. Bottom peeking, automatic edge selection and their settings are gone; retired saved values are ignored. Pointer motion and scrolling no longer fade her.
+- **The peeking arm stays in one piece (Live2D).** The upper arm stays nearly straight and only the elbow bends; the forearm tucks in under the upper arm, which is drawn over its top end, so no block sticks out at the elbow and the upper arm is never bent. The reaching arm is drawn in front of her hair and torso, with its puff sleeve and shoulder ruffle over the upper arm. Leaving the edge, the arm returns first and every mesh offset and draw-order change is undone exactly.
+- **New illustrations without Live2D.** Being picked up (arms up, feet off the ground) and peeking around the right edge. The illustration walks to the edge first and only then turns into the peeking picture, upright and flush with the window edge, clear of the corner toolbar.
+- **Chips always visible.** The pricing period and your balance stay above her head; an unreadable balance shows “Balance —” instead of an empty chip.
+- **Too dizzy to move.** While she is dizzy from shaking, Peek shows a short notice instead.
+- **Fix: choppy after a long idle (Live2D).** The frame budget measured whole frames while physics catches up in fixed 60 Hz steps, so slow background frames looked expensive and kept her at 15 fps even after you came back. Frame cost is now measured per step and re-measured when DSH regains focus.
+- **Power saving** (Settings › Companionship): the Live2D model draws at most 30 fps, 20 while idle and 10 while DSH is in the background.
+- **No more hand on the hip.** The hand-on-hip idle moment and the hand on her hip while thinking are removed; the hand swung round from behind her.
+- **She swims across instead of sliding (Live2D).** When wandering she lifts off, keeps her legs together, and leans her whole figure into the direction of travel in proportion to her speed, head first and feet trailing, with her head and body turned the same way and a slow bob; hair, skirt and tail trail through the physics. On arrival she lands with a soft knee bend. No front-facing marching; no change to how the widget moves on screen.
+- **Less like a puppet (Live2D).** Head, body and arms now follow their targets as damped springs: every move starts from rest and eases in instead of starting at full speed, the head settles with a small overshoot, and the arms ease without overshooting. In conversation, arm moves and nods are drawn at up to 60 fps when frames are cheap on the machine; idling alone keeps the ambient frame budget.
+- **Fix: long idle pieces went still after two seconds.** A fade helper dropped to zero in the middle of a piece, so playing with the foxtail, humming, looking around and the others only moved at their start and end. They now hold for their whole length.
+- **Idling with more life (Live2D).** New small moments: a longer look out of the window, a shake of her hair, a look down at her skirt with a little turn. Two longer pieces: gazing out of the window with a sigh, and nodding off three times before shaking herself awake. Pieces follow the time of day (sleepy ones at night, a yawn in the morning, window gazing in the afternoon, humming in the evening) and never repeat within two. Left alone for minutes (sooner at night) she gets drowsy; moving the pointer, typing or touching her wakes her with a start. Quiet with reduced motion; no extra timers.
+- **She stops standing at attention during a chat (Live2D).** While you type she listens: looks at the input box, leans in and nods when you pause. While the model reasons she perks up, then looks aside, changes sides and hums to herself. While it answers she talks in phrases, with a nod or a tilt at the end of each and her weight moving from side to side, and she rounds the answer off with a nod and a smile. Widget and theatre; semantic inputs only; quiet with reduced motion; no extra timers and no higher ambient frame rate. Typing is detected by time and position only: the text is never read, focus is not touched and Enter is not intercepted.
 
 ### [v0.7.0] - 2026-11-10
 
@@ -170,7 +184,21 @@
 <a name="chinese"></a>
 ## 中文版本
 
-### 尚未发布
+### [v0.8.0] - 2026-11-11
+
+- **从右边探头。** 点悬停菜单里的「探头」（在安静模式旁边，显示快捷键）或按 **Alt+P**（可在设置里重新录制），她会躲到窗口右边，只探出半个身子，不挡对话和输入框；再按一次回到原来的位置。探头时不散步、不闲聊。底部探头、自动选边及对应设置已移除，旧偏好值会被忽略。鼠标移动、滚动不再让她变透明。
+- **探头的手臂连成一体（Live2D）。** 大臂几乎保持笔直，只在手肘弯；小臂收进大臂下面，由大臂盖住小臂顶端，手肘不再凸出一块，大臂本身也不会被拉弯。伸出的手臂画在头发和身体前面，泡泡袖和肩膀荷叶边盖在大臂上方。离开边缘时手臂先复原，所有顶点偏移和绘制顺序都会完全还原。
+- **没有 Live2D 时的新插图。** 被拎起来（双手举高、脚够不着地）和从右边框探头。插图模式下她先走到边上，再换成探头插图，正立贴齐窗口边缘，不挡右下角工具条。
+- **头顶常显**计费时段和余额；读不到余额时显示“余额 —”，不再是空白小框。
+- **晕了没法动。** 被晃晕时点探头，会提示“大肥鱼现在晕了，没法动呢……”。
+- **修复：挂机久了一直卡（Live2D）。** 帧预算按整帧耗时计算，而物理按 60 Hz 固定步长追赶，后台低帧率时每帧显得很贵，回到 DSH 后仍被压在 15 帧。现在按每步耗时计算，并在 DSH 重新获得焦点时重新测量。
+- **省电模式**（设置 › 陪伴）：Live2D 模型最高 30 帧，待机 20 帧，DSH 在后台时 10 帧。
+- **去掉叉腰。** 删除待机时的叉腰和推理时的叉腰，原来手会从背后绕过来，很别扭。
+- **游荡改成“游过去”，不再平移滑行（Live2D）。** 游荡时她轻轻离地、双腿并拢，整个人按移动速度朝前进方向倾斜（头在前、脚拖后），头和身体也转向那边，带缓慢起伏；头发、裙摆、尾巴由物理拖尾。到位后屈膝轻落地。没有朝屏幕的踏步；桌宠在屏幕上的移动方式不变。
+- **不再像木偶（Live2D）。** 头、身体、手臂改用带阻尼的弹簧跟随目标：每个动作从静止缓缓起步，不再一上来就是最大速度；头部到位时有很小的回弹，手臂缓动但不过冲。聊天时手臂移动和点头在机器负担低的情况下最高 60 帧；独自待机仍保持原有帧率预算。
+- **修复：长待机表演两秒后就不动了。** 一个淡入淡出函数在表演中段掉到零，导致玩狗尾草、哼歌、东张西望等只在开头和结尾动一下。现在整段都保持。
+- **待机更有生活感（Live2D）。** 新的小动作：看一会儿窗外、甩甩头发、低头看裙摆并轻轻转身。两段更长的表演：望着窗外发呆叹气、困得连点三次头再甩头清醒。表演跟着时段走（深夜犯困、早上打哈欠、下午看窗外、晚上哼歌），最近两段不重复。长时间没人理（深夜更快）会慢慢犯困；动鼠标、打字或摸她会让她一下子醒过来。减弱动效时安静；不增加计时器。
+- **聊天时不再“罚站”（Live2D）。** 你打字时她在听：看向输入框、身体前倾，停顿时点头。推理时先回神，再看向一旁、隔几秒换边、自己轻轻点头。回答时按句子节奏说话：每句末尾点头或歪头，重心左右转换；回答完点头微笑收尾。桌宠和剧场都有；只写语义输入；减弱动效时安静；不增加计时器，也不提高平时帧率。打字只记录时间和输入框位置：不读内容、不碰焦点、不拦回车。
 
 ### [v0.7.0] - 2026-11-10
 

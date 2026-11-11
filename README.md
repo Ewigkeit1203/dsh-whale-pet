@@ -1,13 +1,13 @@
 <a id="top"></a>
 # 大肥鱼 — dsh-whale-pet
 
-[使用截图 / Screenshots](#screenshots) | [English](#english) | [中文说明](#chinese) | [Releases / 下载](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) | [Changelog / 更新日志](CHANGELOG.md) | [v0.7.0 notes / 发布说明](docs/releases/v0.7.0.md) | [Docs / 文档](docs/README.md)
+[使用截图 / Screenshots](#screenshots) | [English](#english) | [中文说明](#chinese) | [Releases / 下载](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) | [Changelog / 更新日志](CHANGELOG.md) | [v0.8.0 notes / 发布说明](docs/releases/v0.8.0.md) | [Docs / 文档](docs/README.md)
 
 <a id="screenshots"></a>
 ## 使用截图 / Screenshots
 
-**她就住在 DSH 里。** 导入可选的 Live2D 模型后，她会用眼睛和头跟着鼠标看，呼吸、发呆、自己找点事做。头顶小标签显示梁文峰 / 梁文谷时段和账户余额；时段切换时她会换个表情告诉你。没有模型时显示原版插图。
-**She lives inside DSH.** With the optional Live2D model imported she follows the pointer with her eyes and head, breathes, idles and keeps herself busy. Chips above her head show the DeepSeek pricing period (梁文峰 = peak, 梁文谷 = off-peak) and your balance; she announces each period switch with a new expression. Without the model, the original illustrations are shown.<br>
+**她就住在 DSH 里。** 导入可选的 Live2D 模型后，她会用眼睛和头跟着鼠标看，呼吸、发呆、自己找点事做。头顶常显梁文峰 / 梁文谷时段和账户余额，时段切换时她会换个表情告诉你；鼠标移到她身上，上方弹出剧场、设置、安静模式、探头等快捷操作。没有模型时显示原版插图。
+**She lives inside DSH.** With the optional Live2D model imported she follows the pointer with her eyes and head, breathes, idles and keeps herself busy. Chips above her head always show the DeepSeek pricing period (梁文峰 = peak, 梁文谷 = off-peak) and your balance, and she announces each period switch with a new expression; hover over her for quick actions (Theatre, Settings, Quiet mode, Peek). Without the model, the original illustrations are shown.<br>
 
 ![大肥鱼（Live2D）在 DSH 中：计费时段、余额与快捷操作 / The Live2D companion in DSH with pricing period, balance and quick actions](docs/screenshots/companion.jpg)
 
@@ -55,6 +55,18 @@
   </tr>
 </table>
 
+**从右边探头陪你：** 点悬停菜单里的「探头」或按 **Alt+P**（可在设置里改），她会躲到窗口右边，只探出半个身子，不挡住对话；再按一次就回到原来的位置。Live2D 模型会斜着探出来、一只手拉住边框；没有模型时有专门的探头插图。<br>
+**Peeking from the right edge:** choose Peek in the hover menu or press **Alt+P** (change it in Settings) and she hides behind the right edge of the window, half out of sight and clear of the conversation; press again to bring her back to her spot. The Live2D model leans out holding the edge; without the model a dedicated peeking illustration is used.
+
+![探头：Live2D 与插图 / Peeking: Live2D and illustration](docs/screenshots/peek.jpg)
+
+<table>
+  <tr>
+    <td width="40%"><img src="docs/screenshots/carry-art.jpg" alt="插图模式拎起来 / Picked up, illustration mode"></td>
+    <td>没有 Live2D 模型时，拎起来也有专门的插图：双手举高、脚够不着地。<br>Without the Live2D model, being picked up has its own illustration too: arms up, feet off the ground.</td>
+  </tr>
+</table>
+
 <details>
 <summary>代码卡片与回答结束后的干饭时间 / Code card and rice break after the answer</summary>
 
@@ -62,7 +74,7 @@
 
 </details>
 
-<sub>截图使用模拟的 DSH 页面和演示余额，插件界面是真实的 v0.7.0 代码；人物为可选导入的 DeepSeek-chan（大肥鱼）Live2D 模型（原画及拆分 [神宫凉子](https://space.bilibili.com/13737731)，Live2D 建模 霓虹猫_NeonNeko），模型不随插件提供。表情、场景与代码页截图来自 v0.6.0 的插图模式。 / Screenshots use a simulated DSH page and sample balance; the plugin UI is the actual v0.7.0 build. The character is the optionally imported DeepSeek-chan (大肥鱼) Live2D model (art and parts by [神宫凉子](https://space.bilibili.com/13737731), rigging by 霓虹猫_NeonNeko), which is not included with the plugin. The expression, scene and code-page screenshots come from v0.6.0 with illustrations.</sub>
+<sub>截图使用模拟的 DSH 页面和演示余额，插件界面是真实的 v0.8.0 代码；人物为可选导入的 DeepSeek-chan（大肥鱼）Live2D 模型（原画及拆分 [神宫凉子](https://space.bilibili.com/13737731)，Live2D 建模 霓虹猫_NeonNeko），模型不随插件提供。表情、场景与代码页截图来自 v0.6.0 的插图模式。 / Screenshots use a simulated DSH page and sample balance; the plugin UI is the actual v0.8.0 build. The character is the optionally imported DeepSeek-chan (大肥鱼) Live2D model (art and parts by [神宫凉子](https://space.bilibili.com/13737731), rigging by 霓虹猫_NeonNeko), which is not included with the plugin. The expression, scene and code-page screenshots come from v0.6.0 with illustrations.</sub>
 
 <a id="english"></a>
 ## English
@@ -72,6 +84,16 @@
 An interactive desktop/web companion and visual-novel (GalGame) conversation theatre for the official [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness). 大肥鱼 lives inside DSH, reacts to reasoning and answers, and keeps you company while you work.
 
 The product name is **大肥鱼** in both languages; `dsh-whale-pet` remains the repository and package identifier.
+
+### New in v0.8.0
+
+- **Peek from the right edge.** Peek in the hover menu or **Alt+P** (record another shortcut in Settings) sends her behind the right edge of the window, half out of sight and clear of the conversation and the composer; press again and she returns to her spot. The Live2D model leans out holding the edge; with the illustrations she walks to the edge first and then peeks around it. She cannot go while she is dizzy from shaking.
+- **New illustrations** for peeking and for being picked up, used when no Live2D model is imported.
+- **Chips always visible.** The pricing period and your balance stay above her head; Peek, with its shortcut, sits in the hover menu beside Quiet mode.
+- **Livelier Live2D.** Body language while you chat, more idle motions, legs that close and dangle when she is picked up and a cushioned landing. The odd hand-on-hip pose is gone.
+- **Smoother after a long idle.** She no longer stays choppy after DSH has been in the background. A new **Power saving** switch (Settings › Companionship) keeps the model at 20–30 fps, and 10 fps while you use another app.
+
+Full notes: [v0.8.0](docs/releases/v0.8.0.md).
 
 ### New in v0.7.0
 
@@ -116,13 +138,13 @@ Full notes: [v0.7.0](docs/releases/v0.7.0.md).
 - **Consistent portraits.** All poses share one head size and foot line; 撒娇 no longer looks smaller.
 - **Your name in her lines**, a smoother drag, a new soft character voice, a regrouped theatre and rebuilt light/dark themes.
 
-Eighteen illustrations are embedded: five random thinking poses, inspiration, answering, 撒娇, dizzy, rice breaks, and the six v0.6.0 expressions. Reasoning has its own scrollable bubble; she uses the answering pose while output streams and eats rice afterwards. Chibi form switching is paused for now (its artwork is kept).
+Eighteen illustrations were embedded in v0.5.0–v0.6.0 (v0.8.0 adds peeking and being picked up): five random thinking poses, inspiration, answering, 撒娇, dizzy, rice breaks, and the six v0.6.0 expressions. Reasoning has its own scrollable bubble; she uses the answering pose while output streams and eats rice afterwards. Chibi form switching is paused for now (its artwork is kept).
 
 ### Install or upgrade
 
 Old installers in v0.1.0–v0.6.0 may fail on Windows. Prefer the latest full package or use the separate installer repair package beside an existing `lib` folder. See [installation recovery](docs/INSTALLATION_RECOVERY.md).
 
-1. Download **dsh-whale-pet-v0.7.0.zip** from [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases).
+1. Download **dsh-whale-pet-v0.8.0.zip** from [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases).
 2. Extract the entire archive into a permanent folder, such as `D:\dsh-whale-pet`.
 3. Run `install.bat`, then open DSH or press **Ctrl + R** in its window.
 4. Upgrade in the same folder, or rerun the installer if you moved the plugin. Keep the extracted files in place.
@@ -141,10 +163,12 @@ Run `uninstall.bat` and refresh DSH to remove the plugin from the profile. Saved
 
 ### Controls
 
-- **Hover** for quick actions: Theatre, Settings, Quiet mode, Dock to the edge and, after an answer with code, Copy code.
+- **Hover** for quick actions: Theatre, Settings, Quiet mode, Peek (its shortcut is shown beside it) and, after an answer with code, Copy code.
+- **Peek / Come back:** **Alt+P** by default; record another shortcut in Settings › Appearance. She peeks only from the right, pauses wandering and chatter, and returns to her previous spot. Not while she is dizzy.
+- **Power saving** (Settings › Companionship): the Live2D model draws at most 30 fps, 20 while idle and 10 while you use another app.
 - Her skirt, hair ends and tail sway gently; turn this off in Settings › Companionship › Swaying clothes.
 - **Click** her to open Settings; **drag** to move her. With Settings open, she and the panel move together.
-- **Chips above her head:** the pricing period (click to hear it again) and your balance (click for details).
+- **Chips above her head (always shown):** the pricing period (click to hear it again) and your balance (click for details; — while it cannot be read).
 - Move the pointer back and forth over her head for a head pat. With the Live2D model, stroking her tail makes her shy, and dragging picks her up. Shaking her quickly makes her dizzy. Easter egg: keep poking her and see what happens.
 - Click the DSH chat box to enter the **theatre**; press Escape or **Exit** to leave. Head pats, tail touches and pokes work there too (clicking her is a poke and does not turn the page). Click the text (or the scene) once to finish revealing it, again for the next page; with Transparent selected, clicking the background leaves. The bar under the text has Log, Auto, Skip, Hide, Expand and the ⋯ menu (sounds, reading mode, theme, language).
 - **Theatre chips (top left):** music (tracks, play/pause, volume, your own file), background (time of day, four scenes, Transparent, your picture, shuffle) and theatre settings (text speed, size, typewriter, auto, sounds).
@@ -178,7 +202,7 @@ npm test
 node --check lib/client.js
 ```
 
-The build compiles the views, state, host adapter, CSS and all 12 PNGs into `lib/client.js` for DSH's `__ModuleLoader__`. Edit the source and rebuild; do not edit `lib/client.js` by hand. Current automated suite: **94 tests**.
+The build compiles the views, state, host adapter, CSS and all 20 illustrations into `lib/client.js` for DSH's `__ModuleLoader__`. Edit the source and rebuild; do not edit `lib/client.js` by hand. Current automated suite: **173 tests**.
 
 ### Contributors and acknowledgements
 
@@ -207,6 +231,16 @@ See the [contribution guide](CONTRIBUTING.md) for PR review, release approval an
 大肥鱼是专为官方 [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) 开发的桌宠与 GalGame 对话剧场。她生活在 DSH 界面内，会随着思考与回答切换动作，陪你一起工作。
 
 中英文统一使用产品名 **大肥鱼**；仓库与包标识继续使用 `dsh-whale-pet`。
+
+### v0.8.0 新体验
+
+- **从右边探头。** 点悬停菜单里的「探头」或按 **Alt+P**（可在设置里换成别的快捷键），她会躲到窗口右边，只探出半个身子，不挡对话和输入框；再按一次回到原来的位置。Live2D 模型会斜着探出来、一只手拉住边框；插图模式下她先走到边上，再换成探头插图。被晃晕时没法探头。
+- **新插图**：探头和被拎起来各有一张，没有导入 Live2D 模型时使用。
+- **头顶常显**计费时段和余额；「探头」和它的快捷键移到悬停菜单里，在安静模式旁边。
+- **Live2D 更生动**：聊天时有肢体动作，待机小动作更多；被拎起来时双腿并拢、小腿晃荡，落地有缓冲。去掉了别扭的叉腰动作。
+- **挂机后不再一直卡。** DSH 在后台待久了再回来，她会恢复流畅。新增 **省电模式**（设置 › 陪伴）：模型最高 30 帧、待机 20 帧，切到别的软件时 10 帧。
+
+完整说明见 [v0.8.0 发布说明](docs/releases/v0.8.0.md)。
 
 ### v0.7.0 新体验
 
@@ -251,13 +285,13 @@ See the [contribution guide](CONTRIBUTING.md) for PR review, release approval an
 - **立绘大小一致。** 所有姿态的头部大小和脚底位置统一，撒娇不再显小。
 - **台词使用你的称呼**；另外拖动更流畅，人物音效更柔和，剧场重新整理，明暗主题重新设计。
 
-内嵌 18 张插画：五套随机思考姿态、顿悟、回答、撒娇、眩晕、干饭，以及 v0.6.0 的六个新表情。推理过程显示在独立的可滚动气泡里；输出期间用回答姿态，输出结束后吃饭。Q 版切换暂时关闭，素材保留。
+v0.5.0–v0.6.0 内嵌 18 张插画（v0.8.0 新增探头和被拎起来两张）：五套随机思考姿态、顿悟、回答、撒娇、眩晕、干饭，以及 v0.6.0 的六个新表情。推理过程显示在独立的可滚动气泡里；输出期间用回答姿态，输出结束后吃饭。Q 版切换暂时关闭，素材保留。
 
 ### 安装或升级
 
 旧版 v0.1.0–v0.6.0 的安装脚本在 Windows 上可能失败。建议更新完整插件；需要保留旧功能时可使用单独的安装器修复包。详见[安装问题与旧版本修复](docs/INSTALLATION_RECOVERY.md)。
 
-1. 从 [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) 下载 **dsh-whale-pet-v0.7.0.zip**。
+1. 从 [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) 下载 **dsh-whale-pet-v0.8.0.zip**。
 2. 完整解压到固定文件夹，例如 `D:\dsh-whale-pet`。
 3. 双击 `install.bat`，再打开 DSH，或在已打开的窗口中按 **Ctrl + R** 刷新。
 4. 升级时覆盖同一目录中的插件文件；若换了目录，请重新运行安装脚本。解压后的文件需要保留。
@@ -276,10 +310,12 @@ React 与 Cordis 由 DSH 提供，普通用户无需 Node.js、npm 或额外素�
 
 ### 怎么操作
 
-- **悬停**出现快捷操作：剧场、设置、安静模式、贴边；最近的回答里有代码时，还会出现“复制代码”。
+- **悬停**出现快捷操作：剧场、设置、安静模式、探头（旁边显示快捷键）；最近的回答里有代码时，还会出现“复制代码”。
+- **探头 / 回来**：默认 **Alt+P**，可在 设置 › 外观 里录制别的快捷键。只从右边探头，探头时不散步、不闲聊，回来时回到原来的位置。被晃晕时不能探头。
+- **省电模式**（设置 › 陪伴）：Live2D 模型最高 30 帧，待机 20 帧，切到别的软件时 10 帧。
 - 她的裙摆、发梢和尾巴会轻轻飘动；可在 设置 › 陪伴 › 裙摆飘动 中关闭。
 - **点击**她打开设置，**拖动**可以移动她。设置打开时，她和面板会一起移动。
-- **头顶小标签**：计费时段（点击再播报一次）和余额（点击查看详情）。
+- **头顶小标签（常显）**：计费时段（点击再播报一次）和余额（点击查看详情；读不到时显示 —）。
 - 在她头上来回移动鼠标可以摸头；使用 Live2D 模型时，摸尾巴她会害羞，拖动会把她拎起来。快速晃动她会头晕。小彩蛋：一直戳她试试看。
 - 点击 DSH 聊天输入框进入**剧场**；按 Escape 或「退出」离开。剧场里也能摸头、摸尾巴和戳她（点她算戳，不会翻页）。第一次点击文字（或场景）会显示完当前段，再点一次翻页；选择「透明」背景时，点击背景会退出。文字下方的按钮栏有回顾、自动、快进、隐藏、大屏和“⋯”菜单（音效、阅读方式、主题、语言）。
 - **剧场左上角小按钮**：音乐（曲目、播放/暂停、音量、本地音乐）、背景（跟随时间、四套场景、透明、我的背景、随机）和剧场设置（文字速度、字号、打字机、自动翻页、音效）。
@@ -313,7 +349,7 @@ npm test
 node --check lib/client.js
 ```
 
-构建会把界面、状态机、宿主适配器、CSS 和 12 张 PNG 编入 DSH `__ModuleLoader__` 使用的 `lib/client.js`。请修改源码后重新构建，不要手动编辑 `lib/client.js`。当前共有 **94 项自动测试**。
+构建会把界面、状态机、宿主适配器、CSS 和 20 张插画编入 DSH `__ModuleLoader__` 使用的 `lib/client.js`。请修改源码后重新构建，不要手动编辑 `lib/client.js`。当前共有 **173 项自动测试**。
 
 ### 贡献者与致谢
 

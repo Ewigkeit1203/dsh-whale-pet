@@ -262,15 +262,16 @@ test('browser bundle: voice follows newly streamed prose only, and is silent whi
   assert.ok(cuts >= 1, 'stream end cuts the voice immediately')
 })
 
-test('browser bundle: reading fade recovers on pet hover, Alt alone controls click-through', t => {
+test('browser bundle: movement never fades her; Alt still controls click-through', t => {
  const runtime=loadBundle(); const sm=runtime.mount();t.after(()=>sm.dispose())
  runtime.render()
- const reading=runtime.viewEffects.find(fn=>String(fn).includes('const reading'))
- const cleanup=reading();t.after(cleanup)
- runtime.dispatch('pointermove',{type:'pointermove',target:new runtime.FakeElement()})
- let tree=runtime.render();assert.equal(tree.props['data-dimmed'],true)
- tree.props.onMouseEnter()
- tree=runtime.render();assert.equal(tree.props['data-dimmed'],false)
+ const visibility=runtime.viewEffects.find(fn=>String(fn).includes('const visibility'))
+ const cleanup=visibility();t.after(cleanup)
+ let tree=runtime.render();const opacity=walk(tree).find(node=>node.props.imgSrc).props.opacity
+ for(let i=0;i<100;i++)runtime.dispatch('pointermove',{type:'pointermove',target:new runtime.FakeElement()})
+ runtime.dispatch('wheel',{type:'wheel',target:new runtime.FakeElement()})
+ tree=runtime.render();assert.equal(walk(tree).find(node=>node.props.imgSrc).props.opacity,opacity)
+ assert.equal(tree.props['data-dimmed'],undefined)
  const shortcuts=runtime.viewEffects.find(fn=>String(fn).includes('const down'))
  const remove=shortcuts();t.after(remove)
  runtime.dispatch('keydown',{key:'Alt',altKey:false})
@@ -355,6 +356,10 @@ test('browser bundle: shaking uses the new Dizzy asset and returns to the normal
  for(const x of [1200,700,1200,700])runtime.dispatch('mousemove',{clientX:x,clientY:400})
  runtime.dispatch('mouseup',{clientX:700,clientY:400});tree=runtime.render()
  assert.equal(walk(tree).find(node=>node.props.imgSrc).props.poseName,'Dizzy')
+ // Too dizzy to go and peek: a short notice instead.
+ walk(tree).find(n=>String(n.props.className).split(' ').includes('petEdgePeek')).props.onClick();tree=runtime.render()
+ assert.equal(tree.props['data-docked'],false,'cannot peek while dizzy')
+ assert.ok(walk(tree).some(n=>n.props.className==='petToast'&&String(n.children).includes('晕')),'tells why')
  t.mock.timers.tick(2500);tree=runtime.render()
  assert.equal(walk(tree).find(node=>node.props.imgSrc).props.poseName,'Maid')
 })
@@ -674,4 +679,63 @@ test('browser bundle: a real drag keeps its original pointer offset instead of m
   assert.equal(tree.props.style.left,'420px');assert.equal(tree.props.style.top,'150px')
   assert.ok(walk(tree).find(n=>n.props.imgSrc).props.held)
   runtime.dispatch('mouseup',{clientX:620,clientY:450});cleanup()
+})
+
+test('browser bundle: crown peek docks her, suppresses chatter and restores the saved spot',t=>{
+ const runtime=loadBundle();const sm=runtime.mount();t.after(()=>sm.dispose());let tree=runtime.render()
+ const origin={...tree.props.style};const peek=()=>walk(tree).find(n=>String(n.props.className).split(' ').includes('petEdgePeek'))
+ assert.equal(peek().props['aria-pressed'],false)
+ sm.setWandering(true);peek().props.onClick();tree=runtime.render()
+ assert.equal(tree.props['data-docked'],true);assert.notEqual(sm.getStatus().state,'WANDERING')
+ assert.equal(peek().props['aria-pressed'],true);assert.equal(tree.props['data-peek-edge'],'right')
+ assert.equal(walk(tree).find(n=>n.props.imgSrc).props.onTouch,undefined)
+ assert.ok(!walk(tree).some(n=>n.props.className==='speechBubble'))
+ peek().props.onClick();tree=runtime.render();assert.equal(tree.props['data-docked'],false);assert.deepEqual({...tree.props.style},origin)
+})
+test('browser bundle: peek remains available with peak notices off, and settings preserve the return position',t=>{
+ const storage={getItem:()=>JSON.stringify({peakNotice:false,onboardingDone:true}),setItem(){}}
+ const runtime=loadBundle(storage);const sm=runtime.mount();t.after(()=>sm.dispose());let tree=runtime.render();const origin={...tree.props.style}
+ const peek=()=>walk(tree).find(n=>String(n.props.className).split(' ').includes('petEdgePeek'))
+ assert.ok(peek());peek().props.onClick();tree=runtime.render()
+ walk(tree).find(n=>n.children.includes('设置')).props.onClick();tree=runtime.render()
+ assert.equal(tree.props['data-docked'],false)
+ walk(tree).find(n=>n.children.includes('设置')).props.onClick();tree=runtime.render();assert.equal(tree.props['data-docked'],true)
+ peek().props.onClick();tree=runtime.render();assert.deepEqual({...tree.props.style},origin)
+})
+
+test('browser bundle: custom peek shortcut toggles only once, displays beside the button and always peeks from the right',t=>{
+ const storage={getItem:()=>JSON.stringify({peekShortcut:'Ctrl+Shift+K',x:900,y:100,wandering:false}),setItem(){}}
+ const runtime=loadBundle(storage);const sm=runtime.mount();t.after(()=>sm.dispose());let tree=runtime.render()
+ assert.ok(walk(tree).some(n=>n.type==='kbd' && n.children.includes('Ctrl+Shift+K')))
+ const install=()=>{const effect=runtime.viewEffects.find(fn=>String(fn).includes('const down'));return effect()}
+ let clean=install()
+ runtime.dispatch('keydown',{key:'p',altKey:true,preventDefault(){}});tree=runtime.render();assert.equal(tree.props['data-docked'],false)
+ runtime.dispatch('keydown',{key:'K',ctrlKey:true,shiftKey:true,preventDefault(){}});clean();tree=runtime.render()
+ assert.equal(tree.props['data-docked'],true);assert.equal(tree.props['data-peek-edge'],'right')
+ const selected=tree.props['data-peek-edge'];tree=runtime.render();assert.equal(tree.props['data-peek-edge'],selected)
+ clean=install();runtime.dispatch('keydown',{key:'K',ctrlKey:true,shiftKey:true,repeat:true,preventDefault(){}});tree=runtime.render();assert.equal(tree.props['data-docked'],true)
+ runtime.dispatch('keydown',{key:'K',ctrlKey:true,shiftKey:true,preventDefault(){}});clean();tree=runtime.render();assert.equal(tree.props['data-docked'],false)
+})
+test('browser bundle: settings expose a shortcut recorder without retired bottom/automatic choices, with a labelled full-size settings action',t=>{
+ const runtime=loadBundle();const sm=runtime.mount();t.after(()=>sm.dispose());let tree=runtime.render()
+ const button=walk(tree).find(n=>n.props.className==='toolBtn petSettingsButton');assert.ok(button.children.includes('设置'));button.props.onClick();tree=runtime.render()
+ const key=()=>walk(tree).find(n=>n.props.id==='pet-peek-shortcut')
+ assert.ok(!walk(tree).some(n=>n.props.id==='pet-peek-edge'),'retired edge selector is removed')
+ const event={key:'J',altKey:true,preventDefault(){},stopPropagation(){}}
+ key().props.onKeyDown(event);tree=runtime.render();assert.equal(key().props.value,'Alt+J')
+ key().props.onKeyDown({...event,key:'T'});tree=runtime.render();assert.equal(key().props.value,'Alt+J','existing shortcut cannot be stolen')
+ key().props.onKeyDown({...event,key:'Backspace'});tree=runtime.render();assert.equal(key().props.value,'未设置')
+})
+test('browser bundle: the peeking picture appears only after she has walked to the edge as herself, and leaves at once',async t=>{
+ const runtime=loadBundle();const sm=runtime.mount();t.after(()=>sm.dispose());let tree=runtime.render()
+ const pose=()=>walk(tree).find(n=>n.props.imgSrc).props.poseName
+ const peek=()=>walk(tree).find(n=>String(n.props.className).split(' ').includes('petEdgePeek'))
+ assert.ok(walk(tree).find(n=>n.props.className==='toolbar').children.flat(9).some((n:any)=>n&&n.props&&String(n.props.className).includes('petEdgePeek')),'peek sits in the hover menu')
+ peek().props.onClick();tree=runtime.render()
+ assert.equal(tree.props['data-docked'],true);assert.notEqual(pose(),'peek','still herself while walking');assert.equal(tree.props['data-peek-swap'],undefined)
+ // Effects are run by hand in this harness.
+ const effect=runtime.viewEffects.filter((fn:any)=>String(fn).includes('setPeekArrived(true)')).pop();effect()
+ await new Promise(r=>setTimeout(r,800));tree=runtime.render()
+ assert.equal(pose(),'peek','turns into the peeking picture at the edge');assert.equal(tree.props['data-peek-swap'],true);assert.equal(tree.props['data-peek-lean'],undefined,'the picture is not tilted')
+ peek().props.onClick();tree=runtime.render();assert.notEqual(pose(),'peek','herself again as soon as she comes back')
 })

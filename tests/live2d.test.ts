@@ -188,7 +188,7 @@ test('Live2D motion: after a quiet while she performs on her own, and stops when
   assert.ok(new Set(seen).size >= 4)
   assert.ok(gesture, 'some performances use the hand gestures (foxtail, chest)')
   assert.ok(lively, 'performances ask for the lively frame rate')
-  assert.equal(LIVE2D_PERFORMANCES.length, 6)
+  assert.equal(LIVE2D_PERFORMANCES.length, 9)
   assert.ok(!seen.includes('author'), 'the author idle only plays when the model has it')
   const withAuthor = new Live2DDriver(5)
   withAuthor.setAuthorIdle(13.15)
@@ -313,13 +313,28 @@ test('Carry timeline: collar pivot, stretch on grab, struggle, ease-in drop and 
   assert.ok(d.armLift > 0.9, 'paws up while struggling')
 })
 
-test('Live2D motion: wandering glides without forward marching; reduced motion stays almost still', async () => {
+test('Live2D motion: wandering swims across without forward marching; reduced motion stays almost still', async () => {
   const {Live2DDriver} = await import('../lib/client/live2d-motion.js')
   const walk = live2dLookFor('Maid', {state:'WANDERING'})
   const driver = new Live2DDriver(3)
   const xs: number[] = [], zs: number[] = []
   for (let t = 0; t < 6; t += 1 / 30) { const d = driver.update({dt: 1 / 30, motion: 1, look: walk, pointer: null, talking: 0}); if (t > 2) { xs.push(d.PositionX); zs.push(d.PositionZ) } }
-  assert.ok(Math.max(...xs) - Math.min(...xs) > 1 && Math.max(...xs) - Math.min(...xs) < 6, 'small lateral sway')
+  assert.ok(Math.max(...xs) - Math.min(...xs) < 6, 'no marching sway')
+  // Travelling: feet off the ground, head and body turned into the direction in proportion to speed, arms a little out.
+  const swim = (travel: number) => { const d = new Live2DDriver(3), c = new Live2DDriver(3); let r: any, b: any; for (let i = 0; i < 60; i++) { r = d.update({dt: 1 / 30, motion: 1, look: walk, pointer: null, talking: 0, travel}); b = c.update({dt: 1 / 30, motion: 1, look: walk, pointer: null, talking: 0}) } return {d, r, turn: r.AngleX - b.AngleX, body: r.PositionX - b.PositionX} }
+  const right = swim(1), left = swim(-1), slow = swim(0.3)
+  assert.ok(right.r.float > 0.95 && right.r.moving, 'feet off the ground while she travels')
+  assert.ok(right.turn > 7 && right.body > 6 && left.turn < -7 && left.body < -6, `turns into the direction (${right.turn}, ${left.turn})`)
+  assert.ok(slow.turn > 1 && slow.turn < right.turn * 0.5, 'in proportion to her speed')
+  assert.ok(right.r.swimTilt > 6 && left.r.swimTilt < -6 && Math.abs(slow.r.swimTilt) < 3.5, `leans her whole figure into it (${right.r.swimTilt})`)
+  assert.ok(right.r.arms.lf === 0 && right.r.arms.rf === 0, 'arms hang')
+  // Arriving: the float ends and she lands with a knee bend that is over within a second.
+  const idle = live2dLookFor('Maid', {state:'IDLE'})
+  let bend = 0, r: any
+  for (let i = 0; i < 36; i++) { r = right.d.update({dt: 1 / 30, motion: 1, look: idle, pointer: null, talking: 0}); bend = Math.max(bend, r.touchdown) }
+  assert.ok(bend > 0.9 && r.touchdown === 0 && r.float < 0.02, `soft landing (${bend})`)
+  const calm = new Live2DDriver(3).update({dt: 0.1, motion: 0, look: walk, pointer: null, talking: 0, travel: 1})
+  assert.ok(calm.float === 0 && calm.touchdown === 0 && calm.swimTilt === 0, 'reduced motion: no float')
   assert.ok(Math.max(...zs) - Math.min(...zs) < 1.5, 'no added front-facing stepping')
   const still = new Live2DDriver(3)
   for (let t = 0; t < 60; t += 0.05) {
@@ -503,4 +518,172 @@ test('Chest boundary reaction covers up, interrupts idle performances and releas
   assert.equal(d!.event,'');assert.equal(d!.performance,'')
   for(let i=0;i<240;i++) d=driver.update({dt:1/60,motion:1,look:{idle:true},pointer:null,talking:0})
   assert.ok(d!.armCover<0.001)
+})
+
+test('Live2D chat: she listens while the user types, thinks, talks in phrases and rounds the answer off', async () => {
+  const {Live2DDriver, LIVE2D_CHAT} = await import('../lib/client/live2d-motion.js')
+  const idle = live2dLookFor('Maid', {state: 'IDLE'})
+  const run = (driver: any, seconds: number, input: any, each?: (d: any, t: number) => void) => {
+    let d: any
+    for (let i = 0; i < seconds * 20; i++) { d = driver.update({dt: 0.05, motion: 1, pointer: null, talking: 0, ...(typeof input === 'function' ? input(i * 0.05) : input)}); each?.(d, i * 0.05) }
+    return d
+  }
+  // Listening: looks at the input box (down and to the left here), leans in, ignores the pointer, nods once at a pause.
+  const listener = new Live2DDriver(11), control = new Live2DDriver(11)
+  const l = run(listener, 2, {look: idle, typing: {x: -0.8, y: -0.9, since: 0.1}, pointer: {x: 1, y: 1, still: 0}})
+  const c = run(control, 2, {look: idle})
+  assert.ok(l.ParamEyeBallX < -0.4 && l.ParamEyeBallY < -0.4, 'eyes on the input box, not the pointer')
+  assert.ok(l.LeanInput - c.LeanInput > 5 && l.AngleX < c.AngleX - 5, 'leans in and turns towards it')
+  assert.equal(l.event, '', 'no idle event while listening')
+  let dip = 0
+  run(listener, 1.6, (t: number) => ({look: idle, typing: {x: -0.8, y: -0.9, since: 0.1 + t}}), d => { dip = Math.min(dip, d.AngleY - l.AngleY) })
+  assert.ok(dip < -2.5, `nods at a typing pause (${dip})`)
+  const after = run(listener, 6, {look: idle, typing: {x: -0.8, y: -0.9, since: LIVE2D_CHAT.listenFor + 1}})
+  assert.ok(Math.abs(after.LeanInput) < 1.5, 'stops listening after the typing ends')
+  // Not while answering, and not with reduced motion.
+  const answering = live2dLookFor('Answering', {state: 'ANSWERING'})
+  const busy = new Live2DDriver(11), busyControl = new Live2DDriver(11)
+  assert.equal(run(busy, 2, {look: answering, typing: {x: -1, y: -1, since: 0}}).LeanInput, run(busyControl, 2, {look: answering}).LeanInput)
+  const calm = new Live2DDriver(11), calmControl = new Live2DDriver(11)
+  assert.deepEqual(run(calm, 2, {look: idle, motion: 0, typing: {x: -1, y: -1, since: 0}}), run(calmControl, 2, {look: idle, motion: 0}))
+
+  // Thinking: perks up at once, then spends time on both sides.
+  const thinker = new Live2DDriver(3), still = new Live2DDriver(3)
+  const think = live2dLookFor('Think3', {state: 'REASONING'}), plain = live2dLookFor('Think3')
+  let rise = 0, left = 0, right = 0
+  const base: number[] = []
+  run(still, 30, {look: plain}, d => { base.push(d.PositionX) })
+  let n = 0
+  run(thinker, 30, {look: think}, (d, t) => { if (t < 0.6) rise = Math.max(rise, d.PositionY); const dx = d.PositionX - base[n++]; if (dx > 2) right++; if (dx < -2) left++ })
+  assert.ok(rise > 2, 'perks up when thinking starts')
+  assert.ok(left > 40 && right > 40, `changes sides while thinking (${left}/${right})`)
+
+  // Speaking: several beats in 20 s, then a wrap-up nod and smile; a short blip earns none.
+  const speaker = new Live2DDriver(5)
+  let beats = 0, low = false
+  run(speaker, 20, {look: answering, talking: 1}, d => { const down = d.AngleY < -5.4; if (down && !low) beats++; low = down })
+  assert.ok(beats >= 3 && beats <= 14, `phrase beats (${beats})`)
+  let smile = 0, lively = false
+  run(speaker, 1.5, {look: idle}, d => { smile = Math.max(smile, d.smile); lively ||= d.lively })
+  assert.ok(smile > 0.4 && lively, 'rounds the answer off')
+  const blip = new Live2DDriver(5)
+  run(blip, 0.5, {look: answering, talking: 1})
+  let blipSmile = 0
+  run(blip, 1.5, {look: idle}, d => { blipSmile = Math.max(blipSmile, d.smile) })
+  assert.ok(blipSmile < 0.3, 'no wrap-up after a blip')
+  const quiet = new Live2DDriver(5)
+  run(quiet, 5, {look: answering, talking: 1, motion: 0})
+  assert.equal(run(quiet, 0.2, {look: idle, motion: 0}).lively, false, 'reduced motion: no wrap-up')
+})
+
+test('Live2D idle life: time-of-day performances, no repeats within two, and drowsiness that wakes with a start', async () => {
+  const {Live2DDriver, LIVE2D_PERFORMANCES, LIVE2D_DROWSY, LIVE2D_IDLE_EVENTS, performanceBias} = await import('../lib/client/live2d-motion.js')
+  const idle = live2dLookFor('Maid', {state: 'IDLE'})
+  for (const name of ['window', 'hair', 'skirt']) assert.ok(LIVE2D_IDLE_EVENTS.some((e: any) => e.name === name), name)
+  assert.ok(performanceBias('nod-off', 2) > performanceBias('hum', 2) && performanceBias('window-gaze', 15) > 1 && performanceBias('doze', undefined) === 1)
+  const play = (hour: number | undefined, seed: number) => {
+    const driver = new Live2DDriver(seed), seen: string[] = []
+    let last = ''
+    for (let i = 0; i < 3600 * 10; i++) { const d = driver.update({dt: 0.1, motion: 1, look: idle, pointer: null, talking: 0, hour}); if (d.performance && d.performance !== last) seen.push(d.performance); last = d.performance }
+    return seen
+  }
+  const day = play(undefined, 5)
+  assert.ok(day.length >= 30, `performances in an hour (${day.length})`)
+  for (let i = 2; i < day.length; i++) assert.ok(day[i] !== day[i - 1] && day[i] !== day[i - 2], `no repeat within two (${day.slice(i - 2, i + 1)})`)
+  assert.equal(new Set(day).size, LIVE2D_PERFORMANCES.length, 'every performance comes up')
+  const sleepy = (list: string[]) => list.filter(n => n === 'doze' || n === 'nod-off' || n === 'yawn').length / list.length
+  assert.ok(sleepy(play(2, 5)) > sleepy(play(20, 5)) + 0.1, 'more sleepy pieces at night')
+
+  // Drowsy after minutes alone, sooner at night; the pointer wakes her at once.
+  const eyes = (hour: number, seconds: number) => {
+    const driver = new Live2DDriver(8), control = new Live2DDriver(8)
+    let d: any, c: any
+    for (let i = 0; i < seconds * 10; i++) { d = driver.update({dt: 0.1, motion: 1, look: idle, pointer: null, talking: 0, hour}); c = control.update({dt: 0.1, motion: 1, look: idle, pointer: {x: 0, y: 0, still: 0}, talking: 0, hour}) }
+    return {driver, d}
+  }
+  const night = eyes(2, LIVE2D_DROWSY.night + LIVE2D_DROWSY.over + 20), noon = eyes(12, LIVE2D_DROWSY.night + LIVE2D_DROWSY.over + 20)
+  assert.ok(night.d.eyeOpen < noon.d.eyeOpen - 0.3 || night.d.performance, `drowsy at night (${night.d.eyeOpen} / ${noon.d.eyeOpen})`)
+  let woke = false, d: any
+  for (let i = 0; i < 20; i++) { d = night.driver.update({dt: 0.1, motion: 1, look: idle, pointer: {x: 0.5, y: 0, still: 0}, talking: 0, hour: 2}); woke ||= d.lively && d.brow > 0.3 }
+  assert.ok(woke && d.eyeOpen > -0.1, 'wakes with a start and opens her eyes')
+  const calm = new Live2DDriver(8)
+  for (let i = 0; i < 4000; i++) d = calm.update({dt: 0.1, motion: 0, look: idle, pointer: null, talking: 0, hour: 2})
+  assert.equal(d.eyeOpen, 0, 'reduced motion: not drowsy')
+})
+
+test('Live2D arms: no hand on the hip, a stretch that leads with the forearms, a wave, and nothing while something else owns the arms', async () => {
+  const {Live2DDriver, LIVE2D_PERFORMANCES, LIVE2D_IDLE_EVENTS} = await import('../lib/client/live2d-motion.js')
+  // The hand-on-hip pose was removed (the hand swings round from behind her): no idle event moves the arms.
+  for (const e of LIVE2D_IDLE_EVENTS as any[]) for (const u of [0.25, 0.5, 0.75]) for (const side of [1, -1]) {
+    const o = e.at(side, u)
+    assert.ok(!o.lu && !o.lf && !o.ru && !o.rf, `${e.name}: idle events leave the arms alone`)
+  }
+  // Poses come from the definitions themselves: sample every piece through its whole length.
+  for (const def of LIVE2D_PERFORMANCES as any[]) for (const side of [1, -1]) {
+    let upperSeen = false
+    for (let t = 0; t <= def.duration; t += 0.05) {
+      const o = def.at(t, side).o
+      for (const [upper, fore] of [[o.lu ?? 0, o.lf ?? 0], [o.ru ?? 0, o.rf ?? 0]]) {
+        assert.ok(upper >= -0.001 && upper <= 1 && fore >= -1 && fore <= 0.5001, `${def.name}: arm inputs in the rendered range (${upper}, ${fore})`)
+        // The forearm leads: the upper arm never lifts while the forearm is still (nearly) at rest.
+        if (upper > 0.05) { upperSeen = true; assert.ok(Math.abs(fore) > 0.2, `${def.name} t=${t.toFixed(2)}: forearm first (${upper}, ${fore})`) }
+      }
+    }
+    if (def.name === 'yawn' || def.name === 'wave') assert.ok(upperSeen, `${def.name} raises an arm`)
+    const end = def.at(def.duration, side).o
+    for (const key of ['lu', 'lf', 'lw', 'ru', 'rf', 'rw']) assert.ok(Math.abs(end[key] ?? 0) < 0.02, `${def.name} ends with the arms at rest`)
+  }
+  // Thinking: the arms stay down (no hand on the hip); a gesture, carrying or reduced motion keeps the arms out of it too.
+  const run = (look: any, seconds: number, motion = 1) => { const d = new Live2DDriver(6); let r: any; for (let i = 0; i < seconds * 20; i++) r = d.update({dt: 0.05, motion, look, pointer: null, talking: 0}); return r }
+  const think = live2dLookFor('Think2', {state: 'REASONING'})
+  const t = run(think, 8)
+  assert.ok(Math.abs(t.arms.lf) + Math.abs(t.arms.rf) + Math.abs(t.arms.lu) + Math.abs(t.arms.ru) < 0.01, 'thinking: arms at rest')
+  for (const look of [{...think, gesture: 'point'}, {...think, held: true}, {...think, guardChest: true}]) { const r = run(look, 8); assert.ok(Math.abs(r.arms.lf) + Math.abs(r.arms.rf) < 0.01, 'arms left to their owner') }
+  const calm = run(think, 8, 0)
+  assert.equal(calm.arms.lf, 0); assert.equal(calm.arms.rf, 0)
+})
+
+test('Live2D smoothness: the head eases in from rest, settles with a small overshoot, and the arms never overshoot', async () => {
+  const {Live2DDriver} = await import('../lib/client/live2d-motion.js')
+  // A head turn the look asks for: compare with a driver that keeps looking ahead (same seed, same sways).
+  const turned = new Live2DDriver(12), ahead = new Live2DDriver(12)
+  const base = {}, look = {angle: {x: 20}}
+  for (let i = 0; i < 40; i++) { turned.update({dt: 1 / 60, motion: 1, look: base, pointer: null, talking: 0}); ahead.update({dt: 1 / 60, motion: 1, look: base, pointer: null, talking: 0}) }
+  const path: number[] = []
+  for (let i = 0; i < 180; i++) path.push(turned.update({dt: 1 / 60, motion: 1, look, pointer: null, talking: 0}).AngleX - ahead.update({dt: 1 / 60, motion: 1, look: base, pointer: null, talking: 0}).AngleX)
+  const speed = path.map((p, i) => i ? p - path[i - 1] : p)
+  const fastest = speed.indexOf(Math.max(...speed))
+  assert.ok(speed[0] < Math.max(...speed) * 0.35, 'starts from rest, not at full speed')
+  assert.ok(fastest >= 4 && fastest <= 20, `eases in (${fastest})`)
+  const peak = Math.max(...path)
+  assert.ok(peak > 20.05 && peak < 21.2, `settles with a small overshoot (${peak})`)
+  assert.ok(Math.abs(path[179] - 20) < 0.15, 'and comes to rest on the target')
+  // The same answer on long frames (15 fps in the background).
+  const slow = new Live2DDriver(12), slowAhead = new Live2DDriver(12)
+  let s = 0
+  for (let i = 0; i < 45; i++) s = slow.update({dt: 1 / 15, motion: 1, look, pointer: null, talking: 0}).AngleX - slowAhead.update({dt: 1 / 15, motion: 1, look: base, pointer: null, talking: 0}).AngleX
+  assert.ok(Math.abs(s - 20) < 0.3, `stable at 15 fps (${s})`)
+  // Arms: a forearm move to -0.5 and back never goes past the pose, and the driver asks for smooth frames only while the arm travels.
+  const d: any = new Live2DDriver(12), idle = live2dLookFor('Maid', {state: 'IDLE'})
+  for (let i = 0; i < 120; i++) d.update({dt: 1 / 60, motion: 1, look: idle, pointer: null, talking: 0})
+  const plateau = (u: number) => { const e = Math.min(1, u / 0.22, (1 - u) / 0.22); return e <= 0 ? 0 : Math.sin(Math.PI * e / 2) ** 2 }
+  const probe = {name: 'probe', duration: [5, 5], at: (_s: number, u: number) => ({lf: -0.5 * plateau(u)})}
+  d.event = {def: probe, side: 1, start: d.time, duration: 5}; d.nextPerformanceAt = 1e9
+  let low = 0, idleMoving = 0
+  for (let i = 0; i < 330; i++) { const r = d.update({dt: 1 / 60, motion: 1, look: idle, pointer: null, talking: 0}); low = Math.min(low, r.arms.lf); if (r.moving) idleMoving++ }
+  assert.ok(low < -0.47 && low >= -0.5001, `reaches the pose without overshoot (${low})`)
+  assert.equal(idleMoving, 0, 'idling alone stays at the ambient frame rate')
+  const thinker: any = new Live2DDriver(12), think = live2dLookFor('Think2', {state: 'REASONING'})
+  let movingFrames = 0
+  for (let i = 0; i < 600; i++) if (thinker.update({dt: 1 / 60, motion: 1, look: think, pointer: null, talking: 0}).moving) movingFrames++
+  assert.ok(movingFrames > 30 && movingFrames < 360, `in conversation, smooth frames only while something travels (${movingFrames}/600)`)
+})
+
+test('Edge peeking replaces props and idle performances without changing the conversational state',()=>{
+ for(const state of ['IDLE','REASONING','ANSWERING','EATING'] as const){
+  const look=live2dLookFor('baifan',{state,edgePeek:true,guardChest:true})
+  assert.equal(look.edgePeek,true);assert.equal(look.walk,false);assert.equal(look.idle,false)
+  assert.equal(look.gesture,undefined);assert.equal(look.guardChest,undefined);assert.equal(look.toggles,undefined)
+ }
+ assert.equal(live2dLookFor('Maid',{state:'IDLE'}).edgePeek,undefined)
 })

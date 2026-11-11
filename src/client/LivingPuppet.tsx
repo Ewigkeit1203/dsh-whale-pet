@@ -47,6 +47,8 @@ export interface Live2DBinding {
   /** Width / height of the framed model, used for the box the next time (reported once ready). */
   onReady?: (aspect: number) => void
   onFail?: (reason: string) => void
+  /** Power saving (fewer frames). */
+  powerSave?: boolean
 }
 
 /**
@@ -87,6 +89,7 @@ function Live2DLayer({ binding, talking, motion, style, stage, touchable, onStat
       live.setMouth(talkingRef.current ? 1 : 0)
       // The theatre is watched closely; the desktop companion is ambient (quick motions still get 60, see runtime.ts).
       live.setFrameRate(stage ? 60 : 30)
+      live.setPowerSave(Boolean(bindingRef.current.powerSave))
       live.onHull = clip => { if (!cancelled) setHull(clip) }
       live.onFail = reason => { if (!cancelled) { setReady(false); bindingRef.current.onFail?.(reason) } }
       live.ready.then(info => { if (!cancelled) { setReady(true); live.resize(); bindingRef.current.onReady?.(info.aspect) } }, error => { if (!cancelled) { setReady(false); bindingRef.current.onFail?.(String(error?.message || 'model-load')) } })
@@ -94,6 +97,7 @@ function Live2DLayer({ binding, talking, motion, style, stage, touchable, onStat
     return () => { cancelled = true; release?.(); stageRef.current = null }
   }, [binding.source])
   useEffect(() => { stageRef.current?.setLook(binding.look) }, [binding.look])
+  useEffect(() => { stageRef.current?.setPowerSave(Boolean(binding.powerSave)) }, [binding.powerSave])
   useEffect(() => { stageRef.current?.setMouth(talking ? 1 : 0) }, [talking])
   useEffect(() => { stageRef.current?.setMotion(motion) }, [motion])
   useEffect(() => { onState({ ready, hull }) }, [ready, hull])

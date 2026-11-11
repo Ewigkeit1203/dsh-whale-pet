@@ -117,6 +117,11 @@
   pointer-events: none;
   transition: left .28s cubic-bezier(.2, .8, .2, 1), top .28s cubic-bezier(.2, .8, .2, 1);
 }
+.petWidget[data-whale-pet][data-docked="true"] { transition: left .7s cubic-bezier(.25,.1,.25,1), top .7s cubic-bezier(.25,.1,.25,1); }
+[data-whale-pet][data-docked="true"] .puppetRoot { filter: none; }
+[data-whale-pet][data-docked="true"] .puppetCanvas { animation: none; }
+[data-whale-pet][data-docked="true"] .characterBase { cursor: default; }
+@media (prefers-reduced-motion: reduce) { .petWidget[data-whale-pet] { transition: none !important; } }
 .petWidget[data-whale-pet][data-sizing] { transition: none; }
 .petWidget[data-whale-pet][data-settling] { transition: left .24s cubic-bezier(.15, .7, .2, 1), top .24s cubic-bezier(.15, .7, .2, 1); }
 .petWidget[data-whale-pet][data-wandering] { transition: left 3.2s cubic-bezier(.25, .1, .25, 1), top 3.2s cubic-bezier(.25, .1, .25, 1); }
@@ -135,9 +140,13 @@
 [data-whale-pet="widget"] .characterBase { pointer-events: auto; cursor: grab; }
 [data-whale-pet="widget"][data-dragging] .characterBase { cursor: grabbing; }
 [data-whale-pet][data-ghost="true"] .characterBase { pointer-events: none !important; }
-[data-whale-pet="widget"] :is(.settingsDrawer, .petOnboarding, .petLog, .toolbar[data-visible="true"], .petWalletChip, .speechBubble) { pointer-events: auto; }
-[data-whale-pet][data-dimmed="true"] :is(.petCrown, .speechBubble) { opacity: .3; transition: opacity .3s ease; }
+[data-whale-pet="widget"] :is(.settingsDrawer, .petOnboarding, .petLog, .toolbar[data-visible="true"], .petWalletChip, .petEdgePeek, .speechBubble) { pointer-events: auto; }
 
+/* Above the hover toolbar’s invisible bridge, so crown controls receive clicks. */
+[data-whale-pet] .petCrownRow { position: relative; z-index: 1; }
+/* Peek lives in the hover menu, beside quiet mode; its shortcut stays visible. */
+[data-whale-pet] .toolBtn.petEdgePeek { gap: 4px; white-space: nowrap; flex: 0 0 auto; }
+[data-whale-pet] .toolBtn.petEdgePeek[aria-pressed="true"] { background: var(--wp-accent-soft); color: var(--wp-accent); }
 /* Crown: the hover dock and the wallet chip, stacked above the head. */
 [data-whale-pet] .petCrown {
   position: absolute; z-index: 30;
@@ -166,6 +175,18 @@
   font-size: 12.5px; font-weight: 550; cursor: pointer;
   transition: background-color .15s ease, color .15s ease;
 }
+/* Keep labelled actions readable even when a host button style or flex layout is narrow. */
+[data-whale-pet] .toolbar { flex-shrink: 0; width: max-content; }
+[data-whale-pet] .toolbar .petSettingsButton { min-width: 82px; min-height: 34px; flex: 0 0 auto; font-size: 13px; }
+[data-whale-pet] .petSettingsButton span { display: inline; visibility: visible; font-size: inherit; }
+[data-whale-pet] .petEdgePeek kbd { font: 10px var(--wp-mono); opacity: .75; padding-left: 3px; white-space: nowrap; }
+/* The Live2D model leans out from behind the edge; the peeking picture is already drawn that way. */
+[data-whale-pet][data-peek-lean="true"] .petSpriteSize { transform-origin: 50% 14%; transform: rotate(-22deg); }
+[data-whale-pet] .petSpriteSize { transition: transform .65s cubic-bezier(.25,.1,.25,1); }
+/* The peeking picture replaces her walking picture in place, without sliding again. */
+.petWidget[data-whale-pet][data-docked="true"][data-peek-swap="true"] { transition: none; }
+[data-whale-pet][data-peek-edge="right"] .petCrown { position: fixed; left: auto; right: 12px; bottom: 12px !important; transform: none; align-items: flex-end; }
+@media (prefers-reduced-motion: reduce) { [data-whale-pet] .petSpriteSize { transition: none; } }
 [data-whale-pet] .toolBtn:hover { background: var(--wp-control-hover); }
 [data-whale-pet] .toolBtn svg { flex: none; opacity: .85; }
 [data-whale-pet] .toolBtnPrimary { background: var(--wp-accent-soft); color: var(--wp-accent); }
@@ -427,3 +448,6 @@
 @media (prefers-reduced-motion: reduce) {
   [data-whale-pet], [data-whale-pet] *, [data-whale-pet] *::before, [data-whale-pet] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* Parked controls stay available while her body is outside the window. */
+[data-whale-pet][data-docked="true"] .toolbar { opacity: 1; transform: none; pointer-events: auto; }

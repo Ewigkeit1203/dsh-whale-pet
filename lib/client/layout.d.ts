@@ -15,6 +15,41 @@
  *
  * All values are CSS pixels. Pure functions only: no DOM access.
  */
+export interface EdgePeekRoom {
+    /** Keep the existing right-side composer avoidance. */
+    composer?: {
+        left: number;
+        right: number;
+        top: number;
+        bottom: number;
+    };
+}
+/** Peeking from the right edge: what shows sits below the top bar and above the corner toolbar (120 px). */
+export declare const PEEK_EDGE: {
+    readonly top: 90;
+    readonly toolbar: 120;
+    readonly composerGap: 16;
+};
+/** Live2D: leans out from behind the right edge, the rest of her (still connected) off-screen. */
+export declare function rightPeekPosition(y: number, width: number, imageHeight: number, viewportWidth: number, viewportHeight: number, room?: EdgePeekRoom): {
+    x: number;
+    y: number;
+};
+/**
+ * The peeking picture (no Live2D): its right side is the edge she holds, so it sits flush against the
+ * window's right edge, upright.
+ */
+export declare function peekArtPosition(y: number, stage: {
+    width: number;
+    height: number;
+}, image: {
+    imageLeft: number;
+    imageWidth: number;
+    imageHeight: number;
+}, viewportWidth: number, viewportHeight: number, room?: EdgePeekRoom): {
+    x: number;
+    y: number;
+};
 export interface Box {
     x: number;
     y: number;

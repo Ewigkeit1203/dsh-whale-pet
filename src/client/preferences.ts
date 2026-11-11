@@ -1,3 +1,4 @@
+import { normalisePeekShortcut } from './peek-shortcut.js'
 import { isSceneId, type SceneId } from './scenes.js'
 import { isBgmTrack, type BgmTrackId } from './bgm.js'
 
@@ -7,6 +8,7 @@ export interface Preferences {
   fontSize: number
   speed: 'slow' | 'medium' | 'fast' | 'instant'
   docked: boolean
+  peekShortcut: string
   onboardingDone: boolean
   notifications: boolean
   ricePrice: number
@@ -37,6 +39,8 @@ export interface Preferences {
   bgmVolume: number
   /** Swaying skirt, hair ends and tail (WebGL); the face is never deformed. */
   liveMotion: boolean
+  /** Power saving: Live2D at most 30 fps (20 while idle, 10 in the background), no 60 fps boosts. */
+  powerSave: boolean
   /** Use the imported Live2D model instead of the illustrations (no effect until one is imported). */
   live2d: boolean
   live2dWidgetScale: number
@@ -46,7 +50,7 @@ export interface Preferences {
 }
 export const PREFERENCES_KEY = 'dsh-whale-pet.preferences.v1'
 export function defaultPreferences(): Preferences {
-  const defaults: Preferences = { userName: '你', petName: '大肥鱼', fontSize: 17, speed: 'medium', docked: false, onboardingDone: false, notifications: false, ricePrice: 1, language: 'zh', theme: 'light', wandering: true, quiet: false, muted: true, volume: 0.2, typewriter: true, reminders: true, peakNotice: true, scale: 1, opacity: 1, reading: 'pages', autoAdvance: false, form: 'maiden', autoGalGame: true, scene: 'auto', sceneShuffle: false, bgmOn: false, bgmTrack: 'daily', bgmVolume: 0.45, liveMotion: true, live2d: true, live2dWidgetScale: 1.2, live2dTheatreScale: 1.15 }
+  const defaults: Preferences = { userName: '你', petName: '大肥鱼', fontSize: 17, speed: 'medium', docked: false, peekShortcut: 'Alt+P', onboardingDone: false, notifications: false, ricePrice: 1, language: 'zh', theme: 'light', wandering: true, quiet: false, muted: true, volume: 0.2, typewriter: true, reminders: true, peakNotice: true, scale: 1, opacity: 1, reading: 'pages', autoAdvance: false, form: 'maiden', autoGalGame: true, scene: 'auto', sceneShuffle: false, bgmOn: false, bgmTrack: 'daily', bgmVolume: 0.45, liveMotion: true, powerSave: false, live2d: true, live2dWidgetScale: 1.2, live2dTheatreScale: 1.15 }
   return defaults
 }
 export function readPreferences(): Preferences {
@@ -54,12 +58,14 @@ export function readPreferences(): Preferences {
   try {
     const p = JSON.parse(localStorage.getItem(PREFERENCES_KEY) || '{}')
     if (!p || typeof p !== 'object') return defaults
-    for (const key of ['wandering', 'quiet', 'autoAdvance', 'autoGalGame', 'muted', 'typewriter', 'reminders', 'peakNotice', 'docked', 'onboardingDone', 'notifications', 'sceneShuffle', 'bgmOn', 'liveMotion', 'live2d'] as const) if (typeof p[key] === 'boolean') defaults[key] = p[key]
+    for (const key of ['wandering', 'quiet', 'autoAdvance', 'autoGalGame', 'muted', 'typewriter', 'reminders', 'peakNotice', 'docked', 'onboardingDone', 'notifications', 'sceneShuffle', 'bgmOn', 'liveMotion', 'powerSave', 'live2d'] as const) if (typeof p[key] === 'boolean') defaults[key] = p[key]
     for (const key of ['userName', 'petName'] as const) if (typeof p[key] === 'string' && p[key].trim()) defaults[key] = p[key].trim().slice(0, 24)
     if (['slow', 'medium', 'fast', 'instant'].includes(p.speed)) defaults.speed = p.speed
     if (Number.isFinite(p.fontSize)) defaults.fontSize = Math.min(24, Math.max(14, p.fontSize))
     if (Number.isFinite(p.ricePrice)) defaults.ricePrice = Math.min(100, Math.max(0.01, p.ricePrice))
     if (p.quietBackup && typeof p.quietBackup.wandering === 'boolean' && typeof p.quietBackup.muted === 'boolean') defaults.quietBackup = p.quietBackup
+    const shortcut = normalisePeekShortcut(p.peekShortcut)
+    if (shortcut !== null) defaults.peekShortcut = shortcut
     if (p.language === 'en') defaults.language = 'en'
     if (p.theme === 'dark') defaults.theme = 'dark'
     if (p.reading === 'scroll') defaults.reading = 'scroll'

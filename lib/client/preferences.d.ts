@@ -6,6 +6,7 @@ export interface Preferences {
     fontSize: number;
     speed: 'slow' | 'medium' | 'fast' | 'instant';
     docked: boolean;
+    peekShortcut: string;
     onboardingDone: boolean;
     notifications: boolean;
     ricePrice: number;
@@ -39,6 +40,8 @@ export interface Preferences {
     bgmVolume: number;
     /** Swaying skirt, hair ends and tail (WebGL); the face is never deformed. */
     liveMotion: boolean;
+    /** Power saving: Live2D at most 30 fps (20 while idle, 10 in the background), no 60 fps boosts. */
+    powerSave: boolean;
     /** Use the imported Live2D model instead of the illustrations (no effect until one is imported). */
     live2d: boolean;
     live2dWidgetScale: number;

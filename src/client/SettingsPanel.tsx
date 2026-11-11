@@ -1,3 +1,4 @@
+import { peekShortcutFromEvent } from './peek-shortcut.js'
 import type { Preferences } from './preferences.js'
 import type { WalletView } from './wallet.js'
 import { LIVE2D_CREDIT } from './live2d-package.js'
@@ -108,7 +109,20 @@ export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, q
           <div className="petField petFieldStack"><label className="petFieldLabel" htmlFor="pet-font">{t('文字大小', 'Text size')}<output className="petValue" htmlFor="pet-font">{p.fontSize}px</output></label>
             <input id="pet-font" type="range" min="14" max="24" step="0.1" value={p.fontSize} aria-valuetext={p.fontSize + 'px'} onChange={e => update({ fontSize: Number(e.target.value) })} />
           </div>
-          {toggle(p.docked, docked => update({ docked }), t('贴边探头', 'Peek from the edge'), { hint: t('只露出上半身', 'Only the upper half shows') })}
+          <div className="petField petFieldStack"><label className="petFieldLabel" htmlFor="pet-peek-shortcut">{t('探头／回来快捷键', 'Peek / return shortcut')}</label>
+            <input id="pet-peek-shortcut" data-peek-shortcut="true" readOnly value={p.peekShortcut || t('未设置', 'Not set')} onKeyDown={e => {
+              e.stopPropagation()
+              if (e.key === 'Tab') return
+              e.preventDefault()
+              if (e.key === 'Escape') { e.currentTarget.blur(); return }
+              if (e.key === 'Backspace' || e.key === 'Delete') { update({ peekShortcut: '' }); return }
+              const shortcut = peekShortcutFromEvent(e)
+              if (shortcut) update({ peekShortcut: shortcut })
+            }} aria-describedby="pet-peek-shortcut-hint" />
+            <span id="pet-peek-shortcut-hint" className="petHint">{t('点此后按 Alt＋字母，或 Ctrl＋Shift＋字母；退格键取消。Alt+W / Alt+T 已保留。', 'Press Alt + a letter, or Ctrl + Shift + a letter here; Backspace disables. Alt+W / Alt+T are reserved.')}</span>
+            <button type="button" className="petWide" onClick={() => update({ peekShortcut: 'Alt+P' })}>{t('恢复默认 Alt+P', 'Reset to Alt+P')}</button>
+          </div>
+          {toggle(p.docked, docked => update({ docked }), t('贴边探头', 'Peek from the edge'), { hint: t('到右侧探头，手臂从腰旁伸向窗口外；快捷键或“回来”回到原位', 'Peek from the right, with her arm reaching out from the waist; use the shortcut or Come back to return') })}
         </div>
       </details>
 
@@ -159,6 +173,7 @@ export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, q
             <strong>{p.quiet ? t('结束安静模式', 'End quiet mode') : t('安静模式', 'Quiet mode')}</strong>
             <small>{p.quiet ? t('恢复之前的音效与游荡设置', 'Restore previous sound and wandering') : t('暂停闲聊、音效和游荡', 'Pause chatter, sounds and wandering')}</small>
           </button>
+          {toggle(p.powerSave, powerSave => update({ powerSave }), t('省电模式', 'Power saving'), { hint: t('Live2D 最高 30 帧，待机 20 帧，切到别的软件时 10 帧', 'Live2D at most 30 fps, 20 while idle, 10 in the background') })}
           {toggle(p.liveMotion, liveMotion => update({ liveMotion }), t('裙摆飘动', 'Swaying clothes'), { disabled: live2d.active, hint: live2d.active ? t('Live2D 模型自带物理摆动', 'The Live2D model has its own physics') : t('裙摆、发梢和尾巴轻轻摆动', 'Skirt, hair ends and tail sway gently') })}
           {toggle(p.wandering, wandering => update({ wandering }), t('闲置时散步', 'Wander when idle'), { disabled: p.quiet })}
           {toggle(p.reminders, reminders => update({ reminders }), t('午饭和熬夜提醒', 'Lunch & late-night reminders'))}

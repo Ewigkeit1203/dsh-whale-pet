@@ -21,7 +21,7 @@ const POSE_ASSETS = [
   ['GETIT', 'getit'], ['SAJIAO', 'sajiao'], ['THINK1', 'Think1'], ['THINK2', 'Think2'],
   ['THINK3', 'Think3'], ['THINK4', 'Think4'], ['THINK5', 'Think5'], ['DIZZY', 'Dizzy'],
   ['SMUG', 'smug'], ['SHY', 'shy'], ['ANGRY', 'angry'], ['SURPRISED', 'surprised'],
-  ['PROUD', 'proud'], ['HAPPY', 'happy'],
+  ['PROUD', 'proud'], ['HAPPY', 'happy'], ['CARRY', 'carry'], ['PEEK', 'peek'],
 ]
 
 console.log('[build] 1. Generating src/client/assets-data.ts with embedded image Data URIs...')
@@ -102,7 +102,7 @@ function moduleSource(file) {
     .replace(/^\/\/# sourceMappingURL=.*$/gm, '')
 }
 const preferencesSource = moduleSource('preferences.js')
-const pureModules = ['live2d-loader.js', 'live2d-look.js', 'touch.js', 'carry.js', 'live2d-motion.js', 'live2d-package.js', 'features.js', 'poses.js', 'layout.js', 'wallet.js', 'peak.js', 'account-balance.js', 'voice.js', 'scenes.js', 'media-store.js', 'bgm.js', 'rig.js', 'live-rig.js', 'emotion.js', 'experience.js', 'usability.js', 'hitareas.js']
+const pureModules = ['peek-shortcut.js', 'live2d-loader.js', 'live2d-look.js', 'touch.js', 'carry.js', 'live2d-motion.js', 'live2d-package.js', 'features.js', 'poses.js', 'layout.js', 'wallet.js', 'peak.js', 'account-balance.js', 'voice.js', 'scenes.js', 'media-store.js', 'bgm.js', 'rig.js', 'live-rig.js', 'emotion.js', 'experience.js', 'usability.js', 'hitareas.js']
   .map(moduleSource).join('\n')
 // Views are hook-free render functions or components; order matters only for readability.
 const views = [

@@ -1,3 +1,4 @@
+import {PeekArmOrder, PeekElbow, PEEK_ELBOW} from '../lib/client/peek-arm-order.js'
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import vm from 'node:vm'
@@ -9,7 +10,7 @@ import {LegPoseLayer} from '../lib/client/live2d-legs.js'
 function runtimeModule(path: string, context: Record<string, unknown>) {
   const text = readFileSync(new URL(path, import.meta.url), 'utf8').replace(/^import[\s\S]*?from ['"][^'"]+['"]\s*$/gm, '')
   const code = ts.transpileModule(text, {compilerOptions: {target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext}}).outputText.replace(/^export /gm, '').replace(/^export \{\};?$/gm, '')
-  return vm.runInNewContext(code + '\n;({createLive2DStage: typeof createLive2DStage === "function" ? createLive2DStage : null, acquireLive2DStage: typeof acquireLive2DStage === "function" ? acquireLive2DStage : null})', {LegPoseLayer, ...context})
+  return vm.runInNewContext(code + '\n;({createLive2DStage: typeof createLive2DStage === "function" ? createLive2DStage : null, acquireLive2DStage: typeof acquireLive2DStage === "function" ? acquireLive2DStage : null})', {LegPoseLayer, PeekArmOrder, PeekElbow, PEEK_ELBOW, ...context})
 }
 
 test('Cubism startup does not register a new wasm log callback; repeated stages share startup', async () => {
@@ -116,7 +117,7 @@ test('Runtime keeps three minutes of quiet desktop performances at the ambient b
   const target = {addEventListener(){}, removeEventListener(){}}
   const parameterIds: string[] = [], values = new Map<number,number>()
   const value = (id:string) => values.get(parameterIds.indexOf(id)) ?? 0
-  const core = {update(){}, getDrawableCount:()=>0, getPartParentPartIndices:()=>[], getPartIndex:()=>-1,
+  const core = {update(){}, getDrawableCount:()=>0, getPartParentPartIndices:()=>[], getPartIndex:()=>-1, getDrawableIndex:()=>-1,
     getParameterIndex(id:string){if(!parameterIds.includes(id))parameterIds.push(id);return parameterIds.indexOf(id)},
     getParameterCount:()=>100, getParameterDefaultValue:()=>0, getParameterMinimumValue:()=>-1, getParameterMaximumValue:()=>1,
     setParameterValueByIndex(index:number,v:number,w=1){values.set(index,(values.get(index)??0)*(1-w)+v*w)},
@@ -171,6 +172,12 @@ test('Runtime keeps three minutes of quiet desktop performances at the ambient b
   assert.ok(Math.abs(value('Param36'))<0.01 && Math.abs(value('Param41'))<0.01 && Math.abs(value('Param42'))<0.01,'the other arm is left alone')
   stage.setLook({}); advance(3)
   assert.equal(value('Movement2'),0,'no stale covering switch after the reaction')
+  stage.setLook({edgePeek:true});advance(3)
+  assert.ok(Math.abs(value('Param62')-PEEK_ELBOW.upper)<.01 && Math.abs(value('Param60')-PEEK_ELBOW.forearm)<.01,'upper arm nearly straight, bend only at the elbow')
+  assert.ok(Math.abs(value('Param36'))<.01 && Math.abs(value('Param41'))<.01,'other arm stays at rest')
+  assert.equal(value('LHand'),0,'fingers remain native rather than hidden by forced parameters')
+  stage.setLook({idle:true});advance(3)
+  assert.ok(Math.abs(value('Param60'))<.01 && Math.abs(value('Param41'))<.01,'return clears only the temporary native arm targets')
   stage.dispose(); assert.equal(frames.size,0)
 })
 
@@ -249,4 +256,57 @@ test('Runtime poses leg meshes, updates their masks and plants soles while the b
   vertices.forEach((v,i)=>assert.deepEqual(v,baseline[i],'cached stages clear old leg poses on reuse'))
   stage.setCarryPose(1,0);frame();stage.dispose()
   vertices.forEach((v,i)=>assert.deepEqual(v,baseline[i],'disposing restores Core-owned geometry'))
+})
+
+test('Frame budget: heavy physics in the background does not leave her stuck at a low rate; power saving caps the rate', async () => {
+  let now = 0, next = 0, draws = 0, spent = 0, focused = false
+  const frames = new Map<number, (t:number)=>void>()
+  const listeners: Record<string, (() => void)[]> = {}
+  const target = {addEventListener(type:string, f:()=>void){(listeners[type] ??= []).push(f)}, removeEventListener(){}}
+  const parameterIds: string[] = []
+  const core = {update(){}, getDrawableCount:()=>0, getPartParentPartIndices:()=>[], getPartIndex:()=>-1, getDrawableIndex:()=>-1,
+    getParameterIndex(id:string){if(!parameterIds.includes(id))parameterIds.push(id);return parameterIds.indexOf(id)},
+    getParameterCount:()=>100, getParameterDefaultValue:()=>0, getParameterMinimumValue:()=>-1, getParameterMaximumValue:()=>1,
+    setParameterValueByIndex(){}, multiplyParameterValueByIndex(){}, loadParameters(){}, saveParameters(){}}
+  const renderer = {setClippingMaskBufferSize(){}, startUp(){}, setIsPremultipliedAlpha(){}, bindTexture(){}, loadShaders(){},
+    setMvpMatrix(){}, setRenderState(){}, drawModel(){draws++; spent += 2}}
+  class Model {
+    _model = core
+    // A heavy model: 8 ms of physics per 60 Hz step, so a 15 fps frame costs four steps.
+    _motionManager = {updateMotion(_core:unknown, dt:number){spent += dt * 60 * 8}}
+    loadModel(){}; createRenderer(){}; getRenderer(){return renderer}; release(){}
+  }
+  class Setting {getModelFileName(){return 'test.moc3'}; getPhysicsFileName(){return ''}; getEyeBlinkParameterCount(){return 0}; getTextureCount(){return 0}}
+  const module = runtimeModule('../live2d/runtime.ts', {console, ...motion, performance:{now:()=>now + spent},
+    setTimeout, clearTimeout, window:target, document:{...target, hidden:false, hasFocus:()=>focused},
+    requestAnimationFrame(f:(t:number)=>void){const id=++next;frames.set(id,f);return id}, cancelAnimationFrame(id:number){frames.delete(id)},
+    Live2DCubismCore:{Version:{csmGetVersion:()=>1}}, CubismFramework:{startUp(){}, initialize(){}, getIdManager:()=>({getId:(s:string)=>s})},
+    CubismShader_WebGL:class{}, CubismUserModel:Model, CubismModelSettingJson:Setting,
+    CubismMatrix44:class {getArray(){return new Float32Array(16)}}, SHADER_SOURCES:{},
+  })
+  const stage = module.createLive2DStage({...target, clientWidth:200, clientHeight:400,
+    getContext:()=>({getExtension:()=>null, viewport(){}, clearColor(){}, clear(){}})},
+    {modelPath:'test.model3.json', read:async()=>new ArrayBuffer(8), expressions:{}})
+  await stage.ready
+  stage.setLook({})
+  const advance = (seconds:number) => {
+    const start = now, before = draws
+    for(let i=1;i<=144*seconds;i++) { now = start + i*1000/144; const [id, callback] = frames.entries().next().value!; frames.delete(id); callback(now) }
+    return (draws - before) / seconds
+  }
+  // Away in another app for a while: background rate.
+  const away = advance(30)
+  assert.ok(away <= 15.5, `background ${away} fps`)
+  // Back in DSH: the ambient 30 fps again within a few seconds, not stuck at the background rate.
+  focused = true; for (const f of listeners.focus ?? []) f()
+  advance(3)
+  const back = advance(10)
+  assert.ok(back >= 29, `after returning ${back} fps`)
+  // Power saving: idle 20 fps, never above 30, background 10.
+  stage.setPowerSave(true)
+  const saving = advance(10)
+  assert.ok(saving <= 20.5 && saving >= 18, `power saving idle ${saving} fps`)
+  focused = false
+  const savingAway = advance(10)
+  assert.ok(savingAway <= 10.5, `power saving background ${savingAway} fps`)
 })

@@ -41,12 +41,14 @@ export interface Live2DLookContext {
   held?: boolean
   heldKey?: number
   guardChest?: boolean
+  edgePeek?: boolean
 }
 
 /** Look for a pose name from PetOverlay's resolveCharacter(); unknown poses stay neutral. */
 export function live2dLookFor(pose: string, context: Live2DLookContext = {}): Live2DLook {
   const base = LIVE2D_LOOKS[pose] ?? LIVE2D_LOOKS.Maid
-  const look = context.state ? { ...base, walk: context.state === 'WANDERING', idle: context.state === 'IDLE' } : base
+  const look = context.state ? { ...base, walk: context.state === 'WANDERING', idle: context.state === 'IDLE', thinking: context.state === 'REASONING' } : base
+  if (context.edgePeek) return { edgePeek: true, idle: false, walk: false, gaze: 0.45, smile: 0.15, angle: { y: 2, z: 6 }, eyes: { y: 0.2 } }
   if (context.guardChest && !context.held) return { ...look, guardChest: true, gesture: undefined, gaze: 0.1, idle: false, walk: false }
   if (context.held) return { ...look, held: true, heldKey: context.heldKey, gaze: 0 }
   if (context.sleepy && pose === 'Maid') return { ...look, eyeOpen: 0.45, angle: { y: -6, z: 3 } }

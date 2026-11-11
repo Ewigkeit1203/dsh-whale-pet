@@ -46,6 +46,8 @@ export interface Live2DBinding {
     /** Width / height of the framed model, used for the box the next time (reported once ready). */
     onReady?: (aspect: number) => void;
     onFail?: (reason: string) => void;
+    /** Power saving (fewer frames). */
+    powerSave?: boolean;
 }
 export declare function LivingPuppet({ imgSrc, isMaiden, isGalGameMode, state, onMouseDown, onTouch, held, opacity, poseName, box, poseScale, live, motion, emote, emoteKey, live2d }: LivingPuppetProps): React.JSX.Element;
 //# sourceMappingURL=LivingPuppet.d.ts.map

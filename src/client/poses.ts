@@ -35,6 +35,10 @@ export const POSE_META: Record<string, PoseMeta> = {
   proud: { aspect: 1024 / 1536, scale: 1.03, content: 0.789 },
   happy: { aspect: 1024 / 1536, scale: 1.03, content: 0.766 },
   DaFeiYu: { aspect: 1, scale: 0.46 },
+  // v0.7.0: picked up (arms up, feet dangling; head measured against Maid) and peeking from the right edge
+  // (cropped so the right side of the picture is the edge she holds; a close-up, so a small scale).
+  carry: { aspect: 752 / 1448, scale: 0.97 },
+  peek: { aspect: 419 / 758, scale: 0.46 },
 }
 
 /**

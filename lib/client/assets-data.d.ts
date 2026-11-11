@@ -21,4 +21,6 @@ export declare const ANGRY_DATA_URI: string;
 export declare const SURPRISED_DATA_URI: string;
 export declare const PROUD_DATA_URI: string;
 export declare const HAPPY_DATA_URI: string;
+export declare const CARRY_DATA_URI: string;
+export declare const PEEK_DATA_URI: string;
 //# sourceMappingURL=assets-data.d.ts.map

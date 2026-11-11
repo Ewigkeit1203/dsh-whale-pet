@@ -54,6 +54,11 @@
     "webp_bytes": 504488,
     "png_bytes": 1125281
   },
+  "carry": {
+    "png_sha1": "a9d3d670e20fb712d78776d1e29ba3addb8586e5",
+    "webp_bytes": 359164,
+    "png_bytes": 1329379
+  },
   "getit": {
     "png_sha1": "2d10e1a88da4050c359ea3672d9905e5484265ff",
     "webp_bytes": 281788,
@@ -63,6 +68,11 @@
     "png_sha1": "b0ef653af6a5f2c99c52b70b7007469f4c0b3499",
     "webp_bytes": 198850,
     "png_bytes": 1905800
+  },
+  "peek": {
+    "png_sha1": "674bdf469cf7866bc3349be172148e8d49ef3955",
+    "webp_bytes": 103216,
+    "png_bytes": 449793
   },
   "proud": {
     "png_sha1": "8c2d19f612dcadbdef8b044406e549eaf6e41bcb",

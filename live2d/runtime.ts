@@ -15,6 +15,7 @@
  * idle loop and hand-gesture animations run alongside. Expression toggles (钢盆, 加载, 圈圈眼 …) come from the
  * model's Exp3 files and are blended in and out.
  */
+import { PeekArmOrder, PeekElbow, PEEK_ELBOW } from '../src/client/peek-arm-order'
 import { CubismFramework } from '../vendor/live2d/CubismWebFramework/src/live2dcubismframework'
 import { CubismUserModel } from '../vendor/live2d/CubismWebFramework/src/model/cubismusermodel'
 import { CubismModelSettingJson } from '../vendor/live2d/CubismWebFramework/src/cubismmodelsettingjson'
@@ -23,7 +24,7 @@ import { CubismMatrix44 } from '../vendor/live2d/CubismWebFramework/src/math/cub
 import { CubismShader_WebGL } from '../vendor/live2d/CubismWebFramework/src/rendering/cubismshader_webgl'
 import type { ACubismMotion } from '../vendor/live2d/CubismWebFramework/src/motion/acubismmotion'
 import type { CubismModel } from '../vendor/live2d/CubismWebFramework/src/model/cubismmodel'
-import { Live2DDriver, carryArmPose, Live2DFrameClock, Live2DGesturePlayer, LIVE2D_AUTHOR_IDLE, LIVE2D_GESTURES, parseMotionClip, sampleMotionCurve, type Live2DGesture } from '../src/client/live2d-motion'
+import { LIVE2D_SWIM, Live2DDriver, carryArmPose, Live2DFrameClock, Live2DGesturePlayer, LIVE2D_AUTHOR_IDLE, LIVE2D_GESTURES, parseMotionClip, sampleMotionCurve, type Live2DGesture } from '../src/client/live2d-motion'
 import { SHADER_SOURCES } from './shaders'
 import { LegPoseLayer, type LegMesh } from '../src/client/live2d-legs'
 import type { Live2DLook, Live2DReady, Live2DRegion, Live2DSource, Live2DStage } from '../src/client/live2d-types'
@@ -152,12 +153,18 @@ export function createLive2DStage(canvas: HTMLCanvasElement, source: Live2DSourc
   let mouthTarget = 0
   let motionScale = 1
   let frameRate = 30
+  let powerSave = false
   let active = true
   let drawCost = 0
   let legs: LegPoseLayer | null = null
+  let peekArms: PeekArmOrder | null = null
+  let peekElbow: PeekElbow | null = null
   const carryPose = { suspended: 0, landing: 0 }
+  // Wandering: feet off the ground and the landing, from the driver; and how fast the canvas itself is travelling.
+  const swim = { float: 0, touchdown: 0, tilt: 0, bob: 0, x: NaN }
   /** Something quick is moving (gesture in/out, touch reaction, carrying): draw at the lively rate. */
   let lively = false
+  let moving = false
   const LIVELY_FPS = 60
   // Touch regions: drawables under the model's 尾巴 and 头 parts (cdi3 names), and the last projection.
   let drawableRegion: Live2DRegion[] = []
@@ -197,7 +204,7 @@ export function createLive2DStage(canvas: HTMLCanvasElement, source: Live2DSourc
     setActive(value) {
       active = value
       if (value) resumeFrames()
-      else { cancelAnimationFrame(raf); raf = 0; restPointer(); carryPose.suspended = 0; carryPose.landing = 0; driver.setDangle(0) }
+      else { cancelAnimationFrame(raf); raf = 0; peekElbow?.restore(); peekArms?.restore(); restPointer(); carryPose.suspended = 0; carryPose.landing = 0; driver.setDangle(0) }
     },
     pulse(kind, side) { driver.pulse(kind, side) },
     setDangle(angle, velocity) { driver.setDangle(angle, velocity) },
@@ -214,6 +221,7 @@ export function createLive2DStage(canvas: HTMLCanvasElement, source: Live2DSourc
     setMouth(open) { mouthTarget = Math.max(0, Math.min(1, open || 0)) },
     setMotion(scale) { motionScale = Math.max(0, Math.min(1, scale)) },
     setFrameRate(fps) { frameRate = Math.max(5, Math.min(60, fps || 30)) },
+    setPowerSave(on) { powerSave = Boolean(on) },
     onHull: null,
     onFail: null,
     resize,
@@ -308,6 +316,8 @@ export function createLive2DStage(canvas: HTMLCanvasElement, source: Live2DSourc
     measureBounds(whale.core)
     findTouchParts(whale.core)
     legs = createLegLayer(whale.core)
+    peekArms = createPeekArmOrder(whale.core)
+    peekElbow = createPeekElbow(whale.core)
 
     const glContext = gl as WebGLRenderingContext
     const textureCount = setting.getTextureCount()
@@ -452,6 +462,29 @@ export function createLive2DStage(canvas: HTMLCanvasElement, source: Live2DSourc
     return null
   }
 
+  function createPeekElbow(core: CubismModel): PeekElbow {
+    const ids = CubismFramework.getIdManager()
+    return PeekElbow.forModel({
+      count: core.getDrawableCount(),
+      partParents: core.getPartParentPartIndices(),
+      partIndex: id => core.getPartIndex(ids.getId(id)),
+      drawableIndex: id => core.getDrawableIndex(ids.getId(id)),
+      drawablePart: index => core.getDrawableParentPartIndex(index),
+      vertices: index => core.getDrawableVertices(index),
+    }, index => { core.getModel().drawables.dynamicFlags[index] |= 0x20 })
+  }
+
+  function createPeekArmOrder(core: CubismModel): PeekArmOrder {
+    const ids = CubismFramework.getIdManager()
+    return PeekArmOrder.forModel({
+      count: core.getDrawableCount(),
+      partParents: core.getPartParentPartIndices(),
+      partIndex: id => core.getPartIndex(ids.getId(id)),
+      drawableIndex: id => core.getDrawableIndex(ids.getId(id)),
+      drawablePart: index => core.getDrawableParentPartIndex(index),
+    })
+  }
+
   function createLegLayer(core: CubismModel): LegPoseLayer {
     const parents = core.getPartParentPartIndices()
     const left = core.getPartIndex(CubismFramework.getIdManager().getId('Part18'))
@@ -491,6 +524,23 @@ export function createLive2DStage(canvas: HTMLCanvasElement, source: Live2DSourc
     pointer.at = now
   }
   function restPointer(): void { pointer.x = 0; pointer.y = 0; pointer.at = 0 }
+  // Local hour for time-of-day idling, read once a minute.
+  let hour = new Date().getHours(), hourAt = 0
+  function hourNow(now: number): number { if (now - hourAt > 60000) { hour = new Date().getHours(); hourAt = now } return hour }
+  // The user typing in the host (a text box that is not ours to touch): only when and where, never what.
+  const typing = { x: 0, y: 0, at: 0 }
+  function trackTyping(event: Event): void {
+    if (!active || !motionScale || document.hidden) return
+    const target = event.target as HTMLElement | null
+    if (!target || !(target.tagName === 'TEXTAREA' || target.isContentEditable)) return
+    const now = performance.now()
+    if (now - typing.at > 500) {
+      const box = target.getBoundingClientRect(), rect = canvas.getBoundingClientRect()
+      typing.x = Math.max(-1, Math.min(1, (box.left + box.width * 0.5 - rect.left - rect.width * 0.5) / Math.max(160, rect.width)))
+      typing.y = Math.max(-1, Math.min(1, (rect.top + rect.height * 0.22 - box.top - box.height * 0.5) / Math.max(180, rect.height * 0.65)))
+    }
+    typing.at = now
+  }
   function resumeFrames(): void {
     if (disposed || failed || !active || !model || !gl || document.hidden || raf) return
     frameClock.reset(performance.now())
@@ -502,15 +552,28 @@ export function createLive2DStage(canvas: HTMLCanvasElement, source: Live2DSourc
   }
   document.addEventListener('visibilitychange', visibilityChanged)
   window.addEventListener('pointermove', trackPointer, { passive: true })
+  document.addEventListener('input', trackTyping, { capture: true, passive: true })
   window.addEventListener('blur', restPointer)
+  // Back in DSH: measure again from scratch instead of inheriting background-frame costs.
+  const refocused = () => { drawCost = 0 }
+  window.addEventListener('focus', refocused)
   document.addEventListener('pointerleave', restPointer)
 
   function applyLook(whale: WhaleModel, dt: number, now: number): void {
     const m = motionScale
     // Semantic inputs only: the physics derives ParamAngle*, ParamBodyAngle*, hips, legs and arms from them.
+    let travel = 0
+    if (look.walk && m) {
+      const x = canvas.getBoundingClientRect().left
+      if (!Number.isNaN(swim.x) && dt > 0) travel = Math.max(-1, Math.min(1, (x - swim.x) / dt / LIVE2D_SWIM.speed))
+      swim.x = x
+    } else swim.x = NaN
     const drive = driver.update({
+      travel,
       dt, motion: m, look, talking: mouthTarget, landingHandled: legs?.available ?? false,
       pointer: pointer.at ? { x: pointer.x, y: pointer.y, still: (now - pointer.at) / 1000 } : null,
+      hour: hourNow(now),
+      typing: typing.at && now - typing.at < 4000 ? { x: typing.x, y: typing.y, since: (now - typing.at) / 1000 } : null,
     })
     whale.set('AngleX', drive.AngleX)
     whale.set('AngleY', drive.AngleY)
@@ -553,11 +616,13 @@ export function createLive2DStage(canvas: HTMLCanvasElement, source: Live2DSourc
 
     // Native hand gestures replace their toggle fallback (older imports keep the toggle).
     const gesture = look.gesture && gestures.has(look.gesture) ? look.gesture : null
-    gesturePlayer.want(look.held || look.guardChest ? null : gesture ?? (drive.gesture && gestures.has(drive.gesture) ? drive.gesture : null))
+    gesturePlayer.want(look.held || look.guardChest || look.edgePeek ? null : gesture ?? (drive.gesture && gestures.has(drive.gesture) ? drive.gesture : null))
     const playing = gesturePlayer.update(dt)
     // Long ambient performances keep the desktop's 30 fps budget. Only short
     // reactions, carrying and gesture transitions request extra frames.
-    lively = (drive.lively && !drive.performance) || gesturePlayer.phase === 'enter' || gesturePlayer.phase === 'exit'
+    moving = drive.moving
+    swim.float = drive.float; swim.touchdown = drive.touchdown; swim.tilt = drive.swimTilt; swim.bob = drive.swimBob
+    lively = (drive.lively && (!drive.performance || Boolean(look.held))) || gesturePlayer.phase === 'enter' || gesturePlayer.phase === 'exit'
     if (playing) {
       const clip = gestures.get(playing.gesture)?.[playing.part]
       if (clip) for (const curve of clip.curves) whale.core.setParameterValueByIndex(curve.index, sampleMotionCurve(curve.segments, playing.time))
@@ -575,7 +640,27 @@ export function createLive2DStage(canvas: HTMLCanvasElement, source: Live2DSourc
       }
     }
     applyCarryArms(whale, drive.armLift, elapsed)
+    // Idle and conversation arm poses, unless a native gesture, the carry paws or the chest cover has the arms.
+    if (gesturePlayer.phase === 'none' && drive.armLift < 0.001 && drive.armCover < 0.001) {
+      const a = drive.arms
+      if (a.lu || a.lf || a.lw) { whale.set('Param62', a.lu); whale.set('Param60', a.lf); whale.set('Param61', a.lw) }
+      if (a.ru || a.rf || a.rw) { whale.set('Param36', a.ru); whale.set('Param41', a.rf); whale.set('Param42', a.rw) }
+    }
     applyChestCover(whale, drive.armCover)
+    // Native rig poses only: hands remain attached to their authored wrists and forearms.
+    // Leaving the edge, the arm comes back first (faster than it went out), so she is back in the author's
+    // pose before she reaches her spot; the elbow tuck and draw order follow this same weight.
+    const peek = eased('edgePeek', look.edgePeek ? 1 : 0, dt, look.edgePeek ? 7 : 14)
+    if (peek > 0.001) {
+      for (const id of ['Movement1', 'Movement2', 'Movement3']) whale.set(id, 0, peek)
+      // A connected native forearm reaches diagonally from her waist beyond the right edge.
+      // The hand stays on its authored wrist and leaves the viewport naturally; no palm masking.
+      // Upper arm nearly straight, a bend only at the elbow (rendered and chosen with the user; a negative
+      // upper arm bends the sleeve itself, which this rig was not authored for).
+      whale.set('Param62', PEEK_ELBOW.upper, peek); whale.set('Param60', PEEK_ELBOW.forearm, peek)
+      whale.set('Param36', 0, peek); whale.set('Param41', 0, peek)
+      whale.set('Param61', 0, peek); whale.set('Param42', 0, peek)
+    }
   }
 
   /**
@@ -613,8 +698,11 @@ export function createLive2DStage(canvas: HTMLCanvasElement, source: Live2DSourc
     // Quick motions (hands, touch reactions, being carried) get up to 60 fps; slow idling stays at the ambient rate.
     // While the pointer moves (her eyes follow it) she is also drawn smoothly, if frames are cheap on this machine.
     const watched = pointer.at > 0 && now - pointer.at < 1200 && drawCost < 5
-    const budgetFps = Math.min(lively || watched ? Math.max(frameRate, LIVELY_FPS) : frameRate, Math.max(15, 1000 / Math.max(1, drawCost * 2)))
-    const fps = typeof document !== 'undefined' && typeof document.hasFocus === 'function' && !document.hasFocus() ? Math.min(15, budgetFps) : budgetFps
+    const background = typeof document !== 'undefined' && typeof document.hasFocus === 'function' && !document.hasFocus()
+    const budgetFps = Math.min(lively || watched || (moving && drawCost < 4) ? Math.max(frameRate, LIVELY_FPS) : frameRate, Math.max(15, 1000 / Math.max(1, drawCost * 2)))
+    const fps = powerSave
+      ? Math.min(background ? 10 : lively || watched ? 30 : 20, budgetFps)
+      : background ? Math.min(15, budgetFps) : budgetFps
     // Even pacing on any refresh rate (60, 120, 144 Hz): keep the average interval, not "at least one interval".
     const dt = frameClock.tick(now, fps)
     if (dt === null) return
@@ -632,8 +720,12 @@ export function createLive2DStage(canvas: HTMLCanvasElement, source: Live2DSourc
     applyLook(whale, dt, now)
     whale.physics?.evaluate(core, dt)
     legs?.restore()
+    peekElbow?.restore()
+    peekArms?.restore()
     core.update()
-    const bodyDrop = legs?.apply(carryPose.suspended * motionScale, carryPose.landing * motionScale) ?? 0
+    if (core.getRenderOrders) peekArms?.apply(core.getRenderOrders(), smooth.edgePeek ?? 0)
+    peekElbow?.apply(smooth.edgePeek ?? 0)
+    const bodyDrop = legs?.apply(Math.max(carryPose.suspended * motionScale, swim.float), Math.max(carryPose.landing * motionScale, swim.touchdown)) ?? 0
     modelFrame = (modelFrame + 1) >>> 0
 
     resize()
@@ -653,6 +745,15 @@ export function createLive2DStage(canvas: HTMLCanvasElement, source: Live2DSourc
     matrix[12] = -bounds.cx * sx
     matrix[13] = -1 - bottom * sy - bodyDrop * sy
     view.sx = sx; view.sy = sy; view.tx = matrix[12]; view.ty = matrix[13]
+    if (swim.float > 0.001) {
+      // Swimming across: lift her off the ground a little and lean the whole figure about her waist (drawing only;
+      // touch regions keep the upright view, which is close enough for the few seconds she travels).
+      const a = -swim.tilt * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a)
+      const px = bounds.cx, py = bottom + bounds.height * 0.55
+      const rise = bounds.height * (LIVE2D_SWIM.lift * swim.float + LIVE2D_SWIM.bob * swim.bob)
+      matrix[0] = sx * cos; matrix[4] = -sx * sin; matrix[12] += sx * (px - cos * px + sin * py)
+      matrix[1] = sy * sin; matrix[5] = sy * cos; matrix[13] += sy * (py - sin * px - cos * py + rise)
+    }
     const renderer = whale.getRenderer()
     renderer.setMvpMatrix(mvp)
     // This canvas/context belongs exclusively to this stage; draw to its default framebuffer.
@@ -663,7 +764,10 @@ export function createLive2DStage(canvas: HTMLCanvasElement, source: Live2DSourc
     const key = (look.toggles ?? []).join('|')
     if (key !== hullTargetKey) { hullTargetKey = key; hullDue = 0.35 }
     if (stage.onHull && hullDue <= 0 && (hullKey !== key || !hullMeasured)) { hullKey = key; hullMeasured = true; measureHull(context) }
-    drawCost = drawCost * 0.9 + (performance.now() - frameStart) * 0.1
+    // Cost per 60 Hz step: physics catches up in fixed steps, so a slow frame (15 fps in the background) costs
+    // several steps' worth. Measured raw, that cost kept the budget at its 15 fps floor even after she was
+    // looked at again (slower frames → more steps per frame → "slower" frames): the stutter after a long idle.
+    drawCost = drawCost * 0.9 + (performance.now() - frameStart) / Math.max(1, dt * 60) * 0.1
   }
 
   /** Coarse outline from the rendered alpha, as a clip-path polygon (like hitareas.ts). */
@@ -706,12 +810,16 @@ export function createLive2DStage(canvas: HTMLCanvasElement, source: Live2DSourc
     disposed = true
     cancelAnimationFrame(raf)
     window.removeEventListener('pointermove', trackPointer)
+    document.removeEventListener('input', trackTyping, { capture: true })
     window.removeEventListener('blur', restPointer)
+    window.removeEventListener('focus', refocused)
     document.removeEventListener('pointerleave', restPointer)
     document.removeEventListener('visibilitychange', visibilityChanged)
     canvas.removeEventListener('webglcontextlost', onContextLost)
     try {
       legs?.restore(); legs = null
+      peekElbow?.restore(); peekElbow = null
+      peekArms?.restore(); peekArms = null
       if (model) { model.release(); model = null }
       if (gl) { for (const texture of textures) gl.deleteTexture(texture); (gl.getExtension('WEBGL_lose_context') as { loseContext(): void } | null)?.loseContext() }
     } catch { /* already gone */ }
