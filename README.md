@@ -6,10 +6,10 @@
 <a id="screenshots"></a>
 ## 使用截图 / Screenshots
 
-**她就住在 DSH 里。** 裙摆、发梢和尾巴会轻轻飘动。头顶小标签显示梁文峰 / 梁文谷时段和账户余额；时段切换时她会换个表情告诉你。
-**She lives inside DSH.** Her skirt, hair ends and tail sway gently. Chips above her head show the DeepSeek pricing period (梁文峰 = peak, 梁文谷 = off-peak) and your balance; she announces each period switch with a new expression.<br>
+**她就住在 DSH 里。** 导入可选的 Live2D 模型后，她会用眼睛和头跟着鼠标看，呼吸、发呆、自己找点事做。头顶小标签显示梁文峰 / 梁文谷时段和账户余额；时段切换时她会换个表情告诉你。没有模型时显示原版插图。
+**She lives inside DSH.** With the optional Live2D model imported she follows the pointer with her eyes and head, breathes, idles and keeps herself busy. Chips above her head show the DeepSeek pricing period (梁文峰 = peak, 梁文谷 = off-peak) and your balance; she announces each period switch with a new expression. Without the model, the original illustrations are shown.<br>
 
-![大肥鱼在 DSH 中：计费时段、余额与快捷操作 / The companion in DSH with pricing period, balance and quick actions](docs/screenshots/companion.jpg)
+![大肥鱼（Live2D）在 DSH 中：计费时段、余额与快捷操作 / The Live2D companion in DSH with pricing period, balance and quick actions](docs/screenshots/companion.jpg)
 
 <table>
   <tr>
@@ -45,13 +45,13 @@
 <table>
   <tr>
     <td width="33%"><img src="docs/screenshots/head-pat.jpg" alt="摸摸头 / Head pat"></td>
-    <td width="33%"><img src="docs/screenshots/dizzy.jpg" alt="晃晕了 / Dizzy after shaking"></td>
-    <td width="33%"><img src="docs/screenshots/poke.jpg" alt="戳戳彩蛋 / Poke easter egg"></td>
+    <td width="33%"><img src="docs/screenshots/tail.jpg" alt="摸尾巴 / Touching her tail"></td>
+    <td width="33%"><img src="docs/screenshots/carry.jpg" alt="拎起来 / Picked up"></td>
   </tr>
   <tr>
     <td>在她头上来回移动鼠标：摸摸头，她会一脸满足或害羞，并叫出你设置的称呼。<br>Move the pointer over her head for a head pat; she looks content or shy and uses the name you set.</td>
-    <td>拖着她快速晃一晃，她就晕了。<br>Shake her quickly while dragging and she gets dizzy.</td>
-    <td>小彩蛋：一直戳她，她会先疑惑，然后抓狂。<br>Easter egg: keep poking her and she gets puzzled, then frustrated.</td>
+    <td>Live2D：在尾巴上来回摸，她会害羞地躲开；一直摸会生气。<br>Live2D: stroke her tail and she blushes and dodges; keep at it and she gets cross.</td>
+    <td>拖动她就被拎起来：先扑腾，再垂下来跟着手摆，松手落地。拖着快速晃会头晕；一直戳她是小彩蛋。<br>Dragging picks her up: she struggles, then dangles and swings; let go and she lands. Shake her and she gets dizzy; keep poking her for an easter egg.</td>
   </tr>
 </table>
 
@@ -62,7 +62,7 @@
 
 </details>
 
-<sub>截图使用模拟的 DSH 页面和演示余额，插件界面是真实的 v0.6.0 代码。 / Screenshots use a simulated DSH page and sample balance; the plugin UI is the actual v0.6.0 build.</sub>
+<sub>截图使用模拟的 DSH 页面和演示余额，插件界面是真实的 v0.7.0 代码；人物为可选导入的 DeepSeek-chan（大肥鱼）Live2D 模型（原画及拆分 [神宫凉子](https://space.bilibili.com/13737731)，Live2D 建模 霓虹猫_NeonNeko），模型不随插件提供。表情、场景与代码页截图来自 v0.6.0 的插图模式。 / Screenshots use a simulated DSH page and sample balance; the plugin UI is the actual v0.7.0 build. The character is the optionally imported DeepSeek-chan (大肥鱼) Live2D model (art and parts by [神宫凉子](https://space.bilibili.com/13737731), rigging by 霓虹猫_NeonNeko), which is not included with the plugin. The expression, scene and code-page screenshots come from v0.6.0 with illustrations.</sub>
 
 <a id="english"></a>
 ## English
@@ -72,6 +72,14 @@
 An interactive desktop/web companion and visual-novel (GalGame) conversation theatre for the official [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness). 大肥鱼 lives inside DSH, reacts to reasoning and answers, and keeps you company while you work.
 
 The product name is **大肥鱼** in both languages; `dsh-whale-pet` remains the repository and package identifier.
+
+### New in v0.7.0
+
+- **Optional Live2D model.** Import the free DeepSeek-chan (大肥鱼) model once (see [below](#live2d-model-optional)); the model's own physics moves her head, body, hair and skirt. Her eyes follow the pointer first, then her head, then her body. The original illustrations stay the default and the fallback.
+- **She keeps herself busy.** Small idle moments (shifting her weight, stretching, glancing around) and, after a quiet while, longer performances, including the author's own idle animation for the model, playing with the foxtail, dozing off and humming. Moving the pointer stops them.
+- **More touch.** Head pats, a sensitive tail that makes her shy and dodge, a hand on her chest when touched there, and picking her up: she struggles, dangles and swings behind your hand, then lands. Head pats, tail and pokes work in the theatre too.
+- **Native gestures** from the model: hand on her chest after an answer, a raised finger for an idea, the foxtail when smug.
+- **Safer Windows installer** for paths with Chinese or special characters, with backups and a targeted uninstall. See the [v0.7.0 release notes](docs/releases/v0.7.0.md).
 
 ### New in v0.6.0
 
@@ -137,8 +145,8 @@ Run `uninstall.bat` and refresh DSH to remove the plugin from the profile. Saved
 - Her skirt, hair ends and tail sway gently; turn this off in Settings › Companionship › Swaying clothes.
 - **Click** her to open Settings; **drag** to move her. With Settings open, she and the panel move together.
 - **Chips above her head:** the pricing period (click to hear it again) and your balance (click for details).
-- Move the pointer back and forth over her head for a head pat. Shaking her quickly makes her dizzy. Easter egg: keep poking her and see what happens.
-- Click the DSH chat box to enter the **theatre**; press Escape or **Exit** to leave. Click the text (or the scene) once to finish revealing it, again for the next page; with Transparent selected, clicking the background leaves. The bar under the text has Log, Auto, Skip, Hide, Expand and the ⋯ menu (sounds, reading mode, theme, language).
+- Move the pointer back and forth over her head for a head pat. With the Live2D model, stroking her tail makes her shy, and dragging picks her up. Shaking her quickly makes her dizzy. Easter egg: keep poking her and see what happens.
+- Click the DSH chat box to enter the **theatre**; press Escape or **Exit** to leave. Head pats, tail touches and pokes work there too (clicking her is a poke and does not turn the page). Click the text (or the scene) once to finish revealing it, again for the next page; with Transparent selected, clicking the background leaves. The bar under the text has Log, Auto, Skip, Hide, Expand and the ⋯ menu (sounds, reading mode, theme, language).
 - **Theatre chips (top left):** music (tracks, play/pause, volume, your own file), background (time of day, four scenes, Transparent, your picture, shuffle) and theatre settings (text speed, size, typewriter, auto, sounds).
 - Shortcuts: hold **Alt** to click through her, **Alt+W** hides or shows her, **Alt+T** toggles the theatre. In the theatre: ←/→, Enter, hold **Ctrl** to skip, **L** log, **A** auto, **H** hide, **M** sound, **Esc** closes menus first.
 - Keyboard: Tab to her and press Enter to open Settings.
@@ -200,6 +208,14 @@ See the [contribution guide](CONTRIBUTING.md) for PR review, release approval an
 大肥鱼是专为官方 [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) 开发的桌宠与 GalGame 对话剧场。她生活在 DSH 界面内，会随着思考与回答切换动作，陪你一起工作。
 
 中英文统一使用产品名 **大肥鱼**；仓库与包标识继续使用 `dsh-whale-pet`。
+
+### v0.7.0 新体验
+
+- **可选 Live2D 模型。** 导入一次免费的 DeepSeek-chan（大肥鱼）模型（见[下文](#live2d-模型可选)），头、身体、头发和裙摆由模型自带的物理驱动；看鼠标时眼睛先到、头随后、身体再跟。原版插图仍是默认和降级显示。
+- **她会自己找事做。** 平时有换重心、伸懒腰、东张西望等小动作；安静一阵后会演一段更长的，包括模型作者做的待机动画、摆弄狗尾草、打瞌睡、哼歌。一动鼠标就停下。
+- **更多触摸互动。** 摸头；尾巴很敏感，摸了会害羞地躲开；碰胸口会用手护住；拖动就把她拎起来，先扑腾、再垂下来跟着手摆，松手落地。剧场里也能摸头、摸尾巴和戳她。
+- **模型原生手势**：回答完抚胸、灵光一闪竖手指、得意时拿出狗尾草。
+- **更安全的 Windows 安装器**：支持中文和特殊字符路径，修改前备份，只卸载本插件。详见 [v0.7.0 发布说明](docs/releases/v0.7.0.md)。
 
 ### v0.6.0 新体验
 
@@ -265,8 +281,8 @@ React 与 Cordis 由 DSH 提供，普通用户无需 Node.js、npm 或额外素�
 - 她的裙摆、发梢和尾巴会轻轻飘动；可在 设置 › 陪伴 › 裙摆飘动 中关闭。
 - **点击**她打开设置，**拖动**可以移动她。设置打开时，她和面板会一起移动。
 - **头顶小标签**：计费时段（点击再播报一次）和余额（点击查看详情）。
-- 在她头上来回移动鼠标可以摸头；快速晃动她会头晕。小彩蛋：一直戳她试试看。
-- 点击 DSH 聊天输入框进入**剧场**；按 Escape 或「退出」离开。第一次点击文字（或场景）会显示完当前段，再点一次翻页；选择「透明」背景时，点击背景会退出。文字下方的按钮栏有回顾、自动、快进、隐藏、大屏和“⋯”菜单（音效、阅读方式、主题、语言）。
+- 在她头上来回移动鼠标可以摸头；使用 Live2D 模型时，摸尾巴她会害羞，拖动会把她拎起来。快速晃动她会头晕。小彩蛋：一直戳她试试看。
+- 点击 DSH 聊天输入框进入**剧场**；按 Escape 或「退出」离开。剧场里也能摸头、摸尾巴和戳她（点她算戳，不会翻页）。第一次点击文字（或场景）会显示完当前段，再点一次翻页；选择「透明」背景时，点击背景会退出。文字下方的按钮栏有回顾、自动、快进、隐藏、大屏和“⋯”菜单（音效、阅读方式、主题、语言）。
 - **剧场左上角小按钮**：音乐（曲目、播放/暂停、音量、本地音乐）、背景（跟随时间、四套场景、透明、我的背景、随机）和剧场设置（文字速度、字号、打字机、自动翻页、音效）。
 - 快捷键：按住 **Alt** 可点穿她，**Alt+W** 隐藏或显示她，**Alt+T** 开关剧场。剧场里：←/→、Enter，按住 **Ctrl** 快进，**L** 回顾，**A** 自动，**H** 隐藏界面，**M** 音效，**Esc** 先关闭菜单。
 - 键盘：用 Tab 聚焦到她，按 Enter 打开设置。
