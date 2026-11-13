@@ -1,6 +1,6 @@
 {
   "name": "dsh-whale-pet",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "大肥鱼：DSH 桌宠与 GalGame 对话剧场，随台词变化的表情、裙摆飘动、场景背景与背景音乐，显示余额与梁文峰 / 梁文谷计费时段，支持双语与独立主题 / 大肥鱼: a bilingual DSH companion and visual-novel theatre with expressions that follow the dialogue, swaying clothes, scenes and background music, balance and DeepSeek peak/off-peak announcements.",
   "keywords": [
     "dsh-plugin",
@@ -36,7 +36,7 @@
     "CONTRIBUTING.md",
     "docs",
     "install.bat",
-    "install.ps1",
+    "installer",
     "uninstall.bat"
   ],
   "dsh": {

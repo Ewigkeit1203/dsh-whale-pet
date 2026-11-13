@@ -11,7 +11,13 @@ export interface Preferences {
   peekShortcut: string
   onboardingDone: boolean
   notifications: boolean
+  /** Answer finished while the user was away: 'motion' she waves when they return, 'line' adds a short line, 'off' neither. */
+  answerNotice: 'motion' | 'line' | 'off'
   ricePrice: number
+  /** What shows above her head: pricing period, balance, both or neither. */
+  headChips: 'both' | 'tier' | 'balance' | 'none'
+  /** She mentions a low balance (CNY) once a day after an answer; 0 turns it off. */
+  lowBalanceAt: number
   quietBackup?: { wandering: boolean; muted: boolean }
   language: 'zh' | 'en'
   theme: 'light' | 'dark'
@@ -50,7 +56,7 @@ export interface Preferences {
 }
 export const PREFERENCES_KEY = 'dsh-whale-pet.preferences.v1'
 export function defaultPreferences(): Preferences {
-  const defaults: Preferences = { userName: '你', petName: '大肥鱼', fontSize: 17, speed: 'medium', docked: false, peekShortcut: 'Alt+P', onboardingDone: false, notifications: false, ricePrice: 1, language: 'zh', theme: 'light', wandering: true, quiet: false, muted: true, volume: 0.2, typewriter: true, reminders: true, peakNotice: true, scale: 1, opacity: 1, reading: 'pages', autoAdvance: false, form: 'maiden', autoGalGame: true, scene: 'auto', sceneShuffle: false, bgmOn: false, bgmTrack: 'daily', bgmVolume: 0.45, liveMotion: true, powerSave: false, live2d: true, live2dWidgetScale: 1.2, live2dTheatreScale: 1.15 }
+  const defaults: Preferences = { userName: '你', petName: '大肥鱼', fontSize: 17, speed: 'medium', docked: false, peekShortcut: 'Alt+P', onboardingDone: false, notifications: false, answerNotice: 'line', headChips: 'both', lowBalanceAt: 2, ricePrice: 1, language: 'zh', theme: 'light', wandering: true, quiet: false, muted: true, volume: 0.2, typewriter: true, reminders: true, peakNotice: true, scale: 1, opacity: 1, reading: 'pages', autoAdvance: false, form: 'maiden', autoGalGame: true, scene: 'auto', sceneShuffle: false, bgmOn: false, bgmTrack: 'daily', bgmVolume: 0.45, liveMotion: true, powerSave: false, live2d: true, live2dWidgetScale: 1.2, live2dTheatreScale: 1.15 }
   return defaults
 }
 export function readPreferences(): Preferences {
@@ -67,6 +73,9 @@ export function readPreferences(): Preferences {
     const shortcut = normalisePeekShortcut(p.peekShortcut)
     if (shortcut !== null) defaults.peekShortcut = shortcut
     if (p.language === 'en') defaults.language = 'en'
+    if (['both', 'tier', 'balance', 'none'].includes(p.headChips)) defaults.headChips = p.headChips
+    if (Number.isFinite(p.lowBalanceAt)) defaults.lowBalanceAt = Math.min(1000, Math.max(0, p.lowBalanceAt))
+    if (['motion', 'line', 'off'].includes(p.answerNotice)) defaults.answerNotice = p.answerNotice
     if (p.theme === 'dark') defaults.theme = 'dark'
     if (p.reading === 'scroll') defaults.reading = 'scroll'
     if (p.form === 'chibi') defaults.form = 'chibi'

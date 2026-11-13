@@ -1,7 +1,7 @@
 <a id="top"></a>
 # 大肥鱼 — dsh-whale-pet
 
-[使用截图 / Screenshots](#screenshots) | [English](#english) | [中文说明](#chinese) | [Releases / 下载](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) | [Changelog / 更新日志](CHANGELOG.md) | [v0.8.0 notes / 发布说明](docs/releases/v0.8.0.md) | [Docs / 文档](docs/README.md)
+[使用截图 / Screenshots](#screenshots) | [English](#english) | [中文说明](#chinese) | [Releases / 下载](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) | [Changelog / 更新日志](CHANGELOG.md) | [v0.8.1 notes / 发布说明](docs/releases/v0.8.1.md) | [Docs / 文档](docs/README.md)
 
 <a id="screenshots"></a>
 ## 使用截图 / Screenshots
@@ -85,6 +85,16 @@ An interactive desktop/web companion and visual-novel (GalGame) conversation the
 
 The product name is **大肥鱼** in both languages; `dsh-whale-pet` remains the repository and package identifier.
 
+### New in v0.8.1
+
+- **Balance and reminders:** five clear balance states, refresh/retry details, configurable head chips and a daily low-balance reminder. Answers completed while DSH is in the background can mark the title and greet you once when you return; reminders can be disabled.
+- **Getting started:** a three-step guide beside her, a local interaction gallery and a clearer Live2D import card with the model download link, progress and folder drop support.
+- **Installer layout:** double-click the root install.bat or uninstall.bat. Their required PowerShell helper is in installer/; keep that folder with the package. Legacy root-level helper layouts remain supported.
+
+- Fixes: account changes cannot retain the previous balance, normal answers mentioning error codes do not trigger quota warnings, invalid gallery dates are ignored, disabled reminders cancel pending greetings, and tail strokes no longer trigger poke anger.
+
+Full notes: [v0.8.1](docs/releases/v0.8.1.md).
+
 ### New in v0.8.0
 
 - **Peek from the right edge.** Peek in the hover menu or **Alt+P** (record another shortcut in Settings) sends her behind the right edge of the window, half out of sight and clear of the conversation and the composer; press again and she returns to her spot. The Live2D model leans out holding the edge; with the illustrations she walks to the edge first and then peeks around it. She cannot go while she is dizzy from shaking.
@@ -144,7 +154,7 @@ Eighteen illustrations were embedded in v0.5.0–v0.6.0 (v0.8.0 adds peeking and
 
 Old installers in v0.1.0–v0.6.0 may fail on Windows. Prefer the latest full package or use the separate installer repair package beside an existing `lib` folder. See [installation recovery](docs/INSTALLATION_RECOVERY.md).
 
-1. Download **dsh-whale-pet-v0.8.0.zip** from [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases).
+1. Download **dsh-whale-pet-v0.8.1.zip** from [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases).
 2. Extract the entire archive into a permanent folder, such as `D:\dsh-whale-pet`.
 3. Run `install.bat`, then open DSH or press **Ctrl + R** in its window.
 4. Upgrade in the same folder, or rerun the installer if you moved the plugin. Keep the extracted files in place.
@@ -202,7 +212,7 @@ npm test
 node --check lib/client.js
 ```
 
-The build compiles the views, state, host adapter, CSS and all 20 illustrations into `lib/client.js` for DSH's `__ModuleLoader__`. Edit the source and rebuild; do not edit `lib/client.js` by hand. Current automated suite: **173 tests**.
+The build compiles the views, state, host adapter, CSS and all 20 illustrations into `lib/client.js` for DSH's `__ModuleLoader__`. Edit the source and rebuild; do not edit `lib/client.js` by hand. Current automated suite: **196 tests**.
 
 ### Contributors and acknowledgements
 
@@ -211,6 +221,7 @@ The build compiles the views, state, host adapter, CSS and all 20 illustrations 
 - **Antigravity (Google DeepMind)** — AI-assisted architecture and initial implementation.
 - **GPT 6.1sol / Codex (OpenAI)** — AI backend engineering and technical design.
 - **Gemini 4 Argon (Google)** — AI product management and product direction.
+- **Claude Fable 5.2 (Anthropic)** — AI-assisted reminders, interaction gallery and import guidance.
 - **Claude Opus 5.5 (Anthropic)** — AI frontend engineering and interface implementation.
 
 See the [contribution guide](CONTRIBUTING.md) for PR review, release approval and AI-art requirements. Contributions and reports are welcome through [Issues](https://github.com/Ewigkeit1203/dsh-whale-pet/issues) and pull requests. Include your DSH version and reproduction steps; omit private conversations and credentials.
@@ -231,6 +242,16 @@ See the [contribution guide](CONTRIBUTING.md) for PR review, release approval an
 大肥鱼是专为官方 [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) 开发的桌宠与 GalGame 对话剧场。她生活在 DSH 界面内，会随着思考与回答切换动作，陪你一起工作。
 
 中英文统一使用产品名 **大肥鱼**；仓库与包标识继续使用 `dsh-whale-pet`。
+
+### v0.8.1 新体验
+
+- **余额与提醒：** 五种明确的余额状态、详情与刷新/重试入口、可配置头顶标签和每日低余额提醒。后台完成回答后可标记标题，回来时提醒一次，也可关闭。
+- **上手与导入：** 三步引导移到角色身旁，新增本机互动图鉴；Live2D 导入卡提供获取链接、进度和文件夹拖放。
+- **安装目录整理：** 只需双击根目录 install.bat 或 uninstall.bat；必需的 PowerShell 辅助脚本放在 installer/，请保留该文件夹。启动器仍兼容旧版根目录脚本布局。
+
+- 修复账户切换串余额、正常回答错误码误报、异常图鉴日期、提醒关闭后残留，以及摸尾巴触发戳人生气的问题。
+
+完整说明见 [v0.8.1 发布说明](docs/releases/v0.8.1.md)。
 
 ### v0.8.0 新体验
 
@@ -291,7 +312,7 @@ v0.5.0–v0.6.0 内嵌 18 张插画（v0.8.0 新增探头和被拎起来两张�
 
 旧版 v0.1.0–v0.6.0 的安装脚本在 Windows 上可能失败。建议更新完整插件；需要保留旧功能时可使用单独的安装器修复包。详见[安装问题与旧版本修复](docs/INSTALLATION_RECOVERY.md)。
 
-1. 从 [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) 下载 **dsh-whale-pet-v0.8.0.zip**。
+1. 从 [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) 下载 **dsh-whale-pet-v0.8.1.zip**。
 2. 完整解压到固定文件夹，例如 `D:\dsh-whale-pet`。
 3. 双击 `install.bat`，再打开 DSH，或在已打开的窗口中按 **Ctrl + R** 刷新。
 4. 升级时覆盖同一目录中的插件文件；若换了目录，请重新运行安装脚本。解压后的文件需要保留。
@@ -349,7 +370,7 @@ npm test
 node --check lib/client.js
 ```
 
-构建会把界面、状态机、宿主适配器、CSS 和 20 张插画编入 DSH `__ModuleLoader__` 使用的 `lib/client.js`。请修改源码后重新构建，不要手动编辑 `lib/client.js`。当前共有 **173 项自动测试**。
+构建会把界面、状态机、宿主适配器、CSS 和 20 张插画编入 DSH `__ModuleLoader__` 使用的 `lib/client.js`。请修改源码后重新构建，不要手动编辑 `lib/client.js`。当前共有 **196 项自动测试**。
 
 ### 贡献者与致谢
 
@@ -358,6 +379,7 @@ node --check lib/client.js
 - **Antigravity (Google DeepMind)**：AI 辅助架构设计与初期实现。
 - **GPT 6.1sol / Codex (OpenAI)**：AI 后端工程与技术设计。
 - **Gemini 4 Argon (Google)**：AI 产品管理与产品方向。
+- **Claude Fable 5.2（Anthropic）**：AI 辅助完成提醒、互动图鉴与导入向导。
 - **Claude Opus 5.5（Anthropic）**：AI 前端工程与界面实现。
 
 欢迎阅读[贡献指南](CONTRIBUTING.md)：代码经 PR 审查与测试后才可合并，发布须由项目负责人确认；接受形象统一、来源与授权清楚的 AI 美术。

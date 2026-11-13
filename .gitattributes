@@ -1,2 +1,5 @@
 # Windows command scripts require CRLF, including in GitHub source ZIPs.
 *.bat text eol=crlf
+
+# Keep PowerShell helper and installer checks consistent on Windows checkouts.
+*.ps1 text eol=crlf

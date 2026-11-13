@@ -8,6 +8,9 @@ import { FEATURES, effectiveForm } from './features.js'
 import { POSE_META, spriteGeometry, live2dWidgetGeometry } from './poses.js'
 import { layoutGroup, layoutResizedGroup, type GroupLayout, clampPet, rightPeekPosition, peekArtPosition, type EdgePeekRoom, wanderDestination, nextWanderDelay, placeGroupX, groupFits, type PanelSide } from './layout.js'
 import { walletView } from './wallet.js'
+import { balanceChipState, headChipsShown, lowBalanceDue, balanceDay, LOW_BALANCE_DAY_KEY } from './balance-chip.js'
+import { GUIDE_STEPS, readDiscoveries, saveDiscoveries, discover, guideStep, type InteractionId, type Discoveries } from './discovery.js'
+import { AnswerNotice, WELCOME_BACK_LINES, markTitle } from './answer-notice.js'
 import { PetVoice, appendedSpeech, speakableText } from './voice.js'
 import { tariffAt, type Tier } from './peak.js'
 import { SCENES, sceneMeta, sceneSvg, sceneUrl, shuffleScene, timeOfDayScene, type SceneId } from './scenes.js'
@@ -96,7 +99,7 @@ const nextFrame = (callback: () => void): void => {
 function statusRenderKey(s: PetStatusInfo): string {
   return [s.state, s.form, s.pose, s.speech, s.reasoningText.length, s.reasoningText.slice(-24), s.latestDialogue.length, s.latestDialogue.slice(-24),
     s.isReasoning, s.isStreaming, s.isInputFocused, s.isGalGameMode, s.autoGalGameOnChat,
-    s.balancesKnown, s.toppedUpBalance, s.grantedBalance,
+    s.balancesKnown, s.toppedUpBalance, s.grantedBalance, s.quotaErrorKey,
     s.hostBalance?.status, s.hostBalance?.updatedAt, s.hostBalance ? JSON.stringify([s.hostBalance.toppedUp, s.hostBalance.granted]) : ''].join('\u0001')
 }
 
@@ -132,7 +135,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const pokes = useRef(new PokeCounter())
   const chestTouchAt = useRef(-Infinity)
   const tailPatience = useRef(new TailPatience())
-  const [poke, setPoke] = useState<'' | 'curious' | 'angry' | 'tail' | 'chest'>('')
+  const [poke, setPoke] = useState<'' | 'curious' | 'angry' | 'tail' | 'tail-annoyed' | 'chest'>('')
   const [clock, setClock] = useState(() => Date.now())
   const voiceRef = useRef<PetVoice | null>(null)
   if (!voiceRef.current) voiceRef.current = new PetVoice()
@@ -338,6 +341,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     if (status.isGalGameMode || isDraggingRef.current) return
     // Shaken dizzy, she cannot go anywhere until it wears off (coming back is always allowed).
     if (affection === 'dizzy' && !preferences.docked) { flash(t('大肥鱼现在晕了，没法动呢……', '大肥鱼 is too dizzy to move right now…')); return }
+    if (!preferences.docked) found('peek')
     stateMachine.setWandering(false)
     pendingWanderRef.current = null
     if (wanderFinishRef.current) { clearTimeout(wanderFinishRef.current); wanderFinishRef.current = null }
@@ -655,6 +659,27 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   }, [wantBgm, preferences.bgmTrack, customBgmVersion])
   useEffect(() => { bgmRef.current?.setVolume(preferences.bgmVolume) }, [preferences.bgmVolume])
 
+  // ---- Discoveries: the interaction gallery and the first-run guide ---------------
+  const [discoveries, setDiscoveries] = useState<Discoveries>(readDiscoveries)
+  const [guideDone, setGuideDone] = useState<InteractionId[]>([])
+  const [guideThanks, setGuideThanks] = useState(false)
+  const onboardingRef = useRef(preferences.onboardingDone)
+  onboardingRef.current = preferences.onboardingDone
+  /** She did something for the first time (gallery), or a guide step was just carried out. */
+  const found = (id: InteractionId) => {
+    setDiscoveries(known => { const next = discover(known, id, Date.now()); if (next !== known) saveDiscoveries(next); return next })
+    if (!onboardingRef.current && GUIDE_STEPS.includes(id)) setGuideDone(done => done.includes(id) ? done : [...done, id])
+  }
+  const guideAt = guideStep(guideDone)
+  useEffect(() => {
+    if (preferences.onboardingDone || guideAt < GUIDE_STEPS.length) return
+    // All three done: she thanks the user with a bow, and the card goes away.
+    react('happy', 'sparkle', 3600); setBubbleHidden(false)
+    setGuideThanks(true); later(() => { setGuideThanks(false); setGuideDone([]); update({ onboardingDone: true }) }, 3600)
+  }, [guideAt, preferences.onboardingDone])
+  useEffect(() => { if (status.isGalGameMode) found('theatre') }, [status.isGalGameMode])
+  useEffect(() => { if (status.state === 'EATING') found('meal') }, [status.state])
+
   // ---- Expressions & reactions (v0.6.0) ----------------------------------------
   const react = (pose: string, emote: Emote, ms: number) => {
     const key = ++emoteSeq.current
@@ -673,12 +698,71 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     if (status.isStreaming) { finishedStream.current = true; return }
     if (!finishedStream.current || status.isReasoning) return
     finishedStream.current = false
+    // Finished while DSH was not in front: mark the window title and greet the user when they come back.
+    const here = typeof document === 'undefined' || (!document.hidden && document.hasFocus())
+    if (answerNotice.current.finish(here, preferences.answerNotice) === 'wait') document.title = markTitle(document.title, true, preferences.language === 'en')
     if (status.isGalGameMode) return
     const tail = status.latestDialogue.slice(-400)
+    if (status.quotaErrorKey) return
+    let lastLowDay: string | null = null
+    try { lastLowDay = localStorage.getItem(LOW_BALANCE_DAY_KEY) } catch { /* storage may be disabled */ }
+    if (here && !preferences.quiet && lowBalanceDue(walletLow.current, lastLowDay, Date.now())) {
+      try { localStorage.setItem(LOW_BALANCE_DAY_KEY, balanceDay(Date.now())) } catch { /* said once this session instead */ }
+      walletLow.current = false
+      react('surprised', 'sweat', 4200); setBubbleHidden(false)
+      setBalanceLine(t('余额快见底了……要记得充值哦。', 'Your balance is running low…')); later(() => setBalanceLine(''), 6000)
+      return
+    }
     const emotion = detectEmotion(tail)
     if (emotion === 'neutral') react('proud', 'sparkle', 2600)
     else react(EMOTION_POSE[emotion], emoteFor(emotion, tail), 2600)
   }, [status.isStreaming, status.isReasoning])
+  // Back in DSH with an unseen answer: the title mark goes, she waves, and (if chosen) says one short line.
+  const answerNotice = useRef(new AnswerNotice())
+  // Balance: the line she says about it, the chip's blink and its detail popover.
+  const [balanceLine, setBalanceLine] = useState('')
+  const [chipFlash, setChipFlash] = useState(false)
+  const [walletOpen, setWalletOpen] = useState(false)
+  const [walletAsked, setWalletAsked] = useState(false)
+  const walletLow = useRef(false)
+  const seenQuotaError = useRef<string | null>(null)
+  useEffect(() => {
+    const key = status.quotaErrorKey
+    if (!key || seenQuotaError.current === key) return
+    seenQuotaError.current = key
+    window.dispatchEvent(new Event('dsh-whale-pet:refresh-balance'))
+    if (status.isGalGameMode || preferences.quiet) return
+    react('shy', 'sweat', 4200); setBubbleHidden(false)
+    setBalanceLine(t('余额好像不够了，对不起……！', 'Looks like the balance ran out… sorry!')); later(() => setBalanceLine(''), 6000)
+    setChipFlash(true); later(() => setChipFlash(false), 2400)
+  }, [status.quotaErrorKey])
+  useEffect(() => {
+    if (!walletOpen) return
+    const outside = (event: Event) => { if (!(event.target as Element | null)?.closest?.('.petWalletPop, .petWalletChip')) setWalletOpen(false) }
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape' && !event.isComposing) setWalletOpen(false) }
+    document.addEventListener('pointerdown', outside, true); document.addEventListener('keydown', escape)
+    return () => { document.removeEventListener('pointerdown', outside, true); document.removeEventListener('keydown', escape) }
+  }, [walletOpen])
+  const [welcomeBack, setWelcomeBack] = useState('')
+  useEffect(() => {
+    if (preferences.answerNotice !== 'off') return
+    answerNotice.current.cancel()
+    document.title = markTitle(document.title, false)
+    setWelcomeBack('')
+  }, [preferences.answerNotice])
+  useEffect(() => () => { document.title = markTitle(document.title, false) }, [])
+  useEffect(() => {
+    if (!foreground || !answerNotice.current.back(preferences.answerNotice)) return
+    document.title = markTitle(document.title, false)
+    if (status.isGalGameMode || status.isStreaming || status.isReasoning) return
+    react('happy', 'heart', 3200)
+    if (preferences.answerNotice !== 'line' || preferences.quiet) return
+    const [zh, en] = WELCOME_BACK_LINES[answerNotice.current.nextLine()]
+    setBubbleHidden(false)
+    // address() turns 主人 into the name the user chose.
+    setWelcomeBack(t(zh.replaceAll('{name}', '主人'), en))
+    later(() => setWelcomeBack(''), 5000)
+  }, [foreground, preferences.answerNotice])
   // Pricing-period announcements: half price is good news, peak is a little alarming.
   useEffect(() => {
     if (!tierAnnounce || !preferences.peakNotice || preferences.quiet || status.isGalGameMode || status.isStreaming || status.isReasoning) return
@@ -886,6 +970,9 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
             setPosition(previous => constrainRef.current(previous.x + vx, previous.y + vy))
           }
           setAffection(dizzy ? 'dizzy' : 'float')
+          // Any real drag counts (with reduced motion she is moved without the lift).
+          found('carry')
+          if (dizzy) found('dizzy')
           later(() => setAffection(''), dizzy ? 2400 : 800)
         }
         if (!drag.started && dist < DRAG_THRESHOLD && duration < 380 && drag.region === 'chest') {
@@ -1049,7 +1136,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   }, [status.isStreaming, revealDrivesVoice])
 
   const copyCode = async (text: string) => {
-    try { await navigator.clipboard.writeText(text); setToast(t('已复制', 'Copied')) }
+    try { await navigator.clipboard.writeText(text); setToast(t('已复制', 'Copied')); found('code') }
     catch { setToast(t('复制失败，请选中文字手动复制', 'Copy failed. Select the text and copy it manually.')) }
     later(() => setToast(''), 2500)
   }
@@ -1077,26 +1164,25 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     ? t('现在是梁文峰时间！API 高峰价，省着点用哦～', 'It’s Liang Wenfeng time! Peak API pricing — go easy.')
     : t('现在是梁文谷时间！空闲时段半价，放开用吧～', 'It’s Liang Wengu time! Off-peak, half price.')
   const tierAnnouncing = preferences.peakNotice && !preferences.quiet && tierAnnounce !== null && tierAnnounce.until > clock
-  const wallet = walletView({ host: status.hostBalance ?? null, known: status.balancesKnown, toppedUp: status.toppedUpBalance, granted: status.grantedBalance, checkedAt: stateMachine.getStatus().balancesCheckedAt ?? null, now: clock, ricePrice: preferences.ricePrice })
-  const wasLow = useRef(false)
-  useEffect(() => {
-    if (wallet.low && !wasLow.current && !status.isGalGameMode && !preferences.quiet) react('surprised', 'sweat', 3000)
-    wasLow.current = wallet.low
-  }, [wallet.low])
+  const wallet = walletView({ host: status.hostBalance ?? null, known: status.balancesKnown, toppedUp: status.toppedUpBalance, granted: status.grantedBalance, checkedAt: stateMachine.getStatus().balancesCheckedAt ?? null, now: clock, ricePrice: preferences.ricePrice, lowAt: preferences.lowBalanceAt })
+  walletLow.current = wallet.low
   const hour = new Date(clock).getHours()
   const contextualSpeech = poke === 'chest' ? t('呀！请、请不要碰这里……', 'Ah! Please don’t touch me there…')
+    : poke === 'tail-annoyed' ? t('尾巴很敏感啦……让我缓一缓嘛。', 'My tail is sensitive… give me a little break.')
     : poke === 'angry' ? t('别戳啦！再戳我真的要生气了！', 'Stop poking me! I’m getting really mad!')
     : poke === 'curious' ? t('唔？主人是在戳我吗？', 'Hm? Are you poking me?')
     : poke === 'tail' ? t('呀！尾、尾巴不可以随便摸啦……', 'Eek! N-not the tail…')
     : held && heldLong ? t('放、放我下来啦！脚都够不着地了……', 'P-put me down! My feet can’t reach the floor…')
     : landed ? t('哈啊啊……在空中晃得头好晕……', 'Haaah… all that swinging made me dizzy…')
     : held ? t('哇啊！被、被拎起来了……', 'Whoa! I’m being lifted…')
+    : guideThanks ? t('谢谢主人陪我练习～以后请多多关照！', 'Thank you for practising with me~ I’m in your care!')
+    : balanceLine ? balanceLine
+    : welcomeBack ? welcomeBack
     : affection === 'pat' ? t('嘿嘿……最喜欢主人摸摸头啦～', 'Hehe… I love head pats!')
     : affection === 'dizzy' ? t('头好晕……深海漩涡出现啦！', 'Whoa… a deep-sea whirlpool!')
     : tierAnnouncing ? tierLine(tierAnnounce!.tier)
     : preferences.reminders && status.state === 'IDLE' && hour >= 1 && hour < 5 ? t('呼啊……夜深啦，主人记得休息，我陪着你。', 'It’s late… remember to rest. I’m right here.')
     : preferences.reminders && status.state === 'EATING' && hour === 12 ? t('午饭时间到！主人也要按时吃饭哦～', 'Lunch time! Remember to have something to eat.')
-    : wallet.low && status.state === 'IDLE' ? t('深海算力快见底啦，记得看看余额哦。', 'Credit is getting low. Check your balance.')
     : companionSpeech
 
   // ---- Touch (desktop and theatre) -------------------------------------------
@@ -1107,8 +1193,8 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   /** Counts a poke; true when it was a plain first click. */
   function pokeHer(): boolean {
     const { first, mood } = pokes.current.tap(Date.now())
-    if (mood === 'angry') showMood('angry', 'angry', 'anger', 3200)
-    else if (mood === 'curious') showMood('curious', 'surprised', 'question', 1800)
+    if (mood === 'angry') { showMood('angry', 'angry', 'anger', 3200); found('angry') }
+    else if (mood === 'curious') { showMood('curious', 'surprised', 'question', 1800); found('poke') }
     return first
   }
   const touchHer = (touch: PuppetTouch) => {
@@ -1128,16 +1214,16 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     if (touch.kind === 'poke') { pokeHer(); return }
     stateMachine.resetActivity()
     if (touch.kind === 'pat') {
-      setAffection('pat')
+      setAffection('pat'); found('pat')
       // No proud here: with the model it would raise a hand to her chest, which reads oddly as a reaction to a pat.
       react(['sajiao', 'shy', 'happy'][Math.floor(Math.random() * 3)], 'heart', 2000)
       if (voiceAllowed) voiceRef.current?.cue('jelly')
       later(() => setAffection(current => current === 'pat' ? '' : current), 2000)
       return
     }
-    // Tail: shy and she dodges (the model moves away by itself); touched again and again, she gets cross.
-    if (tailPatience.current.touch(Date.now()) === 'angry') { showMood('angry', 'angry', 'anger', 3000); return }
-    setAffection('tail')
+    // Tail strokes stay shy; repeated strokes ask for a break instead of using the poke-anger animation.
+    if (tailPatience.current.touch(Date.now()) === 'angry') { showMood('tail-annoyed', 'shy', 'sweat', 3000); return }
+    setAffection('tail'); found('tail')
     showMood('tail', 'shy', 'sweat', 2600)
     if (voiceAllowed) voiceRef.current?.cue('tap')
     later(() => setAffection(current => current === 'tail' ? '' : current), 2600)
@@ -1145,8 +1231,9 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
 
   // ---- Live2D import / removal ------------------------------------------------
   const live2dFailureText = (reason: string): string => ({
-    'no-model': t('没有找到 .model3.json，请选择模型所在的整个文件夹。', 'No .model3.json found. Pick the whole model folder.'),
-    incomplete: t('模型文件不完整（缺少 moc3 或贴图），请完整解压后再导入。', 'The model is incomplete (moc3 or textures missing). Extract it fully and try again.'),
+    'no-model': t('没找到 大肥鱼.model3.json，请选择含有它的那一层文件夹（不是压缩包，也不是它的上一层或里面的子文件夹）。', 'No 大肥鱼.model3.json found. Pick the folder that directly contains it (not the zip, its parent or a subfolder).'),
+    incomplete: t('模型文件不完整，请把压缩包完整解压后再导入。', 'The model is incomplete. Extract the whole archive and import again.'),
+    interrupted: t('导入中断了（文件夹可能被移动，或读取被取消）。原来的模型没有变，请再选一次文件夹。', 'The import was interrupted (the folder moved or reading was cancelled). Nothing changed; pick the folder again.'),
     'not-dafeiyu': t('这不是大肥鱼的 Live2D 模型。插件的表情和动作是为 DeepSeek-chan（大肥鱼）准备的。', 'This is not the 大肥鱼 Live2D model. Her expressions are made for DeepSeek-chan (大肥鱼).'),
     'bad-json': t('模型描述文件无法读取。', 'The model description could not be read.'),
     image: t('贴图无法读取。', 'A texture could not be read.'),
@@ -1158,11 +1245,18 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     'moc-version': t('模型版本比 Live2D 运行库新，已改用插图。', 'The model is newer than the Live2D runtime; illustrations are shown.'),
     'context-lost': t('显卡上下文丢失，已改用插图。重新打开设置里的开关可再试一次。', 'The graphics context was lost; illustrations are shown. Toggle the model off and on to retry.'),
   } as Record<string, string>)[reason] ?? t('Live2D 模型加载失败，已改用插图。', 'The Live2D model failed to load; illustrations are shown.')
+  /** Which files are missing or unreadable, in plain words (textures, motions, the moc). */
+  const missingText = (result: { detail?: string }): string => {
+    if (!result.detail) return ''
+    const names = result.detail.split(', ')
+    const kind = names.every(name => /\.(png|jpe?g|webp)$/i.test(name)) ? t('缺少贴图', 'Missing textures') : names.every(name => /motion3\.json$/i.test(name)) ? t('缺少动作文件', 'Missing motion files') : t('缺少文件', 'Missing files')
+    return ` ${kind}${t('：', ': ')}${names.slice(0, 3).join(t('、', ', '))}${names.length > 3 ? t(` 等 ${names.length} 个`, ` and ${names.length - 3} more`) : ''}`
+  }
   const importLive2D = async (files: File[]) => {
     setLive2dState({ state: 'importing', progress: [0, 0] })
     try {
     const result = await importLive2DFiles(files, (done, total) => setLive2dState({ state: 'importing', progress: [done, total] }))
-    if (!result.ok) { setLive2dState(live2dRecord ? { state: 'failed', name: live2dRecord.name, bytes: live2dRecord.bytes, message: live2dFailureText(result.error) } : { state: 'failed', message: live2dFailureText(result.error) }); return }
+    if (!result.ok) { setLive2dState(live2dRecord ? { state: 'failed', name: live2dRecord.name, bytes: live2dRecord.bytes, message: live2dFailureText(result.error) + missingText(result) } : { state: 'failed', message: live2dFailureText(result.error) + missingText(result) }); return }
     if (!(await saveLive2DModel(result.record))) { setLive2dState({ state: 'failed', message: live2dFailureText('storage') }); return }
     setLive2dFailure(null)
     setLive2dAspect(null)
@@ -1170,7 +1264,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     setLive2dState({ state: 'ready', name: result.record.name, bytes: result.record.bytes })
     update({ live2d: true })
     flash(t('Live2D 模型已导入', 'Live2D model imported'))
-    } catch (error) { setLive2dState({ state: 'failed', name: live2dRecord?.name, message: live2dFailureText('storage') }); console.warn('[dsh-whale-pet][live2d] import failed', error) }
+    } catch (error) { setLive2dState({ state: 'failed', name: live2dRecord?.name, message: live2dFailureText('interrupted') }); console.warn('[dsh-whale-pet][live2d] import failed', error) }
   }
   const removeLive2D = async () => {
     await deleteLive2DModel()
@@ -1210,10 +1304,12 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     live2d: live2dSettings,
     importLive2D: (files: File[]) => { void importLive2D(files) },
     removeLive2D: () => { void removeLive2D() },
+    discoveries,
+    replayGuide: () => { setGuideDone([]); setIsSettingsOpen(false); update({ onboardingDone: false }) },
   })
   // The panel does not depend on the pet's position, so a drag never rebuilds it.
   const settingsPanel = useMemo(() => isSettingsOpen ? SettingsPanel(settingsProps()) : null,
-    [isSettingsOpen, preferences, status.autoGalGameOnChat, JSON.stringify(wallet), tariff.tier, tierUntil, tariff.holidayDataMissing, group?.mode, viewport.width, viewport.height, JSON.stringify(live2dSettings), live2dRecord])
+    [isSettingsOpen, preferences, status.autoGalGameOnChat, JSON.stringify(wallet), tariff.tier, tierUntil, tariff.holidayDataMissing, group?.mode, viewport.width, viewport.height, JSON.stringify(live2dSettings), live2dRecord, discoveries])
 
   // ---- Theatre: background, music and upload handlers ----------------------------
   const pickScene = (id: string) => {
@@ -1358,20 +1454,27 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const crownAlign = petPos.x + stageW / 2 < 200 ? 'start' : petPos.x + stageW / 2 > viewport.width - 200 ? 'end' : 'center'
   const bubbleSide = petPos.x + stageW / 2 < viewport.width / 2 ? 'right' : 'left'
   const showDock = isMenuOpen && !isSettingsOpen && !isDragging
-  const walletHasValues = Boolean(wallet.toppedUp || wallet.granted)
-  // Peak/valley and balance always show above her head; the other actions live in the hover menu.
-  const showWalletChip = !docked && !isSettingsOpen && !isDragging
-  const showTierChip = preferences.peakNotice && !isSettingsOpen && !isDragging
-  const walletStatusText = ({
-    unavailable: t('余额 —', 'Balance —'), loading: t('余额读取中…', 'Reading balance…'), 'signed-out': t('未登录 DeepSeek', 'Not signed in'),
-    error: t('余额读取失败', 'Balance unavailable'), live: '', stale: '',
-  } as Record<string, string>)[wallet.status]
-  const walletTitle = wallet.status === 'unavailable' ? t('余额未读取：打开 DSH 账户设置以读取', 'Balance not read: open DSH account settings')
-    : wallet.status === 'signed-out' ? t('登录 DeepSeek 账号后可显示余额', 'Sign in to DeepSeek to show the balance')
-    : wallet.status === 'loading' ? t('正在向 DSH 账户服务读取余额', 'Reading the balance from the DSH account service')
-    : wallet.status === 'error' ? t('暂时读不到余额，稍后会自动重试', 'The balance could not be read; retrying automatically')
-    : wallet.status === 'stale' ? t('余额不是实时数据，点击查看详情', 'Balance is not live. Click for details')
-    : wallet.source === 'host' ? t('余额来自 DSH 账户服务，每分钟更新', 'Balance from the DSH account service, updated every minute') : t('余额读取自 DSH 账户设置页', 'Balance read from DSH account settings')
+  // Peak/valley and balance show above her head (the user chooses which); the other actions live in the hover menu.
+  const heads = headChipsShown(preferences.headChips)
+  const chip = balanceChipState(wallet)
+  const showWalletChip = heads.balance && !docked && !isSettingsOpen && !isDragging
+  const showTierChip = heads.tier && preferences.peakNotice && !isSettingsOpen && !isDragging
+  const walletTime = wallet.checkedAt ? new Date(wallet.checkedAt).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' }) : ''
+  const walletTitle = chip === 'loading' ? t('正在读取余额', 'Reading the balance')
+    : chip === 'signed-out' ? t('余额：登录后可见，点击查看说明', 'Balance: sign in to view. Click for details')
+    : chip === 'failed' ? t('余额没读到，点击查看原因', 'Balance not read. Click to see why')
+    : chip === 'stale' ? t('余额可能已过期，点击刷新', 'Balance may be out of date. Click to refresh')
+    : t('余额，点击查看更新时间', 'Balance. Click for the last update')
+  const walletDetail = chip === 'signed-out' ? t('在 DSH 里登录 DeepSeek 账号后，这里会显示余额。只用 API Key 时 DSH 不提供余额。', 'Sign in to your DeepSeek account in DSH and the balance shows here. DSH has none for API-key-only use.')
+    : chip === 'failed' ? (wallet.status === 'error'
+      ? t('没能从 DSH 账户服务读到余额，可能是网络或登录状态的问题。我会自动重试，也可以现在重试。', 'The DSH account service did not return a balance (network or sign-in). I retry automatically, or try now.')
+      : t('DSH 还没有把余额交给我。打开 DSH 的账户设置页，我就能读到；不想看的话可以把它隐藏。', 'DSH has not given me the balance yet. Open the DSH account settings page and I can read it, or hide it here.'))
+    : chip === 'stale' ? t(`上次更新 ${walletTime || '—'}，之后可能变了。`, `Last updated ${walletTime || '—'}; it may have changed.`)
+    : t(`上次更新 ${walletTime || '—'}。`, `Last updated ${walletTime || '—'}.`)
+  const refreshWallet = () => {
+    window.dispatchEvent(new Event('dsh-whale-pet:refresh-balance'))
+    setWalletAsked(true); later(() => setWalletAsked(false), 2500)
+  }
   const puppetOpacity = ghost && !isSettingsOpen ? Math.min(0.25, preferences.opacity) : preferences.opacity
 
   return (
@@ -1394,15 +1497,6 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
         <pre>{doctor}</pre>
         <button type="button" onClick={() => void copyCode(doctor)}>{t('复制诊断信息', 'Copy diagnostics')}</button>
       </aside>}
-      {!preferences.onboardingDone && !isSettingsOpen && <aside className="petOnboarding" aria-label={t('认识大肥鱼', 'Meet 大肥鱼')}>
-        <strong>{t('认识一下大肥鱼', 'Meet 大肥鱼')}</strong>
-        <ul>
-          <li>{t('在头顶来回移动鼠标，试试摸头。', 'Move the pointer back and forth over her head for a head pat.')}</li>
-          <li>{t('点一下角色打开设置；点击聊天输入框进入剧场。', 'Click her to open settings; click the composer to enter the theatre.')}</li>
-          <li>{t('按住角色拖动，带她换个位置。', 'Drag her to a new spot.')}</li>
-        </ul>
-        <button type="button" className="petPrimary" onClick={() => update({ onboardingDone: true })}>{t('知道了', 'Got it')}</button>
-      </aside>}
       {toast && <div className="petToast" role="status">{toast}</div>}
 
       <div className={'characterWrapper state-' + status.state.toLowerCase()}>
@@ -1422,16 +1516,44 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
             {showTierChip && <button type="button" className="petTierChip" data-tier={tariff.tier} title={tierName + '\n' + tierRule} aria-label={`${tierName} ${tierUntil}`} onClick={() => setTierAnnounce({ tier: tariff.tier, until: Date.now() + 9000 })}>
               <i aria-hidden="true" /><span>{tierShort}</span>{tierUntil && <span className="petTierUntil">{tierUntil}</span>}
             </button>}
-            {showWalletChip && <button type="button" className="petWalletChip" data-status={wallet.status} data-low={wallet.low || undefined} title={walletTitle} onClick={() => setIsSettingsOpen(true)} aria-label={walletTitle}>
-              {!walletHasValues ? <span>{walletStatusText || t('余额 —', 'Balance —')}</span> : <>
-                <span>{wallet.toppedUp ?? '—'}</span>
-                {!wallet.grantedNone && <><span className="petWalletSep" aria-hidden="true">·</span><span>{t('赠', 'Bonus')} {wallet.granted ?? '—'}</span></>}
-                {wallet.status === 'stale' && <span className="petWalletStale">{t('非实时', 'not live')}</span>}
-              </>}
+            {showWalletChip && <button type="button" className="petWalletChip" data-status={wallet.status} data-chip={chip} data-low={wallet.low || undefined} data-flash={chipFlash || undefined}
+              title={walletTitle} aria-label={walletTitle} aria-expanded={walletOpen} aria-busy={chip === 'loading' || undefined}
+              onClick={() => { if (chip !== 'loading') setWalletOpen(open => !open) }}>
+              {chip === 'loading' ? <span className="petWalletSkeleton" aria-hidden="true" />
+                : chip === 'signed-out' ? <span>{t('余额 · 登录后可见', 'Balance · sign in to view')}</span>
+                : chip === 'failed' ? <><span>{t('余额 —', 'Balance —')}</span><i className="petWalletWarn" aria-hidden="true" /></>
+                : <>
+                  {chip === 'stale' && <svg className="petWalletClock" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" /><path d="M8 4.5V8l2.5 1.5" /></svg>}
+                  <span>{t('充值', 'Paid')} {wallet.toppedUp ?? '—'}</span>
+                  {!wallet.grantedNone && <><span className="petWalletSep" aria-hidden="true">·</span><span>{t('赠', 'Bonus')} {wallet.granted ?? '—'}</span></>}
+                </>}
             </button>}
+            {showWalletChip && walletOpen && chip !== 'loading' && <div className="petWalletPop" role="dialog" aria-label={t('余额详情', 'Balance details')} data-chip={chip}>
+              <p>{walletDetail}</p>
+              <div className="petWalletPopActions">
+                {chip !== 'signed-out' && (wallet.source === 'host' || wallet.status === 'error') && <button type="button" onClick={refreshWallet} disabled={walletAsked}>{walletAsked ? t('正在读取…', 'Reading…') : chip === 'failed' ? t('重试', 'Retry') : t('刷新', 'Refresh')}</button>}
+                {(chip === 'failed' || chip === 'signed-out') && <button type="button" onClick={() => { update({ headChips: heads.tier ? 'tier' : 'none' }); setWalletOpen(false); flash(t('已隐藏余额，可在设置的“头顶显示”里恢复', 'Balance hidden. Bring it back under “Above her head” in settings')) }}>{t('隐藏余额', 'Hide balance')}</button>}
+                <button type="button" onClick={() => { setWalletOpen(false); setIsSettingsOpen(true) }}>{t('设置', 'Settings')}</button>
+              </div>
+            </div>}
           </div>}
         </div>
 
+        {/* First-run guide: beside her, below where her speech bubble appears, so it never covers the top of the answer. */}
+        {!preferences.onboardingDone && !isSettingsOpen && <aside className="petOnboarding" data-side={bubbleSide} style={{ top: `${imageTop + Math.round(geometry.imageHeight * 0.25)}px` }} aria-label={t('认识大肥鱼', 'Meet 大肥鱼')}>
+          <strong>{t('认识一下大肥鱼', 'Meet 大肥鱼')}<span className="petGuideCount">{Math.min(guideAt, GUIDE_STEPS.length)} / {GUIDE_STEPS.length}</span></strong>
+          <ol className="petGuideSteps">
+            {[
+              t('摸摸我的头：在我头顶来回移动鼠标。', 'Pat my head: move the pointer back and forth over it.'),
+              t('把我拎起来试试：按住我拖动，再松手。', 'Try picking me up: press, drag, and let go.'),
+              t(`按 ${preferences.peekShortcut || '探头按钮'}，我就躲到边上；再按一次回来。`, `Press ${preferences.peekShortcut || 'the Peek button'} and I hide at the edge; press again to come back.`),
+            ].map((line, i) => <li key={i} data-state={guideDone.includes(GUIDE_STEPS[i]) ? 'done' : i === guideAt ? 'now' : 'next'} aria-current={i === guideAt ? 'step' : undefined}>
+              <i aria-hidden="true">{guideDone.includes(GUIDE_STEPS[i]) ? '✓' : i + 1}</i><span>{line}</span>
+            </li>)}
+          </ol>
+          <p className="petGuideNote">{t('点我一下可以打开设置；之后能在设置的“互动图鉴”里再看一次。', 'Click me to open settings; you can replay this from the gallery there.')}</p>
+          <button type="button" className="petGuideSkip" onClick={() => { setGuideDone([]); update({ onboardingDone: true }) }}>{t('跳过', 'Skip')}</button>
+        </aside>}
         {!docked && !preferences.quiet && (!bubbleHidden || tierAnnouncing) && (status.speech || tierAnnouncing || poke === 'chest') && !isSettingsOpen && (
           <div style={{ fontSize: Math.max(12, preferences.fontSize - 3), top: `${imageTop + Math.round(geometry.imageHeight * 0.1)}px` }} className="speechBubble" data-side={bubbleSide}
             onClick={() => stateMachine.setGalGameMode(true)} role="button" tabIndex={0} title={t('点击进入剧场', 'Click to open the theatre')}
@@ -1442,6 +1564,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
         )}
 
         {!docked && status.state === 'REASONING' && <div className="bubbleContainer" style={{ top: `${imageTop}px` }} aria-hidden="true"><i className="bubble bubble1" /><i className="bubble bubble2" /><i className="bubble bubble3" /></div>}
+        {!preferences.onboardingDone && guideAt === 0 && !docked && !isDragging && <div className="petGuideHand" style={{ top: `${imageTop + Math.round(geometry.imageHeight * 0.07)}px` }} aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 11V5.5a1.5 1.5 0 013 0V10l5.2 1.1a2 2 0 011.6 2.2l-.6 4.2a3 3 0 01-3 2.5H11a3 3 0 01-2.5-1.3L5.2 14a1.4 1.4 0 012.2-1.7z" /></svg></div>}
         {!docked && affection === 'pat' && <div className="petHearts" style={{ top: `${imageTop}px` }} aria-hidden="true">♡ ♡ ♡</div>}
 
         <div

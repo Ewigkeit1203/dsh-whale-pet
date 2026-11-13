@@ -39,6 +39,7 @@ export interface PetStatusInfo {
     grantedBalance: string;
     balancesCheckedAt: number | null;
     hostBalance: BalanceSnapshot | null;
+    quotaErrorKey: string | null;
     isReasoning: boolean;
     isStreaming: boolean;
     isInputFocused: boolean;

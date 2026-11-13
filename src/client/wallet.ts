@@ -21,6 +21,8 @@ export interface WalletInput {
   checkedAt: number | null
   now: number
   ricePrice: number
+  /** Low-balance threshold in CNY (default WALLET_LOW_CNY); 0 never counts as low. */
+  lowAt?: number
 }
 
 export interface WalletView {
@@ -39,7 +41,8 @@ export interface WalletView {
 
 /** The DOM source refreshes every 2s while the account page is mounted. */
 export const WALLET_FRESH_MS = 10_000
-export const HOST_FRESH_MS = 5 * 60_000
+/** PM v0.9: amounts older than ten minutes are shown as out of date. */
+export const HOST_FRESH_MS = 10 * 60_000
 export const WALLET_LOW_CNY = 2
 
 const SYMBOLS: Record<string, string> = { CNY: '¥', USD: '$' }
@@ -87,6 +90,7 @@ function cnyTotal(reads: WalletRead[]): number | null {
 
 export function walletView(input: WalletInput): WalletView {
   const host = input.host
+  const lowAt = input.lowAt ?? WALLET_LOW_CNY
   // Host wins whenever it is present: signed-out must clear any old DOM snapshot.
   // A host failure with no amounts yet still lets an open settings card supply them.
   if (host && !(host.status === 'error' && input.known)) {
@@ -102,7 +106,7 @@ export function walletView(input: WalletInput): WalletView {
       status: toppedUp.text || granted.text || granted.none ? (fresh ? 'live' : 'stale') : 'error',
       source: 'host', toppedUp: toppedUp.text, granted: granted.text, grantedNone: granted.none, checkedAt: host.updatedAt,
       bowls: total !== null && input.ricePrice > 0 ? Math.max(0, Math.floor(total / input.ricePrice)) : null,
-      low: total !== null && total < WALLET_LOW_CNY,
+      low: total !== null && total < lowAt,
     }
   }
   if (!input.known) return { status: 'unavailable', source: 'none', toppedUp: null, granted: null, grantedNone: false, checkedAt: null, bowls: null, low: false }
@@ -119,6 +123,6 @@ export function walletView(input: WalletInput): WalletView {
     grantedNone: false,
     checkedAt: input.checkedAt,
     bowls: total !== null && input.ricePrice > 0 ? Math.max(0, Math.floor(total / input.ricePrice)) : null,
-    low: total !== null && total < WALLET_LOW_CNY,
+    low: total !== null && total < lowAt,
   }
 }

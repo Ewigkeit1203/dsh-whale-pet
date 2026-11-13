@@ -102,7 +102,7 @@ function moduleSource(file) {
     .replace(/^\/\/# sourceMappingURL=.*$/gm, '')
 }
 const preferencesSource = moduleSource('preferences.js')
-const pureModules = ['peek-shortcut.js', 'live2d-loader.js', 'live2d-look.js', 'touch.js', 'carry.js', 'live2d-motion.js', 'live2d-package.js', 'features.js', 'poses.js', 'layout.js', 'wallet.js', 'peak.js', 'account-balance.js', 'voice.js', 'scenes.js', 'media-store.js', 'bgm.js', 'rig.js', 'live-rig.js', 'emotion.js', 'experience.js', 'usability.js', 'hitareas.js']
+const pureModules = ['peek-shortcut.js', 'live2d-loader.js', 'live2d-look.js', 'touch.js', 'carry.js', 'live2d-motion.js', 'live2d-package.js', 'features.js', 'poses.js', 'layout.js', 'wallet.js', 'peak.js', 'account-balance.js', 'voice.js', 'scenes.js', 'media-store.js', 'bgm.js', 'rig.js', 'live-rig.js', 'emotion.js', 'experience.js', 'usability.js', 'hitareas.js', 'answer-notice.js', 'balance-chip.js', 'discovery.js']
   .map(moduleSource).join('\n')
 // Views are hook-free render functions or components; order matters only for readability.
 const views = [

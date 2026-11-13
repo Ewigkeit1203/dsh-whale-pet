@@ -3,7 +3,8 @@ import React from 'react'
 import type { Context } from '@deepseek-ai/cordis'
 import { PetStateMachine } from './state-machine.js'
 import { PetOverlay } from './PetOverlay.js'
-import { AccountBalancePoller, ACCOUNT_CLIENT_VERSION } from './account-balance.js'
+import { watchAccountBalances, ACCOUNT_CLIENT_VERSION } from './account-balance.js'
+import { isQuotaError } from './balance-chip.js'
 import './galgame.css'
 
 export const name = 'dsh-whale-pet-client'
@@ -113,8 +114,21 @@ function findLatestAssistantNode(): Element | null {
   return null
 }
 
+function queryQuotaErrorKey(session: string | null): string | null {
+  const prompts = document.querySelectorAll('[data-chat-flow-kind="user-prompt"]')
+  const prompt = prompts[prompts.length - 1]
+  const failures = Array.from(document.querySelectorAll('[data-chat-flow-kind="turn-error"]'))
+    .filter(node => !node.closest('[data-whale-pet]') && (!prompt || !(node.compareDocumentPosition(prompt) & Node.DOCUMENT_POSITION_FOLLOWING)))
+  const latest = failures[failures.length - 1]
+  if (!latest) return null
+  const code = latest.querySelector('code')?.textContent?.trim()
+  const key = latest.getAttribute('data-chat-node-key')
+  return key && isQuotaError(code) ? JSON.stringify([session, key]) : null
+}
+
 export function apply(ctx: Context): void {
   const stateMachine = new PetStateMachine()
+  let hostAccountService = false
 
   // 1. Mount PetOverlay into the global frame-wide floating slot ('shell.overlay')
   ctx.slots.inject('shell.overlay', () => {
@@ -142,12 +156,16 @@ export function apply(ctx: Context): void {
       const client = () => ({ version: ACCOUNT_CLIENT_VERSION, locale: locale(), timezoneOffsetSeconds: -new Date().getTimezoneOffset() * 60 })
       try {
         access.whenAccess('account/watch', () => {
-          const poller = new AccountBalancePoller({
+          hostAccountService = true
+          const poller = watchAccountBalances({
             getBalance: () => remote.account.getBalance(client()),
-            publish: snapshot => stateMachine.setHostBalance(snapshot),
+            publish: snapshot => { if (snapshot === null) stateMachine.clearBalances(); else stateMachine.setHostBalance(snapshot) },
             isHidden: () => document.hidden,
-          })
-          poller.start()
+          }, typeof remote.$stream === 'function' && typeof remote.account.watch === 'function' ? () => remote.$stream({
+            name: 'whale-pet-account',
+            open: (signal: AbortSignal) => remote.account.watch(signal),
+            ended: () => new Error('account stream ended'),
+          }) : undefined)
           const visible = () => { if (!document.hidden) void poller.refresh() }
           let streaming = stateMachine.getStatus().isStreaming
           const unsubscribe = stateMachine.subscribe(status => {
@@ -156,7 +174,11 @@ export function apply(ctx: Context): void {
           })
           document.addEventListener('visibilitychange', visible)
           window.addEventListener('focus', visible)
+          // The balance chip's refresh / retry button (PetOverlay).
+          const asked = () => { void poller.refresh(true) }
+          window.addEventListener('dsh-whale-pet:refresh-balance', asked)
           return () => {
+            window.removeEventListener('dsh-whale-pet:refresh-balance', asked)
             document.removeEventListener('visibilitychange', visible)
             window.removeEventListener('focus', visible)
             unsubscribe()
@@ -231,6 +253,7 @@ export function apply(ctx: Context): void {
   ctx.effect(() => {
     let lastSessionId: string | null | undefined = undefined
     let wasRunning = false
+    let observedTurn = false
     let scheduled: ReturnType<typeof setTimeout> | null = null
     let lastBalanceCheck = 0
     // Set by host mutations. While idle and unchanged, the safety poll below has nothing to re-read:
@@ -245,6 +268,8 @@ export function apply(ctx: Context): void {
       if (lastSessionId !== undefined && sessionId !== lastSessionId) {
         stateMachine.clearReasoningText()
         stateMachine.setLatestDialogue('')
+        stateMachine.setQuotaError(null)
+        observedTurn = false
       }
       lastSessionId = sessionId
 
@@ -255,11 +280,17 @@ export function apply(ctx: Context): void {
       // Turn start: clear previous turn's thought bubble
       if (isRunning && !wasRunning) {
         stateMachine.clearReasoningText()
+        stateMachine.setQuotaError(null)
+        observedTurn = true
       }
       wasRunning = isRunning
 
+      // Only a terminal host row for a turn observed running can report quota failure.
+      // Old history and quoted error codes in an assistant answer are not error events.
+      if (!isRunning && observedTurn) stateMachine.setQuotaError(queryQuotaErrorKey(sessionId))
+
       // Query balances if available
-      if (Date.now() - lastBalanceCheck >= 2000) {
+      if (!hostAccountService && Date.now() - lastBalanceCheck >= 2000) {
         lastBalanceCheck = Date.now()
         const balances = queryAccountBalances()
         if (balances) stateMachine.setBalances(balances.toppedUp, balances.granted)

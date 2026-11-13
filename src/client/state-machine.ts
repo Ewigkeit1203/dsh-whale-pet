@@ -78,6 +78,7 @@ export class PetStateMachine {
   /** Last time a balance source reported, even when values were unchanged (UI freshness only). */
   private balancesCheckedAt: number | null = null
   private hostBalance: BalanceSnapshot | null = null
+  private quotaErrorKey: string | null = null
 
   private speechTimer: ReturnType<typeof setTimeout> | null = null
   private debounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -108,6 +109,7 @@ export class PetStateMachine {
       grantedBalance: this.grantedBalance,
       balancesCheckedAt: this.balancesCheckedAt,
       hostBalance: this.hostBalance,
+      quotaErrorKey: this.quotaErrorKey,
       isReasoning: this.isReasoning,
       isStreaming: this.isStreaming,
       isInputFocused: this.isInputFocused,
@@ -209,6 +211,22 @@ export class PetStateMachine {
   public setHostBalance(snapshot: BalanceSnapshot | null): void {
     if (this.hostBalance === snapshot) return
     this.hostBalance = snapshot
+    this.notify()
+  }
+
+  /** Account changed or access ended: discard both sources before accepting new amounts. */
+  public clearBalances(): void {
+    this.hostBalance = null
+    this.balancesKnown = false
+    this.toppedUpBalance = ''
+    this.grantedBalance = ''
+    this.balancesCheckedAt = null
+    this.notify()
+  }
+
+  public setQuotaError(key: string | null): void {
+    if (this.quotaErrorKey === key) return
+    this.quotaErrorKey = key
     this.notify()
   }
 

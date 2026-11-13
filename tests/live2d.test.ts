@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { findLive2DModel, planLive2DImport, isDaFeiYuDisplayInfo, live2dTextureSize, normaliseLive2DPath, LIVE2D_CREDIT } from '../lib/client/live2d-package.js'
+import { findLive2DModel, planLive2DImport, isDaFeiYuDisplayInfo, live2dTextureSize, normaliseLive2DPath, live2dFilesFromDrop, LIVE2D_CREDIT } from '../lib/client/live2d-package.js'
 import { live2dLookFor, LIVE2D_LOOKS } from '../lib/client/live2d-look.js'
 import { live2dPoseMeta, LIVE2D_POSE_META, POSE_META, spriteGeometry } from '../lib/client/poses.js'
 import { readPreferences, defaultPreferences } from '../lib/client/preferences.js'
@@ -686,4 +686,17 @@ test('Edge peeking replaces props and idle performances without changing the con
   assert.equal(look.gesture,undefined);assert.equal(look.guardChest,undefined);assert.equal(look.toggles,undefined)
  }
  assert.equal(live2dLookFor('Maid',{state:'IDLE'}).edgePeek,undefined)
+})
+
+test('Live2D folder drop reads every browser batch with relative paths, supports plain files and propagates read errors',async()=>{
+  const files=Array.from({length:151},(_,i)=>new File(['{}'],'file-'+i+'.json'))
+  const entries=files.map((file,i)=>({isFile:true,isDirectory:false,fullPath:'/DeepSeek/Sub/'+file.name,file(ok:any){ok(file)}}))
+  let batch=0
+  const directory={isDirectory:true,isFile:false,fullPath:'/DeepSeek',createReader(){return {readEntries(ok:any){ok(batch++===0?entries.slice(0,100):batch===2?entries.slice(100):[])}}}}
+  const result=await live2dFilesFromDrop({items:[{webkitGetAsEntry:()=>directory}]} as any)
+  assert.equal(result.length,151);assert.equal(result[150].webkitRelativePath,'DeepSeek/Sub/file-150.json')
+  assert.equal(batch,3,'Chromium folders are returned in batches, not one read')
+  assert.deepEqual(await live2dFilesFromDrop({items:[],files:[files[0]]} as any),[files[0]])
+  const bad={isDirectory:true,createReader(){return {readEntries(_ok:any,fail:any){fail(new Error('access denied'))}}}}
+  await assert.rejects(live2dFilesFromDrop({items:[{webkitGetAsEntry:()=>bad}]} as any),/access denied/)
 })

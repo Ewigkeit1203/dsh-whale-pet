@@ -48,6 +48,7 @@ export interface PetStatusInfo {
   grantedBalance: string  // Granted balance (赠金余额)
   balancesCheckedAt: number | null // Last source read, for stale labelling; not a render time
   hostBalance: BalanceSnapshot | null // Host account service; null when unavailable or access was withdrawn
+  quotaErrorKey: string | null // Explicit host turn-error, never inferred from assistant prose
   isReasoning: boolean
   isStreaming: boolean
   isInputFocused: boolean

@@ -115,3 +115,47 @@ test('poller: failures keep the last amounts as stale and back off; stop drops l
   assert.equal(h.published.at(-1), null, 'a reply from the old grant is ignored')
   assert.equal(h.timers.length, 0, 'no timers survive stop()')
 })
+
+test('poller: a read that never answers becomes a failure instead of loading forever, and is retried', async () => {
+  const h = harness([() => new Promise(() => {}), okReply('7')])
+  h.poller.start()
+  await h.advance(ACCOUNT_REFRESH.timeoutMs - 1)
+  assert.equal(h.published.at(-1).status, 'loading')
+  await h.advance(1)
+  assert.equal(h.published.at(-1).status, 'error', 'the chip can now show — with a retry')
+  await h.advance(ACCOUNT_REFRESH.failBaseMs)
+  assert.equal(h.calls(), 2); assert.equal(h.published.at(-1).status, 'ready')
+  assert.equal(h.published.at(-1).toppedUp.wallets[0].amount, '7')
+  // The manual retry button (refresh(true)) works while nothing is in flight.
+  await h.poller.refresh(true); assert.equal(h.calls(), 3)
+})
+
+test('poller: resolved failure replies end loading, permit manual retry and recover', async () => {
+  for (const reply of [{ok:false}, {ok:true,value:{status:'failed'}}, {ok:true,value:{status:'unexpected'}}]) {
+    const h = harness([() => Promise.resolve(reply), okReply('7')])
+    h.poller.start()
+    await assert.doesNotReject(h.poller.refresh(), 'reply parsing failures use the normal failure path')
+    assert.equal(h.published.at(-1).status, 'error', 'a failed reply must not leave the skeleton loading')
+    assert.equal(h.timers.length, 1)
+    assert.equal(h.timers[0].at, ACCOUNT_REFRESH.failBaseMs)
+    await h.poller.refresh(true)
+    assert.equal(h.published.at(-1).toppedUp.wallets[0].amount, '7')
+    h.poller.stop()
+  }
+})
+
+test('poller: Platform failures preserve prior amounts, increase backoff and automatically recover', async () => {
+  const failed = () => Promise.resolve({ok:true,value:{status:'failed'}})
+  const h = harness([okReply('10'), failed, failed, okReply('9')])
+  h.poller.start(); await h.advance(0)
+  await h.advance(ACCOUNT_REFRESH.okMs)
+  assert.equal(h.published.at(-1).status, 'stale')
+  assert.equal(h.published.at(-1).toppedUp.wallets[0].amount, '10')
+  await h.advance(ACCOUNT_REFRESH.failBaseMs)
+  assert.equal(h.published.at(-1).status, 'stale')
+  assert.equal(h.timers[0].at, ACCOUNT_REFRESH.okMs + ACCOUNT_REFRESH.failBaseMs * 3)
+  await h.advance(ACCOUNT_REFRESH.failBaseMs * 2)
+  assert.equal(h.published.at(-1).status, 'ready')
+  assert.equal(h.published.at(-1).toppedUp.wallets[0].amount, '9')
+  h.poller.stop()
+})

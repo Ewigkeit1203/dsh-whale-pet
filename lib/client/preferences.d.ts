@@ -9,7 +9,13 @@ export interface Preferences {
     peekShortcut: string;
     onboardingDone: boolean;
     notifications: boolean;
+    /** Answer finished while the user was away: 'motion' she waves when they return, 'line' adds a short line, 'off' neither. */
+    answerNotice: 'motion' | 'line' | 'off';
     ricePrice: number;
+    /** What shows above her head: pricing period, balance, both or neither. */
+    headChips: 'both' | 'tier' | 'balance' | 'none';
+    /** She mentions a low balance (CNY) once a day after an answer; 0 turns it off. */
+    lowBalanceAt: number;
     quietBackup?: {
         wandering: boolean;
         muted: boolean;

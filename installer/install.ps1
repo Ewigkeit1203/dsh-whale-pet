@@ -1,13 +1,15 @@
 ﻿param(
     [string]$ProfileDirectory = (Join-Path $env:USERPROFILE '.dsh\profiles\desktop'),
-    [switch]$Uninstall
+    [switch]$Uninstall,
+    [string]$PluginDirectory = ''
 )
 
 $ErrorActionPreference = 'Stop'
 try {
     Write-Host $(if ($Uninstall) { '大肥鱼 — 卸载 / Uninstall' } else { '大肥鱼 — 安装 / Install' })
-    $entry = Join-Path $PSScriptRoot 'lib\index.js'
-    $client = Join-Path $PSScriptRoot 'lib\client.js'
+    $pluginRoot = if ($PluginDirectory) { [IO.Path]::GetFullPath($PluginDirectory) } elseif ((Split-Path -Leaf $PSScriptRoot) -eq 'installer') { Split-Path -Parent $PSScriptRoot } else { $PSScriptRoot }
+    $entry = Join-Path $pluginRoot 'lib\index.js'
+    $client = Join-Path $pluginRoot 'lib\client.js'
     foreach ($file in @($entry, $client)) {
         if (-not $Uninstall -and -not (Test-Path -LiteralPath $file -PathType Leaf)) {
             throw "缺少文件 / Missing file: $file. 请先完整解压安装包 / Extract the entire ZIP first."

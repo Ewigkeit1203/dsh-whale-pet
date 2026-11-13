@@ -4,7 +4,7 @@ $root = Join-Path ([IO.Path]::GetTempPath()) ('安装测试 & (中文) % ! '' ' 
 $project = Join-Path $root 'project'
 $profile = Join-Path $root 'user'
 New-Item -ItemType Directory -Path (Join-Path $project 'lib') -Force | Out-Null
-Copy-Item -LiteralPath (Join-Path $source 'install.bat'),(Join-Path $source 'install.ps1'),(Join-Path $source 'uninstall.bat') -Destination $project
+Copy-Item -LiteralPath (Join-Path $source 'install.bat'),(Join-Path $source 'installer/install.ps1'),(Join-Path $source 'uninstall.bat') -Destination $project
 [IO.File]::WriteAllText((Join-Path $project 'lib\index.js'), 'export {}')
 [IO.File]::WriteAllText((Join-Path $project 'lib\client.js'), 'export {}')
 function Invoke-Installer {
@@ -98,3 +98,12 @@ Assert ([IO.File]::ReadAllText($patch).Contains('name: keep-me') -and [IO.File]:
 Invoke-Installer -ScriptName 'uninstall.bat'
 $content = [IO.File]::ReadAllText($patch)
 Assert ($content.Contains('name: keep-me') -and $content.Contains('name: after') -and -not $content.Contains('enabled: true')) 'Uninstall removes the pet block including nested config and preserves both sibling levels'
+
+# Both new nested layouts and old root-only layouts work; stale root helpers never win.
+New-Item -ItemType Directory -Path (Join-Path $project 'installer') -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $source 'installer/install.ps1') -Destination (Join-Path $project 'installer/install.ps1')
+[IO.File]::WriteAllText((Join-Path $project 'install.ps1'), 'exit 99')
+Invoke-Installer
+Assert ([IO.File]::ReadAllText($patch).Contains($uri)) 'New installer directory is preferred over a stale root helper'
+Invoke-Installer -ScriptName 'uninstall.bat'
+Assert (-not [IO.File]::ReadAllText($patch).Contains('dsh-whale-pet')) 'Nested helper uninstalls successfully'

@@ -20,8 +20,10 @@ export declare const LIVE2D_CREDIT: {
     model: string;
     art: string;
     rigging: string;
-    /** The author's Bilibili page, where the model is published. */
+    /** The author's Bilibili page. */
     page: string;
+    /** Where the model is obtained (the link the owner put in the README). */
+    get: string;
 };
 export interface Live2DRecord {
     /** Path of the model3.json, relative to the stored files. */
@@ -86,6 +88,11 @@ export type Live2DImportResult = {
     error: Live2DImportError;
     detail?: string;
 };
+/**
+ * Files of a folder dropped onto the import card, with their path inside the folder (as a folder pick gives).
+ * Plain dropped files are returned as they are.
+ */
+export declare function live2dFilesFromDrop(data: DataTransfer): Promise<File[]>;
 /** Builds a record from the files of a picked folder (webkitdirectory) or a multi-file pick. */
 export declare function importLive2DFiles(files: readonly File[], onProgress?: (done: number, total: number) => void): Promise<Live2DImportResult>;
 /** Runtime view of a stored record. Decoded files are shared between mounts (widget ↔ theatre) for a while. */

@@ -22,7 +22,9 @@ export const ACCOUNT_REFRESH = {
   failBaseMs: 30_000,
   failMaxMs: 300_000,
   /** A ready value older than this is shown as not live. */
-  staleAfterMs: 5 * 60_000,
+  staleAfterMs: 10 * 60_000,
+  /** A read that has not answered by now counts as failed (the host call can hang; the chip must not stay on "loading"). */
+  timeoutMs: 12_000,
 } as const
 
 /**
@@ -68,6 +70,8 @@ export interface AccountBalanceOptions {
   cancel?: (handle: unknown) => void
   /** Skip timer-driven reads while the window is hidden. */
   isHidden?: () => boolean
+  /** Older hosts without account notifications cannot safely retain an earlier account's amounts. */
+  retainOnFailure?: boolean
 }
 
 export class AccountBalancePoller {
@@ -78,6 +82,7 @@ export class AccountBalancePoller {
   private failures = 0
   private lastRequestAt = -Infinity
   private stopped = false
+  private cancelRequest: (() => void) | null = null
   private readonly now: () => number
   private readonly schedule: (callback: () => void, ms: number) => unknown
   private readonly cancel: (handle: unknown) => void
@@ -90,6 +95,8 @@ export class AccountBalancePoller {
 
   public start(): void {
     this.stopped = false
+    this.failures = 0
+    this.lastRequestAt = -Infinity
     this.emit({ status: 'loading', source: 'host', toppedUp: { status: 'unknown' }, granted: { status: 'unknown' }, updatedAt: null })
     void this.refresh(true)
   }
@@ -105,16 +112,30 @@ export class AccountBalancePoller {
     this.clearTimer()
     let request: Promise<unknown>
     try { request = Promise.resolve(this.options.getBalance()) } catch (error) { request = Promise.reject(error) }
+    let timeout: unknown = null
+    let cancelRead: () => void
+    const deadline = new Promise((_, reject) => {
+      timeout = this.schedule(() => reject(new Error('balance read timed out')), ACCOUNT_REFRESH.timeoutMs)
+      cancelRead = () => { if (timeout !== null) this.cancel(timeout); reject(new Error('balance read cancelled')) }
+    })
+    this.cancelRequest = cancelRead!
+    request = Promise.race([request, deadline]).finally(() => {
+      if (timeout !== null) this.cancel(timeout)
+      if (this.cancelRequest === cancelRead) this.cancelRequest = null
+    })
     const flight = request.then(result => {
       if (generation !== this.generation) return
+      // A fulfilled Remote call can still report failure. Parse before resetting
+      // backoff, and handle parser failures together with transport failures.
+      const snapshot = parseAccountBalance(result, this.now())
       this.failures = 0
-      this.emit(parseAccountBalance(result, this.now()))
+      this.emit(snapshot)
       this.arm(ACCOUNT_REFRESH.okMs)
-    }, () => {
+    }).catch(() => {
       if (generation !== this.generation) return
       this.failures++
       // Keep the last good amounts for the same grant, marked as not live.
-      this.emit(this.last && this.last.updatedAt !== null ? { ...this.last, status: 'stale' } : { status: 'error', source: 'host', toppedUp: { status: 'unknown' }, granted: { status: 'unknown' }, updatedAt: null })
+      this.emit(this.options.retainOnFailure !== false && this.last && this.last.updatedAt !== null ? { ...this.last, status: 'stale' } : emptyAccountBalance('error'))
       this.arm(Math.min(ACCOUNT_REFRESH.failMaxMs, ACCOUNT_REFRESH.failBaseMs * 2 ** (this.failures - 1)))
     }).finally(() => { if (this.inFlight === flight) this.inFlight = null })
     this.inFlight = flight
@@ -126,6 +147,8 @@ export class AccountBalancePoller {
     this.stopped = true
     this.generation++
     this.clearTimer()
+    this.cancelRequest?.()
+    this.cancelRequest = null
     this.inFlight = null
     this.last = null
     this.options.publish(null)
@@ -149,5 +172,68 @@ export class AccountBalancePoller {
   private clearTimer(): void {
     if (this.timer !== null) this.cancel(this.timer)
     this.timer = null
+  }
+}
+
+export function emptyAccountBalance(status: 'loading' | 'signed-out' | 'error'): BalanceSnapshot {
+  return { status, source: 'host', toppedUp: { status: 'unknown' }, granted: { status: 'unknown' }, updatedAt: null }
+}
+
+export interface AccountBalanceStream extends AsyncIterable<{ value: { status: string }; accept(): void }> {
+  dispose(): void | Promise<void>
+}
+
+/** Account notifications are an invalidation boundary, not an account identity to persist. */
+export function watchAccountBalances(options: AccountBalanceOptions, openStream?: () => AccountBalanceStream): { refresh(force?: boolean): Promise<void>; stop(): void } {
+  const poller = new AccountBalancePoller({ ...options, retainOnFailure: Boolean(openStream) })
+  if (!openStream) { poller.start(); return poller }
+  const schedule = options.schedule ?? ((callback: () => void, ms: number) => setTimeout(callback, ms))
+  const cancel = options.cancel ?? ((handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>))
+  let stopped = false, generation = 0, ready = false
+  let stream: AccountBalanceStream | null = null
+  let timer: unknown = null
+  const clearTimer = () => { if (timer !== null) cancel(timer); timer = null }
+  const disposeStream = () => {
+    const previous = stream; stream = null
+    try { if (previous) void Promise.resolve(previous.dispose()).catch(() => {}) } catch { /* already disconnected */ }
+  }
+  const failed = (own: number) => {
+    if (stopped || own !== generation) return
+    generation++; ready = false; clearTimer(); disposeStream(); poller.stop()
+    options.publish(emptyAccountBalance('error'))
+    timer = schedule(() => { timer = null; begin() }, ACCOUNT_REFRESH.failBaseMs)
+  }
+  const begin = () => {
+    const own = ++generation
+    ready = false; clearTimer(); disposeStream(); poller.stop()
+    options.publish(emptyAccountBalance('loading'))
+    timer = schedule(() => failed(own), ACCOUNT_REFRESH.timeoutMs)
+    try {
+      const current = openStream()
+      stream = current
+      void (async () => {
+        for await (const frame of current) {
+          if (stopped || own !== generation) return
+          clearTimer(); poller.stop()
+          ready = frame.value.status === 'credential-stored'
+          if (ready) poller.start()
+          else options.publish(emptyAccountBalance(frame.value.status === 'signed-out' ? 'signed-out' : 'error'))
+          frame.accept()
+        }
+        failed(own)
+      })().catch(() => failed(own))
+    } catch { failed(own) }
+  }
+  begin()
+  return {
+    refresh(force = false) {
+      if (stopped) return Promise.resolve()
+      if (ready) return poller.refresh(force)
+      if (force && stream === null) begin()
+      return Promise.resolve()
+    },
+    stop() {
+      stopped = true; generation++; ready = false; clearTimer(); disposeStream(); poller.stop()
+    },
   }
 }
