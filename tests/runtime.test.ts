@@ -33,26 +33,27 @@ function loadBundle(storage?: { getItem(key: string): string | null; setItem(key
     Math: vmMath,
     requestAnimationFrame: frames ? (callback: () => void) => frames.push(callback) : undefined,
     Element: FakeElement,
-    console, setTimeout, clearTimeout, setInterval, clearInterval, localStorage: storage,
+    console, setTimeout, clearTimeout, setInterval, clearInterval, localStorage: storage, Event,
     window: { addEventListener: listen, removeEventListener: unlisten, innerWidth: 1280, innerHeight: 800, __ModuleLoader__: {
       load(module: any) { plugin = module.factory(() => React) },
     } },
-    document: { hidden: false, hasFocus: () => true, addEventListener: listen, removeEventListener: unlisten, getElementById: () => ({}), querySelector: () => null, querySelectorAll: () => [] },
+    document: { title: 'DSH', documentElement: {lang:'zh'}, hidden: false, hasFocus: () => true, addEventListener: listen, removeEventListener: unlisten, getElementById: () => ({}), querySelector: () => null, querySelectorAll: () => [] },
   }
+  context.window.dispatchEvent = (event: Event) => { for (const callback of listeners.get(event.type) || []) callback(event) }
   const bundle = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
     .replace('const DialogueContent =', 'globalThis.BundleAudio = PetVoice; const DialogueContent =')
     .replace('const MAID_DATA_URI =', 'globalThis.BundleStateMachine = PetStateMachine; const MAID_DATA_URI =')
   vm.runInNewContext(bundle, context)
   let overlay: any
   const effects: any[] = []
-  const mount = () => {
-    plugin.apply({ slots: {
+  const mount = (extra: Record<string, unknown> = {}) => {
+    plugin.apply({ ...extra, slots: {
       inject(_name: string, callback: any) { callback() },
       register(_config: any, render: any) { overlay = render() },
     }, effect(callback: any) { effects.push(callback) } })
     return overlay.props.stateMachine
   }
-  return { FakeElement, dispatch(name: string, event: any) { for(const callback of listeners.get(name) || [])callback(event) }, StateMachine: context.BundleStateMachine, Audio: context.BundleAudio, viewEffects, mount,
+  return { context, FakeElement, dispatch(name: string, event: any) { for(const callback of listeners.get(name) || [])callback(event) }, StateMachine: context.BundleStateMachine, Audio: context.BundleAudio, viewEffects, mount,
     render() { hookIndex = 0; viewEffects.length = 0; return overlay.type(overlay.props) }, effects }
 }
 
@@ -738,4 +739,103 @@ test('browser bundle: the peeking picture appears only after she has walked to t
  await new Promise(r=>setTimeout(r,800));tree=runtime.render()
  assert.equal(pose(),'peek','turns into the peeking picture at the edge');assert.equal(tree.props['data-peek-swap'],true);assert.equal(tree.props['data-peek-lean'],undefined,'the picture is not tilted')
  peek().props.onClick();tree=runtime.render();assert.notEqual(pose(),'peek','herself again as soon as she comes back')
+})
+
+test('browser bundle: repeated tail strokes use tail feedback, while actual pokes still use the poke warning',t=>{
+ const runtime=loadBundle();runtime.context.setTimeout=()=>1;runtime.context.clearTimeout=()=>{}
+ let now=Date.now();runtime.context.Date=class extends Date{static now(){return now}}
+ const sm=runtime.mount();t.after(()=>sm.dispose());let tree=runtime.render()
+ const touch=walk(tree).find(n=>n.props.imgSrc).props.onTouch
+ for(let i=0;i<3;i++){now+=3500;touch({kind:'tail'});tree=runtime.render()}
+ const text=()=>walk(tree).flatMap(n=>n.children).filter(v=>typeof v==='string').join(' ')
+ assert.match(text(),/尾巴很敏感/);assert.doesNotMatch(text(),/别戳啦/)
+ assert.equal(walk(tree).find(n=>n.props.imgSrc).props.poseName,'shy','tail strokes never trigger poke anger')
+ sm.setGalGameMode(true);runtime.render()
+ // The theatre reports actual pokes, while the desktop handles them through its drag handler.
+ for(let i=0;i<6;i++){now+=100;touch({kind:'poke'})}
+ sm.setGalGameMode(false);tree=runtime.render();assert.match(text(),/别戳啦/)
+})
+
+test('browser bundle: a pending answer reminder is cancelled when turned off, including its title mark',t=>{
+ const store=new Map([['dsh-whale-pet.preferences.v1',JSON.stringify({onboardingDone:true,answerNotice:'line'})]])
+ const r=loadBundle({getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,v)})
+ r.context.setTimeout=()=>1;r.context.clearTimeout=()=>{}
+ const sm=r.mount();t.after(()=>sm.dispose());r.render()
+ t.after(r.viewEffects.find(fn=>String(fn).includes('stateMachine.subscribe'))())
+ r.viewEffects.find(fn=>String(fn).includes('const visibility'))()
+ sm.setStreaming(true);r.render();r.viewEffects.find(fn=>String(fn).includes('finishedStream.current'))()
+ r.context.document.hidden=true;r.context.document.hasFocus=()=>false;r.dispatch('blur',{});r.render()
+ sm.setLatestDialogue('All done');sm.setStreaming(false);r.render();r.viewEffects.find(fn=>String(fn).includes('finishedStream.current'))()
+ assert.match(r.context.document.title,/已回答/)
+ let tree=r.render();walk(tree).find(n=>n.children.includes('设置')).props.onClick();tree=r.render()
+ walk(tree).find(n=>n.type==='button'&&n.children.includes('关')).props.onClick();r.render()
+ r.viewEffects.find(fn=>String(fn).includes('answerNotice.current.cancel()'))()
+ assert.equal(r.context.document.title,'DSH')
+ r.context.document.hidden=false;r.context.document.hasFocus=()=>true;r.dispatch('focus',{});r.render()
+ r.viewEffects.find(fn=>String(fn).includes('answerNotice.current.back('))()
+ tree=r.render();assert.notEqual(walk(tree).find(n=>n.props.imgSrc).props.emote,'heart')
+})
+
+test('browser bundle: corrupted discovery dates cannot crash the real settings renderer',t=>{
+ const r=loadBundle({getItem:k=>k==='dsh-whale-pet.discoveries.v1'?'{"pat":1e100,"tail":8640000000000001,"carry":1000}':null,setItem(){}})
+ const sm=r.mount();t.after(()=>sm.dispose());let tree=r.render()
+ walk(tree).find(n=>n.children.includes('设置')).props.onClick()
+ assert.doesNotThrow(()=>{tree=r.render()})
+ const times=walk(tree).filter(n=>n.type==='time')
+ assert.equal(times.length,1);assert.equal(times[0].props.dateTime,'1970-01-01T00:00:01.000Z')
+})
+
+test('browser bundle: prose mentioning insufficient_balance never triggers a quota reaction; a host error does once',t=>{
+ const r=loadBundle();r.context.setTimeout=()=>1;r.context.clearTimeout=()=>{}
+ const sm=r.mount();t.after(()=>sm.dispose());r.render();t.after(r.viewEffects.find(fn=>String(fn).includes('stateMachine.subscribe'))())
+ let refreshes=0;r.context.window.dispatchEvent=()=>{refreshes++;return true}
+ sm.setStreaming(true);r.render();r.viewEffects.find(fn=>String(fn).includes('finishedStream.current'))()
+ sm.setLatestDialogue('如果接口提示 insufficient_balance，请检查充值状态。这是示例说明。')
+ sm.setStreaming(false);r.render();r.viewEffects.find(fn=>String(fn).includes('finishedStream.current'))()
+ r.viewEffects.find(fn=>String(fn).includes('seenQuotaError.current'))()
+ let tree=r.render();assert.equal(refreshes,0);assert.notEqual(walk(tree).find(n=>n.props.imgSrc).props.poseName,'shy')
+ sm.setQuotaError('host-turn-1');r.render();r.viewEffects.find(fn=>String(fn).includes('seenQuotaError.current'))()
+ tree=r.render();assert.equal(refreshes,1);assert.equal(walk(tree).find(n=>n.props.imgSrc).props.poseName,'shy')
+ r.viewEffects.find(fn=>String(fn).includes('seenQuotaError.current'))();assert.equal(refreshes,1)
+})
+
+test('host adapter: terminal quota rows affect only an observed current turn, never old history or answer text',t=>{
+ t.mock.timers.enable({apis:['setTimeout','setInterval']})
+ const r=loadBundle(),sm=r.mount();t.after(()=>sm.dispose())
+ let mutate:any,running=false,error=true,code='ACCOUNT_QUOTA',session='one',old=false
+ r.context.MutationObserver=class{constructor(fn:any){mutate=fn}observe(){}disconnect(){}}
+ r.context.Node={DOCUMENT_POSITION_FOLLOWING:4}
+ const prompt={},failure={closest:()=>null,compareDocumentPosition:()=>old?4:2,querySelector:()=>({textContent:code}),getAttribute:()=> 'error-1'}
+ r.context.document.querySelector=(selector:string)=>selector==='[data-chat-running]'?(running?{hasAttribute:()=>false}:null):selector==='[data-conversation-session]'?{getAttribute:()=>session}:null
+ r.context.document.querySelectorAll=(selector:string)=>selector==='[data-chat-flow-kind="user-prompt"]'?[prompt]:selector==='[data-chat-flow-kind="turn-error"]'&&error?[failure]:[]
+ const clean=r.effects.find(fn=>String(fn).includes('const inspectDomState'))();t.after(clean)
+ assert.equal(sm.getStatus().quotaErrorKey,null,'opening old failed history is not a new failure')
+ const update=()=>{mutate([{target:{parentElement:null}}]);t.mock.timers.tick(101)}
+ running=true;update();running=false;error=true;update();assert.ok(sm.getStatus().quotaErrorKey)
+ running=true;update();assert.equal(sm.getStatus().quotaErrorKey,null)
+ running=false;old=true;update();assert.equal(sm.getStatus().quotaErrorKey,null,'old turn excluded')
+ old=false;code='AUTH';update();assert.equal(sm.getStatus().quotaErrorKey,null,'other failures excluded')
+ code='ACCOUNT_QUOTA';update();assert.ok(sm.getStatus().quotaErrorKey)
+ session='two';update();assert.equal(sm.getStatus().quotaErrorKey,null,'changing session clears the event')
+})
+
+test('host adapter: account stream changes clear both balance sources and suppress stale DOM fallback',async t=>{
+ const r=loadBundle();r.context.setTimeout=()=>1;r.context.clearTimeout=()=>{}
+ let receive:any,disposeGrant:any,watchCalls=0,calls=0
+ const stream={ [Symbol.asyncIterator](){return {next:()=>new Promise(resolve=>{receive=resolve})}},dispose(){receive?.({done:true})} }
+ const remote={account:{watch(){watchCalls++},getBalance:async()=>++calls===1?{ok:true,value:{status:'ready',value:[{currency:'CNY',balance:'10'}],bonusWallets:[]}}:{ok:true,value:{status:'failed'}}},
+   $stream(options:any){options.open(new AbortController().signal);return stream}}
+ const sm=r.mount({inject(_names:unknown,fn:any){fn({remote,remoteAccess:{whenAccess(_name:unknown,start:any){disposeGrant=start()}}})}})
+ t.after(()=>{disposeGrant();sm.dispose()})
+ assert.equal(watchCalls,1)
+ const emit=async(status:string)=>{receive({done:false,value:{value:{status},accept(){}}});await new Promise(resolve=>setImmediate(resolve))}
+ await emit('credential-stored');assert.equal(sm.getStatus().hostBalance?.status,'ready')
+ sm.setBalances('¥10.00','¥1.00')
+ await emit('credential-stored')
+ assert.equal(sm.getStatus().hostBalance?.status,'error');assert.equal(sm.getStatus().balancesKnown,false)
+ r.context.MutationObserver=class{observe(){}disconnect(){}}
+ r.context.document.querySelectorAll=(selector:string)=>selector.includes('balanceCard')?[{closest:()=>null,firstElementChild:{textContent:'充值余额'},querySelector:()=>({textContent:'¥10.00'})}]:[]
+ const clean=r.effects.find(fn=>String(fn).includes('const inspectDomState'))();t.after(clean)
+ assert.equal(sm.getStatus().balancesKnown,false,'old mounted account card is not re-read after host identity invalidation')
+ await emit('signed-out');assert.equal(sm.getStatus().hostBalance?.status,'signed-out')
 })

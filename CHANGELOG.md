@@ -7,6 +7,17 @@
 <a name="english"></a>
 ## English
 
+### [v0.8.1] - 2026-11-12
+
+- **Balance and reminders:** five clear balance states, refresh/retry details, configurable head chips and a daily low-balance reminder. Answers completed while DSH is in the background can mark the title and greet you once when you return; reminders can be disabled.
+- **Getting started:** a three-step guide beside her, a local interaction gallery and a clearer Live2D import card with the model download link, progress and folder drop support.
+- **Installer layout:** double-click the root install.bat or uninstall.bat. Their required PowerShell helper is in installer/; keep that folder with the package. Legacy root-level helper layouts remain supported.
+
+
+- **Account and interaction fixes.** Invalidate both balance sources and late replies on account changes; retry a silent account stream and clear cancelled-read timers. Quota notices now require an explicit error row from an observed current turn. Repeated tail strokes stay shy with a tail-specific request for a break; actual pokes retain their own reaction. Reject invalid discovery dates and cancel pending answer greetings when reminders are off. Restore the referenced tail screenshot and remove unused compiled tail experiments.
+
+- **Balance reads recover from failed replies.** A fulfilled DSH call can contain a failure result. Handle those failures as well as rejected requests, leave loading, retain earlier amounts as stale and retry with backoff. Reset backoff only after a valid reply.
+
 ### [v0.8.0] - 2026-11-11
 
 - **Peek from the right edge.** Peek in the hover menu (beside Quiet mode, with its shortcut shown) or **Alt+P**, which can be re-recorded in Settings, sends her behind the right edge of the window, half out of sight and clear of the conversation and the composer; press again and she returns to her previous spot. Peeking pauses wandering and chatter. Bottom peeking, automatic edge selection and their settings are gone; retired saved values are ignored. Pointer motion and scrolling no longer fade her.
@@ -183,6 +194,17 @@
 
 <a name="chinese"></a>
 ## 中文版本
+
+### [v0.8.1] - 2026-11-12
+
+- **余额与提醒：** 五种明确的余额状态、详情与刷新/重试入口、可配置头顶标签和每日低余额提醒。后台完成回答后可标记标题，回来时提醒一次，也可关闭。
+- **上手与导入：** 三步引导移到角色身旁，新增本机互动图鉴；Live2D 导入卡提供获取链接、进度和文件夹拖放。
+- **安装目录整理：** 只需双击根目录 install.bat 或 uninstall.bat；必需的 PowerShell 辅助脚本放在 installer/，请保留该文件夹。启动器仍兼容旧版根目录脚本布局。
+
+
+- **账户与互动修复。** 账户变化时清理两种余额来源并丢弃旧回复；账户通知无响应时超时重试，取消读取时清理计时器。余额不足提示只响应当前任务的明确错误节点。连续摸尾巴保持害羞、单独提示休息，真实戳人的反馈保留。过滤异常图鉴日期，关闭提醒时取消待提醒。补回引用的尾巴截图并清理已撤回的摆尾编译文件。
+
+- **修复余额一直加载。** DSH 请求正常返回但内容是失败结果时，也会结束加载、保留上次余额并标注非实时，按退避间隔重试；只有解析成功才重置重试间隔。
 
 ### [v0.8.0] - 2026-11-11
 

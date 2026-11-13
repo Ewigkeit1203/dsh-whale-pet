@@ -19,6 +19,8 @@ export interface WalletInput {
     checkedAt: number | null;
     now: number;
     ricePrice: number;
+    /** Low-balance threshold in CNY (default WALLET_LOW_CNY); 0 never counts as low. */
+    lowAt?: number;
 }
 export interface WalletView {
     status: WalletStatus;
@@ -35,6 +37,7 @@ export interface WalletView {
 }
 /** The DOM source refreshes every 2s while the account page is mounted. */
 export declare const WALLET_FRESH_MS = 10000;
+/** PM v0.9: amounts older than ten minutes are shown as out of date. */
 export declare const HOST_FRESH_MS: number;
 export declare const WALLET_LOW_CNY = 2;
 /** Two decimals, rounded down, grouped; exact on decimal strings (matches DSH's formatter). */

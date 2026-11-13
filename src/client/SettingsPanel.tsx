@@ -1,7 +1,8 @@
 import { peekShortcutFromEvent } from './peek-shortcut.js'
 import type { Preferences } from './preferences.js'
 import type { WalletView } from './wallet.js'
-import { LIVE2D_CREDIT } from './live2d-package.js'
+import { LIVE2D_CREDIT, live2dFilesFromDrop } from './live2d-package.js'
+import { INTERACTIONS, discoveryCount, discoveryDate, type Discoveries } from './discovery.js'
 
 /** What Settings shows about the imported Live2D model. */
 export interface Live2DSettings {
@@ -33,6 +34,9 @@ export interface SettingsPanelProps {
   openTheatre: () => void
   live2d: Live2DSettings
   importLive2D: (files: File[]) => void
+  /** Interactions found so far (id → first time), and a way to see the first-run guide again. */
+  discoveries: Discoveries
+  replayGuide: () => void
   removeLive2D: () => void
   onSizeStart?: () => void
 }
@@ -41,7 +45,7 @@ const SIZE_STEPS = [0.5, 0.75, 1, 1.15, 1.3]
 const SIZE_NAMES = ['XS', 'S', 'M', 'L', 'XL']
 
 /** Plain render function (no hooks): header, scrollable body, fixed footer. */
-export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, quiet, reset, doctor, notify, close, openTheatre, live2d, importLive2D, removeLive2D, onSizeStart }: SettingsPanelProps) {
+export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, quiet, reset, doctor, notify, close, openTheatre, live2d, importLive2D, removeLive2D, onSizeStart, discoveries, replayGuide }: SettingsPanelProps) {
   const t = (zh: string, en: string) => p.language === 'en' ? en : zh
   const selected = SIZE_STEPS.reduce((best, v) => Math.abs(v - p.scale) < Math.abs(best - p.scale) ? v : best)
   const sizeIndex = SIZE_STEPS.indexOf(selected)
@@ -144,6 +148,15 @@ export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, q
               <input onPointerDown={onSizeStart} onKeyDown={onSizeStart} type="range" min="0.6" max="2" step="0.05" value={p[key]} aria-label={key === 'live2dWidgetScale' ? t('桌宠模型大小', 'Desktop model size') : t('剧场模型大小', 'Theatre model size')} onChange={e => update({ [key]: Number(e.target.value) })} />
             </label>)}
             <small>{t('模型大小单独保存；桌宠同时受外观大小影响，并自动限制在窗口内。', 'Model sizes are saved separately. Desktop size also follows Appearance and fits the window.')}</small>
+            <div className="petImportCard" onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy' }} onDrop={e => { e.preventDefault(); if (live2d.state === 'importing') return; void live2dFilesFromDrop(e.dataTransfer).then(files => { if (files.length) importLive2D(files) }).catch(() => importLive2D([])) }}>
+              <strong>{t('导入 Live2D 模型：3 步', 'Import the Live2D model: 3 steps')}</strong>
+              <ol>
+                <li>{t('打开获取页面领取模型：', 'Get the model from its page: ')}<a href={LIVE2D_CREDIT.get} target="_blank" rel="noreferrer noopener">{t('获取页面', 'model page')}</a>{t('（作者 ', ' (by ')}<a href={LIVE2D_CREDIT.page} target="_blank" rel="noreferrer noopener">{LIVE2D_CREDIT.art}</a>{t('）', ')')}</li>
+                <li>{t('把压缩包完整解压。', 'Extract the whole archive.')}</li>
+                <li>{t('点下面的按钮选择含有 大肥鱼.model3.json 的文件夹，或把文件夹直接拖到这里。', 'Use the button below to pick the folder that contains 大肥鱼.model3.json, or drop the folder here.')}</li>
+              </ol>
+              {live2d.state === 'importing' && <progress max={Math.max(1, live2d.progress?.[1] ?? 1)} value={live2d.progress?.[0] ?? 0} aria-label={t('导入进度', 'Import progress')} />}
+            </div>
             <label className="petWide petFilePick" data-disabled={live2d.state === 'importing' || undefined}>
               <input type="file" multiple {...{ webkitdirectory: '', directory: '' }} disabled={live2d.state === 'importing'} onChange={e => { const files = Array.from(e.target.files ?? []); e.target.value = ''; if (files.length) importLive2D(files) }} />
               <strong>{live2d.state === 'ready' ? t('重新导入模型文件夹', 'Import the model folder again') : t('导入模型文件夹', 'Import the model folder')}</strong>
@@ -152,7 +165,7 @@ export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, q
             {live2d.name && toggle(p.live2d, live2d => update({ live2d }), t('使用 Live2D 模型', 'Use the Live2D model'), { disabled: live2d.state === 'importing', hint: t('关闭后显示原版插图', 'Off shows the original illustrations') })}
             {live2d.name && live2d.state !== 'importing' && <button type="button" className="petWide" onClick={removeLive2D}><strong>{t('移除模型', 'Remove the model')}</strong><small>{t('从本机删除导入的文件', 'Delete the imported files from this device')}</small></button>}
           </>}
-          <p className="petCredit">{t(`模型 ${LIVE2D_CREDIT.model} · 原画及拆分 ${LIVE2D_CREDIT.art} · Live2D 建模 ${LIVE2D_CREDIT.rigging}。模型由作者免费配布，插件不附带模型文件，请从`, `Model ${LIVE2D_CREDIT.model} · art ${LIVE2D_CREDIT.art} · Live2D rigging ${LIVE2D_CREDIT.rigging}. The model is shared free by its author; the plugin does not include it. Download it from `)}<a href={LIVE2D_CREDIT.page} target="_blank" rel="noreferrer">{t(`${LIVE2D_CREDIT.art}的 B 站主页`, `${LIVE2D_CREDIT.art}'s Bilibili page`)}</a>{t('下载。', '.')}</p>
+          <p className="petCredit">{t(`模型 ${LIVE2D_CREDIT.model} · 原画及拆分 ${LIVE2D_CREDIT.art} · Live2D 建模 ${LIVE2D_CREDIT.rigging}。模型由作者免费配布，插件不附带模型文件，请从`, `Model ${LIVE2D_CREDIT.model} · art ${LIVE2D_CREDIT.art} · Live2D rigging ${LIVE2D_CREDIT.rigging}. The model is shared free by its author; the plugin does not include it. Get it from `)}<a href={LIVE2D_CREDIT.get} target="_blank" rel="noreferrer">{t('获取页面', 'its page')}</a>{t('领取。', '.')}</p>
         </div>
       </details>
 
@@ -180,6 +193,10 @@ export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, q
           {toggle(p.peakNotice, peakNotice => update({ peakNotice }), t('峰谷时段播报', 'Peak / off-peak announcements'), { hint: t('切换到梁文峰 / 梁文谷时间时告诉你', 'Tell you when API pricing switches') })}
           <div className="petField"><label className="petFieldLabel" htmlFor="pet-user">{t('怎么称呼你', 'Your name')}</label><input id="pet-user" value={p.userName} maxLength={24} onChange={e => update({ userName: e.target.value })} /></div>
           <div className="petField"><label className="petFieldLabel" htmlFor="pet-name">{t('她的昵称', 'Her nickname')}</label><input id="pet-name" value={p.petName} maxLength={24} onChange={e => update({ petName: e.target.value })} /></div>
+          <div className="petField petFieldStack"><span className="petFieldLabel" id="pet-head-chips-label">{t('头顶显示', 'Above her head')}</span>
+            <div id="pet-head-chips" className="petSegmented" role="group" aria-labelledby="pet-head-chips-label">{(['both', 'tier', 'balance', 'none'] as const).map((v, i) => <button type="button" key={v} aria-pressed={p.headChips === v} onClick={() => update({ headChips: v })}>{t(['都显示', '时段', '余额', '都不显示'][i], ['Both', 'Period', 'Balance', 'Neither'][i])}</button>)}</div>
+          </div>
+          <div className="petField"><label className="petFieldLabel" htmlFor="pet-low-balance">{t('余额低于多少元时提醒（0 为不提醒）', 'Remind me when the balance is under (¥, 0 = never)')}</label><input id="pet-low-balance" type="number" min="0" max="1000" step="1" value={p.lowBalanceAt} onChange={e => { const n = Number(e.target.value); if (e.target.value !== '' && n >= 0 && n <= 1000) update({ lowBalanceAt: n }) }} /></div>
           <div className="petField"><label className="petFieldLabel" htmlFor="pet-rice">{t('每碗饭额度', 'Credit per bowl')}</label><input id="pet-rice" type="number" min="0.01" max="100" step="0.1" value={p.ricePrice} onChange={e => { const n = Number(e.target.value); if (n >= .01 && n <= 100) update({ ricePrice: n }) }} /></div>
         </div>
       </details>
@@ -197,8 +214,23 @@ export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, q
       </details>
 
       <details className="petSettingsGroup">
+        <summary>{t('互动图鉴', 'Interaction gallery')}<span className="petValue">{discoveryCount(discoveries)} / {INTERACTIONS.length}</span></summary>
+        <div className="petGroupBody">
+          <ul className="petGallery">{INTERACTIONS.map(item => { const date = discoveryDate(discoveries[item.id]); return <li key={item.id} data-found={Boolean(date) || undefined}>
+            <strong>{date ? t(item.name[0], item.name[1]) : '？？？'}</strong>
+            <small>{date ? t(item.how[0], item.how[1]) : t(item.hint[0], item.hint[1])}</small>
+            {date && <time dateTime={date.toISOString()}>{date.toLocaleDateString(p.language === 'zh' ? 'zh-CN' : 'en')}</time>}
+          </li> })}</ul>
+          <button type="button" className="petWide" onClick={replayGuide}><strong>{t('再看一次新手引导', 'Replay the first-run guide')}</strong><small>{t('三步：摸头、拎起、探头', 'Three steps: pat, pick up, peek')}</small></button>
+        </div>
+      </details>
+
+      <details className="petSettingsGroup">
         <summary>{t('高级', 'Advanced')}</summary>
         <div className="petGroupBody">
+          <div className="petField petFieldStack"><span className="petFieldLabel" id="pet-answer-notice-label">{t('回答完成提醒（你不在时答完，回来她会示意）', 'Answer-finished reminder (she greets you when you return)')}</span>
+            <div id="pet-answer-notice" className="petSegmented" role="group" aria-labelledby="pet-answer-notice-label">{(['motion', 'line', 'off'] as const).map((v, i) => <button type="button" key={v} aria-pressed={p.answerNotice === v} onClick={() => update({ answerNotice: v })}>{t(['动作', '动作+台词', '关'][i], ['Motion', 'Motion + line', 'Off'][i])}</button>)}</div>
+          </div>
           <button type="button" className="petWide" aria-pressed={p.notifications} onClick={notify}>
             <strong>{p.notifications ? t('关闭完成通知', 'Disable completion notifications') : t('后台完成通知', 'Background completion notifications')}</strong>
             <small>{p.notifications ? t('已开启', 'On') : t('开启时会请求系统授权', 'Asks for system permission when enabled')}</small>

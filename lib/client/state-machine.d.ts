@@ -25,6 +25,7 @@ export declare class PetStateMachine {
     /** Last time a balance source reported, even when values were unchanged (UI freshness only). */
     private balancesCheckedAt;
     private hostBalance;
+    private quotaErrorKey;
     private speechTimer;
     private debounceTimer;
     private thinkingCycleTimer;
@@ -46,6 +47,9 @@ export declare class PetStateMachine {
     setBalances(toppedUp: string, granted: string): void;
     /** Host account balance (see account-balance.ts). null clears it, e.g. when account access is withdrawn. */
     setHostBalance(snapshot: BalanceSnapshot | null): void;
+    /** Account changed or access ended: discard both sources before accepting new amounts. */
+    clearBalances(): void;
+    setQuotaError(key: string | null): void;
     setInputFocus(focused: boolean): void;
     setReasoning(reasoning: boolean): void;
     private scheduleNextThinkingPose;

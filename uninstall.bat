@@ -1,7 +1,9 @@
 @echo off
 setlocal DisableDelayedExpansion
 chcp 65001 >nul
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0install.ps1" -Uninstall
+set "INSTALL_SCRIPT=%~dp0installer\install.ps1"
+if not exist "%INSTALL_SCRIPT%" set "INSTALL_SCRIPT=%~dp0install.ps1"
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%INSTALL_SCRIPT%" -PluginDirectory "%~dp0." -Uninstall
 set "INSTALL_EXIT=%ERRORLEVEL%"
 if "%INSTALL_EXIT%"=="0" goto :finish
 echo.

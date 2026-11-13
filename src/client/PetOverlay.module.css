@@ -140,7 +140,7 @@
 [data-whale-pet="widget"] .characterBase { pointer-events: auto; cursor: grab; }
 [data-whale-pet="widget"][data-dragging] .characterBase { cursor: grabbing; }
 [data-whale-pet][data-ghost="true"] .characterBase { pointer-events: none !important; }
-[data-whale-pet="widget"] :is(.settingsDrawer, .petOnboarding, .petLog, .toolbar[data-visible="true"], .petWalletChip, .petEdgePeek, .speechBubble) { pointer-events: auto; }
+[data-whale-pet="widget"] :is(.settingsDrawer, .petOnboarding, .petLog, .toolbar[data-visible="true"], .petWalletChip, .petWalletPop, .petEdgePeek, .speechBubble) { pointer-events: auto; }
 
 /* Above the hover toolbar’s invisible bridge, so crown controls receive clicks. */
 [data-whale-pet] .petCrownRow { position: relative; z-index: 1; }
@@ -223,6 +223,31 @@
 [data-whale-pet] .petWalletChip[data-low] { color: var(--wp-warn); border-color: currentColor; background: var(--wp-warn-soft); }
 [data-whale-pet] .petWalletSep { opacity: .45; }
 [data-whale-pet] .petWalletStale { padding: 0 5px; border-radius: 999px; background: var(--wp-control); color: var(--wp-ink-3); font-size: 10.5px; }
+/* Balance chip states (PM v0.9 P0-1): shimmer while reading, warning dot when unread, grey digits with a clock when old. */
+[data-whale-pet] .petWalletChip[data-chip="stale"] { color: var(--wp-ink-3); }
+[data-whale-pet] .petWalletChip[data-chip="failed"], [data-whale-pet] .petWalletChip[data-chip="signed-out"] { color: var(--wp-ink-3); }
+[data-whale-pet] .petWalletSkeleton { width: 86px; height: 8px; border-radius: 999px; background: linear-gradient(90deg, var(--wp-control) 25%, var(--wp-line-strong) 50%, var(--wp-control) 75%); background-size: 200% 100%; animation: wpShimmer 1.4s linear infinite; }
+[data-whale-pet] .petWalletWarn { width: 6px; height: 6px; border-radius: 50%; background: var(--wp-warn); box-shadow: 0 0 0 3px var(--wp-warn-soft); }
+[data-whale-pet] .petWalletClock { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+[data-whale-pet] .petWalletChip[data-flash] { animation: wpChipFlash .6s ease-in-out 4; }
+[data-whale-pet] .petWalletChip:focus-visible, [data-whale-pet] .petWalletPop button:focus-visible { outline: 2px solid var(--wp-accent); outline-offset: 2px; }
+@keyframes wpShimmer { from { background-position: 200% 0; } to { background-position: 0 0; } }
+@keyframes wpChipFlash { 50% { color: var(--wp-warn); border-color: var(--wp-warn); background: var(--wp-warn-soft); } }
+[data-whale-pet] .petWalletPop {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 30;
+  width: max-content; max-width: min(260px, calc(100vw - 32px)); padding: 10px 12px;
+  border: 1px solid var(--wp-line); border-radius: 12px;
+  background: var(--wp-surface); color: var(--wp-ink-2);
+  -webkit-backdrop-filter: var(--wp-blur); backdrop-filter: var(--wp-blur);
+  box-shadow: var(--wp-shadow-s); font-size: 12px; line-height: 1.5; text-align: left;
+  animation: wpPop .14s ease-out;
+}
+[data-whale-pet] .petWalletPop p { margin: 0 0 8px; }
+[data-whale-pet] .petWalletPopActions { display: flex; flex-wrap: wrap; gap: 6px; }
+[data-whale-pet] .petWalletPopActions button { height: 24px; padding: 0 10px; border: 1px solid var(--wp-line); border-radius: 999px; background: var(--wp-control); color: var(--wp-ink); font: inherit; cursor: pointer; }
+[data-whale-pet] .petWalletPopActions button:hover { border-color: var(--wp-line-strong); }
+[data-whale-pet] .petWalletPopActions button:disabled { opacity: .55; cursor: default; }
+[data-whale-pet][data-paused="true"] .petWalletSkeleton, [data-whale-pet][data-paused="true"] .petWalletChip[data-flash] { animation: none; }
 
 /* Chatter bubble beside the head */
 [data-whale-pet] .speechBubble {
@@ -284,11 +309,41 @@
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, .5);
   pointer-events: none;
 }
-[data-whale-pet] .petOnboarding { position: fixed; left: 20px; top: 84px; z-index: 100000; width: min(300px, calc(100vw - 40px)); padding: 16px 16px 14px; border-radius: var(--wp-radius-l); font-size: 13px; line-height: 1.55; }
+[data-whale-pet] .petOnboarding { position: absolute; z-index: 30; width: min(280px, calc(100vw - 40px)); padding: 14px 16px 12px; border-radius: var(--wp-radius-l); font-size: 13px; line-height: 1.55; }
+[data-whale-pet] .petOnboarding[data-side="left"] { right: calc(100% - 30px); }
+[data-whale-pet] .petOnboarding[data-side="right"] { left: calc(100% - 30px); }
 [data-whale-pet] .petOnboarding strong { display: block; font-size: 14px; margin-bottom: 6px; }
 [data-whale-pet] .petOnboarding ul { margin: 0 0 14px; padding-left: 18px; color: var(--wp-ink-2); }
 [data-whale-pet] .petOnboarding li + li { margin-top: 4px; }
 [data-whale-pet] .petOnboarding .petPrimary { min-height: 32px; width: 100%; }
+/* First-run guide (PM v0.9 P0-4): three steps she ticks off as the user does them. */
+[data-whale-pet] .petGuideCount { float: right; color: var(--wp-ink-3); font-weight: 500; font-variant-numeric: tabular-nums; }
+[data-whale-pet] .petGuideSteps { list-style: none; margin: 0 0 10px; padding: 0; color: var(--wp-ink-3); }
+[data-whale-pet] .petGuideSteps li { display: flex; gap: 8px; align-items: flex-start; }
+[data-whale-pet] .petGuideSteps li + li { margin-top: 6px; }
+[data-whale-pet] .petGuideSteps i { flex: 0 0 18px; height: 18px; border-radius: 50%; border: 1px solid var(--wp-line-strong); font-style: normal; font-size: 11px; line-height: 16px; text-align: center; }
+[data-whale-pet] .petGuideSteps li[data-state="now"] { color: var(--wp-ink); }
+[data-whale-pet] .petGuideSteps li[data-state="now"] i { border-color: var(--wp-accent); color: var(--wp-accent); }
+[data-whale-pet] .petGuideSteps li[data-state="done"] i { background: var(--wp-accent); border-color: var(--wp-accent); color: var(--wp-accent-ink); }
+[data-whale-pet] .petGuideNote { margin: 0 0 10px; color: var(--wp-ink-3); font-size: 12px; }
+[data-whale-pet] .petGuideSkip { border: 0; padding: 4px 0; background: none; color: var(--wp-ink-3); font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
+[data-whale-pet] .petGuideSkip:hover { color: var(--wp-ink); }
+[data-whale-pet] .petGuideHand { position: absolute; left: 0; right: 0; z-index: 25; pointer-events: none; text-align: center; }
+[data-whale-pet] .petGuideHand svg { width: 26px; height: 26px; fill: var(--wp-surface); stroke: var(--wp-accent); stroke-width: 1.5; stroke-linejoin: round; filter: drop-shadow(0 2px 4px rgba(12, 40, 70, .25)); animation: wpGuideHand 1.2s ease-in-out infinite; }
+@keyframes wpGuideHand { 0%, 100% { transform: translateX(-14px); } 50% { transform: translateX(14px); } }
+[data-whale-pet][data-paused="true"] .petGuideHand svg { animation: none; }
+/* Interaction gallery and the Live2D import card (settings). */
+[data-whale-pet] .petGallery { list-style: none; margin: 0 0 10px; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+[data-whale-pet] .petGallery li { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 8px 10px; border: 1px dashed var(--wp-line-strong); border-radius: 10px; color: var(--wp-ink-3); }
+[data-whale-pet] .petGallery li[data-found] { border-style: solid; border-color: var(--wp-line); background: var(--wp-control); color: var(--wp-ink); }
+[data-whale-pet] .petGallery small { color: var(--wp-ink-3); font-size: 11.5px; line-height: 1.4; }
+[data-whale-pet] .petGallery time { color: var(--wp-ink-3); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+[data-whale-pet] .petImportCard { padding: 10px 12px; border: 1px dashed var(--wp-line-strong); border-radius: 12px; font-size: 12.5px; color: var(--wp-ink-2); }
+[data-whale-pet] .petImportCard strong { display: block; margin-bottom: 4px; color: var(--wp-ink); }
+[data-whale-pet] .petImportCard ol { margin: 0; padding-left: 18px; }
+[data-whale-pet] .petImportCard li + li { margin-top: 2px; }
+[data-whale-pet] .petImportCard a { color: var(--wp-accent); }
+[data-whale-pet] .petImportCard progress { display: block; width: 100%; height: 6px; margin-top: 8px; accent-color: var(--wp-accent); }
 
 /* ==========================================================================
    Settings panel: fixed header, scrolling body, fixed footer.

@@ -1,4 +1,4 @@
-param([string]$OutputDirectory = 'dist')
+﻿param([string]$OutputDirectory = 'dist')
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $package = Get-Content -LiteralPath (Join-Path $projectRoot 'package.json') -Raw | ConvertFrom-Json
@@ -9,10 +9,11 @@ $stage = Join-Path $distRoot ('stage-' + $version + '-' + [Guid]::NewGuid().ToSt
 New-Item -ItemType Directory -Path $stage | Out-Null
 # Character artwork is already embedded in lib/client.js; source assets stay in the repository.
 Copy-Item -LiteralPath (Join-Path $projectRoot 'lib') -Destination $stage -Recurse
-$files = @('package.json', 'cordis.yml', 'install.bat', 'install.ps1', 'uninstall.bat', 'README.md', 'CHANGELOG.md', 'ASSETS_LICENSE.md', 'CONTRIBUTING.md', 'LICENSE')
+$files = @('package.json', 'cordis.yml', 'install.bat', 'uninstall.bat', 'README.md', 'CHANGELOG.md', 'ASSETS_LICENSE.md', 'CONTRIBUTING.md', 'LICENSE')
 foreach ($file in $files) {
     Copy-Item -LiteralPath (Join-Path $projectRoot $file) -Destination $stage
 }
+Copy-Item -LiteralPath (Join-Path $projectRoot 'installer') -Destination $stage -Recurse
 $docsDestination = Join-Path $stage 'docs'
 New-Item -ItemType Directory -Path $docsDestination -Force | Out-Null
 Get-ChildItem -LiteralPath (Join-Path $projectRoot 'docs') | Where-Object { $_.Name -ne 'handover' -and $_.Name -notlike '*_REVIEW_IMPLEMENTATION.md' } | ForEach-Object {
@@ -33,9 +34,10 @@ Write-ReleaseArchive $stage ('dsh-whale-pet-v' + $version + '.zip')
 # A sibling directory inside our own stage keeps cleanup bounded to one verified tree.
 $repair = Join-Path $stage 'installer-fix'
 New-Item -ItemType Directory -Path $repair | Out-Null
-foreach ($file in @('install.bat', 'install.ps1', 'uninstall.bat')) {
+foreach ($file in @('install.bat', 'uninstall.bat')) {
     Copy-Item -LiteralPath (Join-Path $projectRoot $file) -Destination $repair
 }
+Copy-Item -LiteralPath (Join-Path $projectRoot 'installer') -Destination $repair -Recurse
 Copy-Item -LiteralPath (Join-Path $projectRoot 'docs/INSTALLATION_RECOVERY.md') -Destination $repair
 Write-ReleaseArchive $repair ('dsh-whale-pet-installer-fix-v' + $version + '.zip')
 # Delete only the verified staging directory created within this project's dist/.

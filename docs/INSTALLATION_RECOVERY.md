@@ -10,7 +10,7 @@
 
 ## 需要保留旧版：只换安装工具
 
-如新版 release 提供 `dsh-whale-pet-installer-fix-v*.zip`，将其中 `install.bat`、`install.ps1`、`uninstall.bat` 覆盖到旧插件根目录，与旧版 `lib` 目录并排，再运行新的 `install.bat`。修复包没有 `lib`，不能独立安装插件，也不会改变旧版功能。需要卸载时运行新的 `uninstall.bat`，再刷新 DSH。
+如新版 release 提供 `dsh-whale-pet-installer-fix-v*.zip`，将其中 `install.bat`、`uninstall.bat` 和整个 `installer` 文件夹复制到旧插件根目录，与旧版 `lib` 目录并排，再运行新的 `install.bat`。修复包没有 `lib`，不能独立安装插件，也不会改变旧版功能。需要卸载时运行新的 `uninstall.bat`，再刷新 DSH。
 
 如果窗口显示错误，请保留原文。不要删除整个 `.dsh` 配置或手动覆盖其他插件。修改前的备份位于 `.dsh/profiles/desktop/cordis.patch.yml.backup-*`；需要恢复时先关闭 DSH，确认备份内容，再用对应备份替换配置。
 
@@ -26,6 +26,12 @@ The actual ZIP assets for v0.1.0 through v0.6.0 (including v0.5.1 and v0.5.2) co
 
 Prefer the latest complete `dsh-whale-pet-v*.zip`: extract everything into a permanent folder, run `install.bat` and press Ctrl+R in DSH. Do not run inside the ZIP. Rerun after moving the folder; the old uninstaller is not required first.
 
-To keep an older version, if an installer-fix ZIP is available in the latest release, copy its `install.bat`, `install.ps1` and `uninstall.bat` beside the old plugin's existing `lib` directory, then run the new installer. The repair ZIP has no runtime and cannot install by itself. It preserves the old plugin code. The new uninstaller removes only this plugin registration and retains local preferences; changed profiles are backed up first.
+To keep an older version, if an installer-fix ZIP is available in the latest release, copy its `install.bat`, `uninstall.bat` and complete `installer` directory beside the old plugin's existing `lib` directory, then run the new installer. The repair ZIP has no runtime and cannot install by itself. It preserves the old plugin code. The new uninstaller removes only this plugin registration and retains local preferences; changed profiles are backed up first.
 
 Live2D is optional. Its runtime is included, while the model must be obtained from the author and imported once in Settings. Normal upgrades in the same DSH storage environment retain an imported model. Reinstalling DSH, clearing app data or moving to another machine may require importing again. Keep your own original model download; the author's terms prohibit redistribution without permission.
+
+## v0.8.1 的安装文件 / Installer files in v0.8.1
+
+只需运行 install.bat 或 uninstall.bat。installer/install.ps1 是它们调用的必需辅助脚本，负责校验、备份和更新配置，不是另一个需要双击的安装入口。请完整解压并保留 installer 文件夹；启动器优先使用此处脚本，也能兼容旧版根目录 install.ps1。
+
+Run only install.bat or uninstall.bat. Their required helper installer/install.ps1 validates files, backs up and updates the profile. It is not a second installation entry point. Extract the complete archive and keep installer/; launchers prefer this helper while retaining compatibility with the legacy root-level script.

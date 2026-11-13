@@ -22,8 +22,10 @@ export const LIVE2D_CREDIT = {
   model: 'DeepSeek-chan（大肥鱼）',
   art: '神宫凉子',
   rigging: '霓虹猫_NeonNeko',
-  /** The author's Bilibili page, where the model is published. */
+  /** The author's Bilibili page. */
   page: 'https://space.bilibili.com/13737731',
+  /** Where the model is obtained (the link the owner put in the README). */
+  get: 'https://gf.bilibili.com/item/detail/1109618072?noTitleBar=1&from=mall-up_itemDetail&msource=cps_comments_13737731_cont-1-117527753588880&track_id=__BGMT__',
 }
 
 export interface Live2DRecord {
@@ -168,6 +170,38 @@ async function shrinkLive2DTexture(file: Blob): Promise<Blob> {
 }
 
 export type Live2DImportResult = { ok: true; record: Live2DRecord } | { ok: false; error: Live2DImportError; detail?: string }
+
+/**
+ * Files of a folder dropped onto the import card, with their path inside the folder (as a folder pick gives).
+ * Plain dropped files are returned as they are.
+ */
+export async function live2dFilesFromDrop(data: DataTransfer): Promise<File[]> {
+  type Entry = { isFile: boolean; isDirectory: boolean; fullPath: string; file(ok: (file: File) => void, fail: (error: unknown) => void): void; createReader(): { readEntries(ok: (entries: Entry[]) => void, fail: (error: unknown) => void): void } }
+  const roots: Entry[] = []
+  for (const item of Array.from(data.items ?? [])) {
+    const entry = (item as DataTransferItem & { webkitGetAsEntry?: () => unknown }).webkitGetAsEntry?.() as Entry | null | undefined
+    if (entry) roots.push(entry)
+  }
+  if (!roots.length) return Array.from(data.files ?? [])
+  const files: File[] = []
+  const walk = async (entry: Entry): Promise<void> => {
+    if (entry.isFile) {
+      const file = await new Promise<File>((ok, fail) => entry.file(ok, fail))
+      try { Object.defineProperty(file, 'webkitRelativePath', { value: entry.fullPath.replace(/^\//, ''), configurable: true }) } catch { /* the file name alone still works for a flat folder */ }
+      files.push(file)
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader()
+      // readEntries returns the folder in batches; an empty batch ends it.
+      for (;;) {
+        const batch = await new Promise<Entry[]>((ok, fail) => reader.readEntries(ok, fail))
+        if (!batch.length) break
+        for (const child of batch) await walk(child)
+      }
+    }
+  }
+  for (const root of roots) await walk(root)
+  return files
+}
 
 /** Builds a record from the files of a picked folder (webkitdirectory) or a multi-file pick. */
 export async function importLive2DFiles(files: readonly File[], onProgress?: (done: number, total: number) => void): Promise<Live2DImportResult> {

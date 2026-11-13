@@ -22,6 +22,8 @@ export declare const ACCOUNT_REFRESH: {
     readonly failMaxMs: 300000;
     /** A ready value older than this is shown as not live. */
     readonly staleAfterMs: number;
+    /** A read that has not answered by now counts as failed (the host call can hang; the chip must not stay on "loading"). */
+    readonly timeoutMs: 12000;
 };
 /**
  * Value for `AccountClientMetadata.version`. DSH inlines its version only into
@@ -43,6 +45,8 @@ export interface AccountBalanceOptions {
     cancel?: (handle: unknown) => void;
     /** Skip timer-driven reads while the window is hidden. */
     isHidden?: () => boolean;
+    /** Older hosts without account notifications cannot safely retain an earlier account's amounts. */
+    retainOnFailure?: boolean;
 }
 export declare class AccountBalancePoller {
     private readonly options;
@@ -53,6 +57,7 @@ export declare class AccountBalancePoller {
     private failures;
     private lastRequestAt;
     private stopped;
+    private cancelRequest;
     private readonly now;
     private readonly schedule;
     private readonly cancel;
@@ -66,4 +71,18 @@ export declare class AccountBalancePoller {
     private arm;
     private clearTimer;
 }
+export declare function emptyAccountBalance(status: 'loading' | 'signed-out' | 'error'): BalanceSnapshot;
+export interface AccountBalanceStream extends AsyncIterable<{
+    value: {
+        status: string;
+    };
+    accept(): void;
+}> {
+    dispose(): void | Promise<void>;
+}
+/** Account notifications are an invalidation boundary, not an account identity to persist. */
+export declare function watchAccountBalances(options: AccountBalanceOptions, openStream?: () => AccountBalanceStream): {
+    refresh(force?: boolean): Promise<void>;
+    stop(): void;
+};
 //# sourceMappingURL=account-balance.d.ts.map
