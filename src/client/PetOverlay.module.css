@@ -118,10 +118,11 @@
   transition: left .28s cubic-bezier(.2, .8, .2, 1), top .28s cubic-bezier(.2, .8, .2, 1);
 }
 .petWidget[data-whale-pet][data-docked="true"] { transition: left .7s cubic-bezier(.25,.1,.25,1), top .7s cubic-bezier(.25,.1,.25,1); }
-/* Coming back from the edge: she slides home over .65s, and straightens up within the first half of
-   that slide (.petSpriteSize below), then simply carries on home upright. */
-.petWidget[data-whale-pet][data-returning] { transition: left .65s cubic-bezier(.25,.1,.25,1), top .65s cubic-bezier(.25,.1,.25,1); }
-[data-whale-pet][data-returning] .petSpriteSize { transition: transform .32s cubic-bezier(.25,.1,.25,1); }
+/* Coming back from the edge: she straightens up quickly (about .3s, still around her peeking pivot) while
+   the slide home eases in and out over .75s, so she is upright well before she arrives and travels the
+   rest of the way standing straight. */
+.petWidget[data-whale-pet][data-returning] { transition: left .75s cubic-bezier(.45,0,.3,1), top .75s cubic-bezier(.45,0,.3,1); }
+[data-whale-pet][data-returning] .petSpriteSize { transform-origin: 50% 14%; transition: transform .3s cubic-bezier(.2,.7,.3,1); }
 [data-whale-pet][data-docked="true"] .puppetRoot { filter: none; }
 [data-whale-pet][data-docked="true"] .puppetCanvas { animation: none; }
 [data-whale-pet][data-docked="true"] .characterBase { cursor: default; }
