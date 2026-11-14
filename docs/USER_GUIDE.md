@@ -2,7 +2,7 @@
 
 [Back to the project](../README.md) | [中文](USER_GUIDE.zh-CN.md) | [Changelog](../CHANGELOG.md)
 
-How to install 大肥鱼 and use her day to day. Items marked **[next release]** are already in the source and ship with the next release.
+How to install 大肥鱼 and use her day to day.
 
 - [Install, upgrade and uninstall](#install-upgrade-and-uninstall)
 - [What she does on her own](#what-she-does-on-her-own)
@@ -65,9 +65,9 @@ When she is in the way, send her behind the right edge of the window, half out o
 
 - Choose **Peek** in the hover menu or press **Alt+P** (record another shortcut in Settings › Appearance). Press again and she returns to her spot.
 - While peeking she does not stroll or chat. She cannot go while she is dizzy.
-- While peeking, a small menu above her head has just **Settings | Come back Alt+P**, with the pricing period and balance below it. The full menu returns when she comes back. **[next release]**
-- Settings opened while peeking: she stays at the edge and the panel opens to her left. **[next release]**
-- Coming back, she slides home while she straightens up, both at once. **[next release]**
+- While peeking, a small menu above her head has just **Settings | Come back Alt+P**, with the pricing period and balance below it. The full menu returns when she comes back.
+- Settings opened while peeking: she stays at the edge and the panel opens to her left.
+- Coming back, she straightens up on the way and walks the rest of the way home upright.
 - With the Live2D model she leans out, reaching towards the window edge; without it a dedicated peeking illustration is used.
 
 ## Theatre
@@ -119,7 +119,7 @@ Click her to open Settings. The panel sits beside her, never on top of her.
 | Alt+P | Peek / Come back (changeable in Settings) |
 | Alt+T | Open/close the theatre |
 | Alt+W | Hide/show her |
-| Alt+Shift+T | Desktop mode: open/close her theatre from any app **[next release]** |
+| Alt+Shift+T | Desktop mode: open/close her theatre from any app |
 | Alt+Shift+H | Desktop mode: hide/show her |
 | Hold Alt | Click through her |
 | Tab to her, then Enter | Open Settings |
@@ -132,11 +132,11 @@ In the theatre: ←/→ or Enter turn pages, hold **Ctrl** to skip, **L** log, *
 
 大肥鱼 leaves the DSH window and sits on your desktop: transparent, always on top, not in the taskbar, and clicks go through to whatever is underneath unless the pointer is on her.
 
-- **Download and run** **[next release]:** get `dsh-whale-pet-desktop-vX.Y.Z-win-x64.zip` from [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases), extract it anywhere and double-click `DaFeiYu.exe`. No Node.js needed. If Windows says “Unknown publisher”, choose More info › Run anyway. Delete the folder to uninstall.
+- **Download and run**: get `dsh-whale-pet-desktop-vX.Y.Z-win-x64.zip` from [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases), extract it anywhere and double-click `DaFeiYu.exe`. No Node.js needed. If Windows says “Unknown publisher”, choose More info › Run anyway. Delete the folder to uninstall.
 - **From source (developers):** double-click `desktop\大肥鱼桌面.vbs` in the plugin folder (no terminal window), or run `npm.cmd run desktop` (you can close the terminal afterwards).
 - **Quit / hide:** right-click the small blue round icon in the system tray and choose Quit; **Alt+Shift+H** hides or shows her.
 - **With DSH:** when DSH and desktop mode are both running they connect automatically. Ask something in DSH and she thinks, answers and has her rice break on the desktop too, with your balance. The first line of the tray menu, and a line under “Above her head” in her settings, show the connection.
-- **Ask from the desktop** **[next release]:** press **Alt+Shift+T** (works from any app), choose Theatre in the tray menu, or hover over her and choose Theatre. Type in the box at the bottom and press Enter: DSH sends the question and the answer appears in the theatre as it streams, without switching to the DSH window. DSH must be open with a conversation open; when it is not connected your draft is kept and she tells you why. Esc closes the theatre and gives the keyboard back to your window. Log on the desktop does not show DSH's earlier messages yet.
+- **Ask from the desktop**: press **Alt+Shift+T** (works from any app), choose Theatre in the tray menu, or hover over her and choose Theatre. Type in the box at the bottom and press Enter: DSH sends the question and the answer appears in the theatre as it streams, without switching to the DSH window. DSH must be open with a conversation open; when it is not connected your draft is kept and she tells you why. Esc closes the theatre and gives the keyboard back to your window. Log on the desktop does not show DSH's earlier messages yet.
 - The desktop companion has its own settings and model; import the Live2D model once more in her settings there.
 
 ## FAQ
