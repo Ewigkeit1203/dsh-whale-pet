@@ -14,7 +14,7 @@ permissions:
 jobs:
   release:
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -56,6 +56,19 @@ jobs:
           $tag = "v$((Get-Content package.json -Raw | ConvertFrom-Json).version)"
           & ./tests/package-release.test.ps1 -PackagePath "dist/dsh-whale-pet-$tag.zip"
 
+      - name: Build the click-to-run desktop companion
+        shell: pwsh
+        run: |
+          pnpm run package:desktop
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if (-not (Test-Path -LiteralPath 'dist/DaFeiYu-win32-x64/DaFeiYu.exe')) { throw 'DaFeiYu.exe was not built' }
+          if (Get-ChildItem -LiteralPath 'dist/DaFeiYu-win32-x64' -Recurse -Include '*.moc3', '*.model3.json' | Select-Object -First 1) { throw 'The desktop package must not contain a Live2D model' }
+          $zip = "dist/dsh-whale-pet-desktop-v$version-win-x64.zip"
+          Compress-Archive -Path 'dist/DaFeiYu-win32-x64/*' -DestinationPath $zip -Force
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash.ToLowerInvariant()
+          [IO.File]::WriteAllText("$zip.sha256", "$hash  $(Split-Path -Leaf $zip)`n", [Text.UTF8Encoding]::new($false))
+
       - name: Keep checked candidates
         uses: actions/upload-artifact@v4
         with:
@@ -75,5 +88,5 @@ jobs:
           $title = (Get-Content -LiteralPath $notes -Encoding UTF8 -TotalCount 1) -replace '^# +', ''
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) { throw "Release $tag already exists; not overwriting" }
-          gh release create $tag "dist/dsh-whale-pet-$tag.zip" "dist/dsh-whale-pet-$tag.zip.sha256" "dist/dsh-whale-pet-installer-fix-$tag.zip" "dist/dsh-whale-pet-installer-fix-$tag.zip.sha256" --title $title --notes-file $notes --verify-tag
+          gh release create $tag "dist/dsh-whale-pet-$tag.zip" "dist/dsh-whale-pet-$tag.zip.sha256" "dist/dsh-whale-pet-installer-fix-$tag.zip" "dist/dsh-whale-pet-installer-fix-$tag.zip.sha256" "dist/dsh-whale-pet-desktop-$tag-win-x64.zip" "dist/dsh-whale-pet-desktop-$tag-win-x64.zip.sha256" --title $title --notes-file $notes --verify-tag
           if ($LASTEXITCODE) { exit $LASTEXITCODE }

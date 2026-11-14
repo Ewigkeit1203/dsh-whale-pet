@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' data: blob:">
+<title>大肥鱼</title>
+<style>
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
+  /* The desktop has no DSH theme: her own variables fall back to their defaults. */
+  body { font-family: "Microsoft YaHei UI", "PingFang SC", "Segoe UI", system-ui, sans-serif; font-size: 14px; }
+  #whale-desktop-root { position: fixed; inset: 0; pointer-events: none; }
+  /* Background blur means nothing over a transparent window yet costs a full-strength blur pass every
+     frame: solid surfaces on the desktop. */
+  html[data-whale-desktop] *, html[data-whale-desktop] *::before, html[data-whale-desktop] *::after { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  html[data-whale-desktop] [data-whale-pet][data-pet-theme] { --wp-blur: none; --wp-surface: var(--wp-surface-solid); --wp-surface-strong: var(--wp-surface-solid); }
+  /* The balance comes from DSH over the link: none to show (not even a placeholder) until DSH is connected. */
+  html[data-whale-desktop]:not([data-whale-dsh-link="on"]) [data-whale-pet] :is(.petWalletChip, .petWalletPop) { display: none; }
+  #whale-desktop-missing { position: fixed; right: 24px; bottom: 24px; max-width: 320px; padding: 14px 16px; border-radius: 12px; background: #fff; color: #1c2b3a; box-shadow: 0 8px 28px rgba(12, 40, 70, .25); font-size: 13px; line-height: 1.6; pointer-events: auto; }
+</style>
+</head>
+<body>
+<div id="whale-desktop-root"></div>
+<script src="vendor/react.js"></script>
+<script src="shell.js"></script>
+<script src="../lib/client.js"></script>
+<script src="mount.js"></script>
+</body>
+</html>

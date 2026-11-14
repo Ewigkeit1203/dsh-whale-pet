@@ -37,6 +37,8 @@ export interface SettingsPanelProps {
   /** Interactions found so far (id → first time), and a way to see the first-run guide again. */
   discoveries: Discoveries
   replayGuide: () => void
+  /** One line about the DSH ↔ desktop link (roadmap step 2). */
+  linkNote?: string
   removeLive2D: () => void
   onSizeStart?: () => void
 }
@@ -45,7 +47,7 @@ const SIZE_STEPS = [0.5, 0.75, 1, 1.15, 1.3]
 const SIZE_NAMES = ['XS', 'S', 'M', 'L', 'XL']
 
 /** Plain render function (no hooks): header, scrollable body, fixed footer. */
-export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, quiet, reset, doctor, notify, close, openTheatre, live2d, importLive2D, removeLive2D, onSizeStart, discoveries, replayGuide }: SettingsPanelProps) {
+export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, quiet, reset, doctor, notify, close, openTheatre, live2d, importLive2D, removeLive2D, onSizeStart, discoveries, replayGuide, linkNote }: SettingsPanelProps) {
   const t = (zh: string, en: string) => p.language === 'en' ? en : zh
   const selected = SIZE_STEPS.reduce((best, v) => Math.abs(v - p.scale) < Math.abs(best - p.scale) ? v : best)
   const sizeIndex = SIZE_STEPS.indexOf(selected)
@@ -196,6 +198,7 @@ export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, q
           <div className="petField petFieldStack"><span className="petFieldLabel" id="pet-head-chips-label">{t('头顶显示', 'Above her head')}</span>
             <div id="pet-head-chips" className="petSegmented" role="group" aria-labelledby="pet-head-chips-label">{(['both', 'tier', 'balance', 'none'] as const).map((v, i) => <button type="button" key={v} aria-pressed={p.headChips === v} onClick={() => update({ headChips: v })}>{t(['都显示', '时段', '余额', '都不显示'][i], ['Both', 'Period', 'Balance', 'Neither'][i])}</button>)}</div>
           </div>
+          {linkNote && <p className="petHint" data-pet-link-note>{linkNote}</p>}
           <div className="petField"><label className="petFieldLabel" htmlFor="pet-low-balance">{t('余额低于多少元时提醒（0 为不提醒）', 'Remind me when the balance is under (¥, 0 = never)')}</label><input id="pet-low-balance" type="number" min="0" max="1000" step="1" value={p.lowBalanceAt} onChange={e => { const n = Number(e.target.value); if (e.target.value !== '' && n >= 0 && n <= 1000) update({ lowBalanceAt: n }) }} /></div>
           <div className="petField"><label className="petFieldLabel" htmlFor="pet-rice">{t('每碗饭额度', 'Credit per bowl')}</label><input id="pet-rice" type="number" min="0.01" max="100" step="0.1" value={p.ricePrice} onChange={e => { const n = Number(e.target.value); if (n >= .01 && n <= 100) update({ ricePrice: n }) }} /></div>
         </div>

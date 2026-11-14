@@ -28,3 +28,11 @@ docs/GEMINI_REVIEW_IMPLEMENTATION.md
 
 # Keep the SDK's non-redistributable debug source map local.
 vendor/live2d/Core/*.js.map
+
+# Desktop companion: React bundled by build.js
+desktop/vendor/
+
+# Internal planning notes and local probes (kept on the maintainer's machine, not published)
+PROJECT_CONTEXT.md
+LIVE2D_OPTIMIZATION_PLAN.md
+desktop-probe.json

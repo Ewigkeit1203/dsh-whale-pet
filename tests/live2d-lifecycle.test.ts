@@ -1,4 +1,4 @@
-import {PeekArmOrder, PeekElbow, PEEK_ELBOW} from '../lib/client/peek-arm-order.js'
+import {PeekArmOrder, PeekElbow, PEEK_ELBOW, peekOrderWeight} from '../lib/client/peek-arm-order.js'
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import vm from 'node:vm'
@@ -10,7 +10,7 @@ import {LegPoseLayer} from '../lib/client/live2d-legs.js'
 function runtimeModule(path: string, context: Record<string, unknown>) {
   const text = readFileSync(new URL(path, import.meta.url), 'utf8').replace(/^import[\s\S]*?from ['"][^'"]+['"]\s*$/gm, '')
   const code = ts.transpileModule(text, {compilerOptions: {target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext}}).outputText.replace(/^export /gm, '').replace(/^export \{\};?$/gm, '')
-  return vm.runInNewContext(code + '\n;({createLive2DStage: typeof createLive2DStage === "function" ? createLive2DStage : null, acquireLive2DStage: typeof acquireLive2DStage === "function" ? acquireLive2DStage : null})', {LegPoseLayer, PeekArmOrder, PeekElbow, PEEK_ELBOW, ...context})
+  return vm.runInNewContext(code + '\n;({createLive2DStage: typeof createLive2DStage === "function" ? createLive2DStage : null, acquireLive2DStage: typeof acquireLive2DStage === "function" ? acquireLive2DStage : null})', {LegPoseLayer, PeekArmOrder, PeekElbow, PEEK_ELBOW, peekOrderWeight, ...context})
 }
 
 test('Cubism startup does not register a new wasm log callback; repeated stages share startup', async () => {

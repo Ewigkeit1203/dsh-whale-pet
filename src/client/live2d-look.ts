@@ -31,6 +31,8 @@ export const LIVE2D_LOOKS: Record<string, Live2DLook> = {
   surprised: { pulse: 'startle', shock: 1, eyeOpen: 1.15, mouth: 0.45, angle: { y: 8 } },
   proud: { gesture: 'chest', smile: 1, mouthForm: 1, angle: { y: 10, z: 4 } },
   happy: { toggles: ['爱心眼'], pulse: 'nod', smile: 0.6, mouthForm: 1, angle: { z: 5 } },
+  // 屑屑: the late-night heavy eyelids the owner liked, kept as an idle glance of its own.
+  smirk: { eyeOpen: 0.45, angle: { y: -6, z: 3 } },
 }
 
 export interface Live2DLookContext {

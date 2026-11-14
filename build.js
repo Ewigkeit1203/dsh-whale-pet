@@ -102,7 +102,7 @@ function moduleSource(file) {
     .replace(/^\/\/# sourceMappingURL=.*$/gm, '')
 }
 const preferencesSource = moduleSource('preferences.js')
-const pureModules = ['peek-shortcut.js', 'live2d-loader.js', 'live2d-look.js', 'touch.js', 'carry.js', 'live2d-motion.js', 'live2d-package.js', 'features.js', 'poses.js', 'layout.js', 'wallet.js', 'peak.js', 'account-balance.js', 'voice.js', 'scenes.js', 'media-store.js', 'bgm.js', 'rig.js', 'live-rig.js', 'emotion.js', 'experience.js', 'usability.js', 'hitareas.js', 'answer-notice.js', 'balance-chip.js', 'discovery.js']
+const pureModules = ['peek-shortcut.js', 'live2d-loader.js', 'live2d-look.js', 'touch.js', 'carry.js', 'live2d-motion.js', 'live2d-package.js', 'features.js', 'poses.js', 'layout.js', 'wallet.js', 'peak.js', 'account-balance.js', 'voice.js', 'scenes.js', 'media-store.js', 'bgm.js', 'rig.js', 'live-rig.js', 'emotion.js', 'experience.js', 'usability.js', 'hitareas.js', 'answer-notice.js', 'balance-chip.js', 'discovery.js', 'desktop-link.js']
   .map(moduleSource).join('\n')
 // Views are hook-free render functions or components; order matters only for readability.
 const views = [
@@ -186,6 +186,20 @@ ${POSE_ASSETS.map(([c]) => `      const ${c}_DATA_URI = ${JSON.stringify(poseDat
   });
 })();
 `
+
+// Desktop companion (desktop/): it runs the same bundle outside DSH, so it needs a React of its own.
+// Optional: without react-dom installed the plugin still builds; `npm run desktop` then says what is missing.
+try {
+  const esbuild = await import('esbuild')
+  await esbuild.build({
+    entryPoints: [join(__dirname, 'desktop', 'react-entry.js')], bundle: true, format: 'iife', target: 'es2020', minify: true,
+    define: { 'process.env.NODE_ENV': '"production"' }, legalComments: 'none', logLevel: 'silent',
+    outfile: join(__dirname, 'desktop', 'vendor', 'react.js'),
+  })
+  console.log('[build] 5b. Desktop companion: desktop/vendor/react.js')
+} catch (error) {
+  console.warn('[build] 5b. Desktop companion skipped (run `npm install` to get react-dom): ' + String(error && error.message || error).split('\n')[0])
+}
 
 const libClientPath = join(__dirname, 'lib', 'client.js')
 const bundleTemporaryPath = libClientPath + '.tmp'

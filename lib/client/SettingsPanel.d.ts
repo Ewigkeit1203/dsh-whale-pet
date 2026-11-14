@@ -39,9 +39,11 @@ export interface SettingsPanelProps {
     /** Interactions found so far (id → first time), and a way to see the first-run guide again. */
     discoveries: Discoveries;
     replayGuide: () => void;
+    /** One line about the DSH ↔ desktop link (roadmap step 2). */
+    linkNote?: string;
     removeLive2D: () => void;
     onSizeStart?: () => void;
 }
 /** Plain render function (no hooks): header, scrollable body, fixed footer. */
-export declare function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, quiet, reset, doctor, notify, close, openTheatre, live2d, importLive2D, removeLive2D, onSizeStart, discoveries, replayGuide }: SettingsPanelProps): import("react").JSX.Element;
+export declare function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, quiet, reset, doctor, notify, close, openTheatre, live2d, importLive2D, removeLive2D, onSizeStart, discoveries, replayGuide, linkNote }: SettingsPanelProps): import("react").JSX.Element;
 //# sourceMappingURL=SettingsPanel.d.ts.map
