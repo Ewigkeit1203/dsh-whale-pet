@@ -59,6 +59,26 @@
     // No DSH services on the desktop (balance, sessions): scopes that wait for them never run.
     inject: function () {},
   }
+  // ---- questions asked in her theatre ---------------------------------------------------------------
+  // DSH sends them through its own composer and reports back: sent, no-composer, no-button or failed.
+  var pending = {}, nextId = 1
+  function settle(id, result) {
+    var entry = pending[id]
+    if (!entry) return
+    delete pending[id]
+    clearTimeout(entry.timer)
+    entry.done(result === 'sent' || result === 'no-composer' || result === 'no-button' ? result : 'failed')
+  }
+  desktop.sendToDsh = function (text, done) {
+    var id = 'q' + Date.now().toString(36) + '-' + nextId++
+    pending[id] = { done: typeof done === 'function' ? done : function () {}, timer: setTimeout(function () { settle(id, 'failed') }, 20000) }
+    if (bridge && typeof bridge.sendToDsh === 'function') bridge.sendToDsh(id, String(text))
+    else settle(id, 'failed')
+  }
+  if (bridge && typeof bridge.onLink === 'function') bridge.onLink(function (message) {
+    if (message && message.type === 'ack') settle(String(message.id), String(message.result))
+  })
+
   /**
    * src/client/index.ts hands her state machine over; DSH's page drives it through the link. Found on
    * window.__whaleDesktopShell, never on ctx (Cordis throws for unknown ctx properties).

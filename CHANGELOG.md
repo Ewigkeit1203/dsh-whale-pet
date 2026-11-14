@@ -11,6 +11,8 @@
 
 - **Peeking, tidier.** While she peeks, a small Settings | Come back block sits above her head with the pricing period and balance below it; the full hover menu returns when she comes back. Opening Settings while she peeks leaves her at the edge and opens the panel to her left.
 - **The peeking arm reads as one arm (Live2D).** The forearm and hand are drawn over the upper arm and moved so the forearm's top end sits on the upper arm's lower end (measured on the model's meshes, chosen from rendered options). Coming back, her arm returns behind her hair and skirt instead of snapping from in front of the skirt to behind it.
+- **Ask from the desktop:** Alt+Shift+T, the tray or her menu opens the theatre on the desktop; questions typed there go to DSH, which sends them through its own composer, and the answer streams back into the theatre. The draft is kept, with the reason, when DSH is not connected or has no conversation open.
+- **Smoother return from peeking:** she slides home over the same time as she straightens up, instead of a quick jump followed by a turn.
 - **A new idle face (Live2D):** now and then a heavy-lidded, slightly pleased look.
 - **Desktop mode (preview, developers only):** 大肥鱼 on the system desktop in her own transparent, always-on-top, click-through window, following DSH over a local link (thinking, answering, rice break, balance). Releases add a separate click-to-run Windows download (`DaFeiYu.exe`, Electron built in, no model included).
 - **User guide:** a new [user guide](docs/USER_GUIDE.md) / [操作说明](docs/USER_GUIDE.zh-CN.md); the README now shows only the latest release, with Chinese first.
@@ -207,6 +209,8 @@
 
 - **探头更清爽。** 探头时头顶只留一个“设置｜回来”小块，下面是峰谷时间和余额；回来后恢复完整菜单。探头时打开设置，她留在原地，面板在她左边打开。
 - **探头的手臂连成一条（Live2D）。** 小臂和手画在大臂上面，并移动到小臂头正好接在大臂末端的位置（按模型网格测量，从渲染方案中选定）。回来时手臂收在头发和裙子后面，不再先出现在裙子前面再瞬移到后面。
+- **在桌面上直接提问：** 按 Alt+Shift+T、点托盘或她的菜单即可在桌面上打开剧场；在那里输入的问题会交给 DSH，由 DSH 用自己的输入框发出，回答实时显示在剧场里。DSH 没连上或没有打开的对话时，草稿会保留并说明原因。
+- **探头回来更顺：** 她滑回原位和转正身体同时进行，不再先“瞬移”回去再转身。
 - **新的待机表情（Live2D）：** 偶尔会露出半闭着眼、有点得意的表情。
 - **桌面模式（预览，仅开发者）：** 大肥鱼出现在系统桌面上，透明、置顶、点击穿透，通过本机连接跟随 DSH（思考、回答、干饭、余额）。发布时另附一个点击即可运行的 Windows 下载包（`DaFeiYu.exe`，自带 Electron，不含模型）。
 - **操作说明：** 新增[操作说明](docs/USER_GUIDE.zh-CN.md) / [User guide](docs/USER_GUIDE.md)；README 只保留最新版本介绍，中文放在英文前面。

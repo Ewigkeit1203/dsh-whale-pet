@@ -8,6 +8,7 @@
  * Nothing here can run code or touch files on either side: the only message is a status snapshot.
  */
 import type { BalanceSnapshot, PetStatusInfo } from './types.js'
+import type { ComposerResult } from './dsh-composer.js'
 
 export const DESKTOP_LINK = {
   ports: [38917, 38918, 38919, 38920, 38921],
@@ -20,6 +21,10 @@ export const DESKTOP_LINK = {
   /** Looking for the companion: quickly at first, then less often while it is not running. */
   scanMs: [3000, 5000, 10000, 30000, 60000],
   helloTimeoutMs: 800,
+  /** GET /commands is held open by the companion for up to 20 s; give up a little later. */
+  commandWaitMs: 25000,
+  /** The longest question the desktop theatre may hand to DSH. */
+  commandTextLimit: 20000,
   /** Longer answers are cut (the desktop bubble shows the end, the theatre will page). */
   textLimit: 60000,
 } as const
@@ -110,12 +115,26 @@ let desktopLinkCurrent: DesktopLinkState = { status: 'searching' }
 /** The latest link state, for the settings panel (the link may start before the panel mounts). */
 export function desktopLinkState(): DesktopLinkState { return desktopLinkCurrent }
 
+/** A question typed in the desktop theatre, to be sent through DSH's own composer. */
+export interface LinkCommand { type: 'send'; id: string; text: string }
+
+/** Checks a command from the companion; anything else is ignored. */
+export function readLinkCommand(value: unknown): LinkCommand | null {
+  if (!value || typeof value !== 'object') return null
+  const c = value as Record<string, unknown>
+  if (c.type !== 'send' || typeof c.id !== 'string' || !c.id || c.id.length > 64) return null
+  if (typeof c.text !== 'string' || !c.text.trim() || c.text.length > DESKTOP_LINK.commandTextLimit) return null
+  return { type: 'send', id: c.id, text: c.text }
+}
+
 interface LinkDeps {
   fetch: typeof fetch
   setTimeout: (fn: () => void, ms: number) => unknown
   clearTimeout: (timer: any) => void
   now: () => number
   onState?: (state: DesktopLinkState) => void
+  /** DSH: send a question from the desktop theatre and report how it went. */
+  onCommand?: (command: LinkCommand, done: (result: ComposerResult) => void) => void
 }
 
 /**
@@ -129,6 +148,7 @@ export function startDesktopLink(machine: Pick<LinkDriver, 'getStatus'> & { subs
     clearTimeout: deps.clearTimeout ?? (timer => clearTimeout(timer)),
     now: deps.now ?? (() => Date.now()),
     onState: deps.onState,
+    onCommand: deps.onCommand,
   }
   let port: number | null = null
   let timer: unknown = null
@@ -187,6 +207,7 @@ export function startDesktopLink(machine: Pick<LinkDriver, 'getStatus'> & { subs
         lastSent = d.now()
         set({ status: 'connected', port })
         schedule(DESKTOP_LINK.beatMs)
+        listen()
       } catch (e) {
         // Gone (or restarted on another port): look again at once, then back off.
         port = null
@@ -198,6 +219,34 @@ export function startDesktopLink(machine: Pick<LinkDriver, 'getStatus'> & { subs
       busy = false
       if (again && !stopped) { again = false; schedule(0) }
     }
+  }
+  // Questions from the desktop theatre: one request waits at the companion while connected.
+  let listening = false
+  const listen = () => {
+    if (listening || stopped || port === null || !d.onCommand) return
+    listening = true
+    const at = port
+    void (async () => {
+      let pause = 0
+      try {
+        const signal = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(DESKTOP_LINK.commandWaitMs) : undefined
+        const response = await d.fetch(url(at, '/commands'), { signal })
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        const body = await response.json()
+        for (const raw of Array.isArray(body?.commands) ? body.commands : []) {
+          const command = readLinkCommand(raw)
+          if (!command) continue
+          d.onCommand!(command, result => {
+            void d.fetch(url(at, '/ack'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: command.id, result }) }).catch(() => {})
+          })
+        }
+      } catch {
+        pause = DESKTOP_LINK.beatMs
+      } finally {
+        listening = false
+        if (!stopped && port !== null) { if (pause) d.setTimeout(listen, pause); else listen() }
+      }
+    })()
   }
   const unsubscribe = machine.subscribe(() => {
     if (port === null) return

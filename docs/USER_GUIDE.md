@@ -67,6 +67,7 @@ When she is in the way, send her behind the right edge of the window, half out o
 - While peeking she does not stroll or chat. She cannot go while she is dizzy.
 - While peeking, a small menu above her head has just **Settings | Come back Alt+P**, with the pricing period and balance below it. The full menu returns when she comes back. **[next release]**
 - Settings opened while peeking: she stays at the edge and the panel opens to her left. **[next release]**
+- Coming back, she slides home while she straightens up, both at once. **[next release]**
 - With the Live2D model she leans out, reaching towards the window edge; without it a dedicated peeking illustration is used.
 
 ## Theatre
@@ -118,6 +119,8 @@ Click her to open Settings. The panel sits beside her, never on top of her.
 | Alt+P | Peek / Come back (changeable in Settings) |
 | Alt+T | Open/close the theatre |
 | Alt+W | Hide/show her |
+| Alt+Shift+T | Desktop mode: open/close her theatre from any app **[next release]** |
+| Alt+Shift+H | Desktop mode: hide/show her |
 | Hold Alt | Click through her |
 | Tab to her, then Enter | Open Settings |
 
@@ -133,6 +136,7 @@ In the theatre: ←/→ or Enter turn pages, hold **Ctrl** to skip, **L** log, *
 - **From source (developers):** double-click `desktop\大肥鱼桌面.vbs` in the plugin folder (no terminal window), or run `npm.cmd run desktop` (you can close the terminal afterwards).
 - **Quit / hide:** right-click the small blue round icon in the system tray and choose Quit; **Alt+Shift+H** hides or shows her.
 - **With DSH:** when DSH and desktop mode are both running they connect automatically. Ask something in DSH and she thinks, answers and has her rice break on the desktop too, with your balance. The first line of the tray menu, and a line under “Above her head” in her settings, show the connection.
+- **Ask from the desktop** **[next release]:** press **Alt+Shift+T** (works from any app), choose Theatre in the tray menu, or hover over her and choose Theatre. Type in the box at the bottom and press Enter: DSH sends the question and the answer appears in the theatre as it streams, without switching to the DSH window. DSH must be open with a conversation open; when it is not connected your draft is kept and she tells you why. Esc closes the theatre and gives the keyboard back to your window. Log on the desktop does not show DSH's earlier messages yet.
 - The desktop companion has its own settings and model; import the Live2D model once more in her settings there.
 
 ## FAQ

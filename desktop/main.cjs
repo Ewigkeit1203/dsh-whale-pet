@@ -9,6 +9,13 @@ const path = require('node:path')
 const { createLinkServer } = require('./link-server.cjs')
 
 const HIDE_SHORTCUT = 'Alt+Shift+H'
+const THEATRE_SHORTCUT = 'Alt+Shift+T'
+/** Tray and global shortcut: open (or close) her theatre, so a question can be asked without opening DSH. */
+function openTheatre() {
+  if (!win) return
+  showCompanion()
+  win.webContents.send('whale-desktop:command', 'theatre')
+}
 let win = null
 let tray = null
 let quitting = false
@@ -111,6 +118,7 @@ function refreshTray() {
     { label: linkLine(), enabled: false },
     { type: 'separator' },
     { label: shown ? `隐藏 / Hide (${HIDE_SHORTCUT})` : `显示 / Show (${HIDE_SHORTCUT})`, click: toggleVisible },
+    { label: `剧场 / Theatre (${THEATRE_SHORTCUT})`, click: openTheatre },
     { label: '设置 / Settings', click: () => { if (win) { showCompanion(); win.webContents.send('whale-desktop:command', 'settings') } } },
     { label: '重新加载 / Reload', click: () => { if (win) win.webContents.reload() } },
     { label: '性能诊断 / Diagnostics', submenu: [
@@ -128,6 +136,8 @@ app.whenReady().then(() => {
   tray.on('click', toggleVisible)
   refreshTray()
   globalShortcut.register(HIDE_SHORTCUT, toggleVisible)
+  // Alt+T works while her window has the keyboard; this one works from any app (Alt+Space is Windows' own).
+  globalShortcut.register(THEATRE_SHORTCUT, openTheatre)
 
   // The page reports whether the pointer is over her (or one of her panels).
   ipcMain.on('whale-desktop:interactive', (event, interactive) => {
@@ -136,6 +146,12 @@ app.whenReady().then(() => {
     else win.setIgnoreMouseEvents(true, { forward: true })
   })
   // Typing in her settings needs keyboard focus; she never takes it on her own.
+  ipcMain.on('whale-desktop:send', (event, message) => {
+    if (!win || event.sender !== win.webContents || !message || typeof message !== 'object') return
+    const id = String(message.id || '').slice(0, 64)
+    if (!id) return
+    if (!link || !link.enqueue(id, String(message.text || ''))) sendLink({ type: 'ack', id, result: 'failed' })
+  })
   ipcMain.on('whale-desktop:focus', (event, focus) => {
     if (!win || event.sender !== win.webContents) return
     if (focus) win.focus(); else win.blur()
@@ -143,6 +159,7 @@ app.whenReady().then(() => {
 
   link = createLinkServer({
     onSnapshot: snapshot => sendLink({ type: 'snapshot', snapshot }),
+    onAck: (id, result) => sendLink({ type: 'ack', id, result }),
     onState: state => { sendLink({ type: 'state', connected: state.connected }); refreshTray() },
   })
   void link.start()
