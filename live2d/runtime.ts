@@ -15,7 +15,7 @@
  * idle loop and hand-gesture animations run alongside. Expression toggles (钢盆, 加载, 圈圈眼 …) come from the
  * model's Exp3 files and are blended in and out.
  */
-import { PeekArmOrder, PeekElbow, PEEK_ELBOW } from '../src/client/peek-arm-order'
+import { PeekArmOrder, PeekElbow, PEEK_ELBOW, peekOrderWeight } from '../src/client/peek-arm-order'
 import { CubismFramework } from '../vendor/live2d/CubismWebFramework/src/live2dcubismframework'
 import { CubismUserModel } from '../vendor/live2d/CubismWebFramework/src/model/cubismusermodel'
 import { CubismModelSettingJson } from '../vendor/live2d/CubismWebFramework/src/cubismmodelsettingjson'
@@ -649,7 +649,8 @@ export function createLive2DStage(canvas: HTMLCanvasElement, source: Live2DSourc
     applyChestCover(whale, drive.armCover)
     // Native rig poses only: hands remain attached to their authored wrists and forearms.
     // Leaving the edge, the arm comes back first (faster than it went out), so she is back in the author's
-    // pose before she reaches her spot; the elbow tuck and draw order follow this same weight.
+    // pose before she reaches her spot; the elbow offset follows this same weight, the draw order does not
+    // (peekOrderWeight: the author's order from the first frame back).
     const peek = eased('edgePeek', look.edgePeek ? 1 : 0, dt, look.edgePeek ? 7 : 14)
     if (peek > 0.001) {
       for (const id of ['Movement1', 'Movement2', 'Movement3']) whale.set(id, 0, peek)
@@ -723,7 +724,7 @@ export function createLive2DStage(canvas: HTMLCanvasElement, source: Live2DSourc
     peekElbow?.restore()
     peekArms?.restore()
     core.update()
-    if (core.getRenderOrders) peekArms?.apply(core.getRenderOrders(), smooth.edgePeek ?? 0)
+    if (core.getRenderOrders) peekArms?.apply(core.getRenderOrders(), peekOrderWeight(Boolean(look.edgePeek), smooth.edgePeek ?? 0))
     peekElbow?.apply(smooth.edgePeek ?? 0)
     const bodyDrop = legs?.apply(Math.max(carryPose.suspended * motionScale, swim.float), Math.max(carryPose.landing * motionScale, swim.touchdown)) ?? 0
     modelFrame = (modelFrame + 1) >>> 0

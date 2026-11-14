@@ -8,6 +8,7 @@ import { FEATURES, effectiveForm } from './features.js'
 import { POSE_META, spriteGeometry, live2dWidgetGeometry } from './poses.js'
 import { layoutGroup, layoutResizedGroup, type GroupLayout, clampPet, rightPeekPosition, peekArtPosition, type EdgePeekRoom, wanderDestination, nextWanderDelay, placeGroupX, groupFits, type PanelSide } from './layout.js'
 import { walletView } from './wallet.js'
+import { desktopLinkState, type DesktopLinkState } from './desktop-link.js'
 import { balanceChipState, headChipsShown, lowBalanceDue, balanceDay, LOW_BALANCE_DAY_KEY } from './balance-chip.js'
 import { GUIDE_STEPS, readDiscoveries, saveDiscoveries, discover, guideStep, type InteractionId, type Discoveries } from './discovery.js'
 import { AnswerNotice, WELCOME_BACK_LINES, markTitle } from './answer-notice.js'
@@ -85,6 +86,10 @@ const EXPRESSION_SRC: Record<string, string> = {
   proud: PROUD_DATA_URI, happy: HAPPY_DATA_URI, sajiao: SAJIAO_DATA_URI, getit: GETIT_DATA_URI,
 }
 
+const SETTINGS_ICON = 'M8 5.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4'
+const PEEK_ICON = 'M2 12.5h12M4 12.5v-2M12 12.5v-2M5 8a3 3 0 116 0M6.5 7.5h.01M9.5 7.5h.01'
+/** A late-night face kept as an idle glance of its own: heavy-lidded, a little pleased with herself (Live2D only). */
+const SMIRK_POSE = 'smirk'
 const COMPOSER_SELECTOR = '[data-composer-card], [data-composer-seat]'
 /** The widget's slide to the edge (CSS .7s): the picture turns into the peeking one when she arrives. */
 const PEEK_WALK_MS = 720
@@ -256,7 +261,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   // Peeking and being carried have their own pictures; the Live2D model plays those itself.
   // The picture walks to the right edge as herself first and only becomes the peeking picture once she
   // reaches it (peekArrived); coming back she is herself again straight away.
-  const peekWanted = preferences.docked && !isSettingsOpen && isMaiden && !live2dOn
+  const peekWanted = preferences.docked && isMaiden && !live2dOn
   const [peekArrived, setPeekArrived] = useState(false)
   useEffect(() => {
     if (!peekWanted) { setPeekArrived(false); return }
@@ -273,6 +278,8 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     // (The Live2D model keeps reading the expression poses: startled, then flustered.)
     if (held && !busy) return !live2dOn ? [CARRY_DATA_URI, 'carry'] : heldLong ? [EXPRESSION_SRC.shy, 'shy'] : [EXPRESSION_SRC.surprised, 'surprised']
     if (reaction && (!busy || affection === 'pat' || affection === 'tail') && EXPRESSION_SRC[reaction.pose]) return [EXPRESSION_SRC[reaction.pose], reaction.pose]
+    // No illustration of her own: the Live2D model makes this face from her usual picture.
+    if (reaction && !busy && reaction.pose === SMIRK_POSE && live2dOn) return [MAID_DATA_URI, SMIRK_POSE]
     if (affection === 'pat') return [SAJIAO_DATA_URI, 'sajiao']
     if (status.isGalGameMode && !busy && pageEmotion.emotion !== 'neutral') { const pose = EMOTION_POSE[pageEmotion.emotion]; return [EXPRESSION_SRC[pose], pose] }
     if (status.pose === 'sajiao') return [SAJIAO_DATA_URI, 'sajiao']
@@ -292,7 +299,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   // Once the model has framed itself, the box follows its proportions (the illustration shows while it loads).
   const geometry = live2dOn ? live2dWidgetGeometry(viewport.width, viewport.height, preferences.scale * preferences.live2dWidgetScale, live2dAspect) : spriteGeometry(hitPose, viewport.height, preferences.scale)
   const live2dSleepy = preferences.reminders && new Date(clock).getHours() >= 1 && new Date(clock).getHours() < 5 && status.state === 'IDLE'
-  const live2dLook = useMemo(() => live2dLookFor(hitPose, { sleepy: live2dSleepy, state: status.state, held: Boolean(held), heldKey: held?.key, guardChest: poke === 'chest', edgePeek: preferences.docked && !isSettingsOpen && !status.isGalGameMode }), [hitPose, live2dSleepy, status.state, held, poke, preferences.docked, isSettingsOpen, status.isGalGameMode])
+  const live2dLook = useMemo(() => live2dLookFor(hitPose, { sleepy: live2dSleepy, state: status.state, held: Boolean(held), heldKey: held?.key, guardChest: poke === 'chest', edgePeek: preferences.docked && !status.isGalGameMode }), [hitPose, live2dSleepy, status.state, held, poke, preferences.docked, status.isGalGameMode])
   const live2dBinding = useMemo<Live2DBinding | undefined>(() => live2dOn && live2dSource ? {
     source: live2dSource,
     scale: status.isGalGameMode ? preferences.live2dTheatreScale : 1,
@@ -306,8 +313,9 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   } : undefined, [live2dOn, live2dSource, live2dLook, status.isGalGameMode, preferences.live2dTheatreScale, preferences.powerSave])
   const stageW = geometry.stageWidth
   const stageH = geometry.stageHeight
-  // Keep the free position intact, including while opening settings.
-  const docked = preferences.docked && !isSettingsOpen
+  // Peeking, she stays at the edge while settings are open (the panel opens to her left); the free
+  // position is kept intact for when she comes back.
+  const docked = preferences.docked
   const petBox = docked
     ? peekArt
       ? peekArtPosition(position.y, { width: stageW, height: stageH }, geometry, viewport.width, viewport.height, { composer: peekComposer })
@@ -661,6 +669,13 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
 
   // ---- Discoveries: the interaction gallery and the first-run guide ---------------
   const [discoveries, setDiscoveries] = useState<Discoveries>(readDiscoveries)
+  // DSH ↔ desktop link (roadmap step 2): shown as one line in settings.
+  const [desktopLink, setDesktopLink] = useState<DesktopLinkState & { side?: 'desktop' }>(desktopLinkState)
+  useEffect(() => {
+    const changed = (event: Event) => { const detail = (event as CustomEvent).detail; if (detail && typeof detail.status === 'string') setDesktopLink(detail) }
+    window.addEventListener('dsh-whale-pet:desktop-link', changed)
+    return () => window.removeEventListener('dsh-whale-pet:desktop-link', changed)
+  }, [])
   const [guideDone, setGuideDone] = useState<InteractionId[]>([])
   const [guideThanks, setGuideThanks] = useState(false)
   const onboardingRef = useRef(preferences.onboardingDone)
@@ -725,6 +740,12 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const [walletOpen, setWalletOpen] = useState(false)
   const [walletAsked, setWalletAsked] = useState(false)
   const walletLow = useRef(false)
+  // The desktop companion's tray menu opens her settings.
+  useEffect(() => {
+    const open = () => setIsSettingsOpen(true)
+    window.addEventListener('dsh-whale-pet:open-settings', open)
+    return () => window.removeEventListener('dsh-whale-pet:open-settings', open)
+  }, [])
   const seenQuotaError = useRef<string | null>(null)
   useEffect(() => {
     const key = status.quotaErrorKey
@@ -773,11 +794,13 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   useEffect(() => {
     if (status.isGalGameMode || status.state !== 'IDLE' || !foreground || isDragging || isSettingsOpen || reaction || preferences.quiet) return
     const timer = setTimeout(() => {
-      const pose = ['smug', 'happy', 'proud', 'smug'][Math.floor(Math.random() * 4)]
+      const poses = live2dOn ? ['smug', 'happy', 'proud', 'smug', SMIRK_POSE, SMIRK_POSE] : ['smug', 'happy', 'proud', 'smug']
+      const pose = poses[Math.floor(Math.random() * poses.length)]
+      if (pose === SMIRK_POSE) { react(pose, null, 6000); return }
       react(pose, Math.random() < 0.35 ? (pose === 'happy' ? 'heart' : 'note') : null, 3200)
     }, 50_000 + Math.random() * 60_000)
     return () => clearTimeout(timer)
-  }, [status.isGalGameMode, status.state, foreground, isDragging, isSettingsOpen, reaction, preferences.quiet])
+  }, [status.isGalGameMode, status.state, foreground, isDragging, isSettingsOpen, reaction, preferences.quiet, live2dOn])
   useEffect(() => {
     if (preferences.muted || preferences.quiet) voiceRef.current?.silence()
     else if (!voiceAllowed) voiceRef.current?.cut()
@@ -1280,6 +1303,10 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
 
   const settingsProps = () => ({
     p: { ...preferences, autoGalGame: status.autoGalGameOnChat }, wallet, detached: group?.mode === 'detached',
+    linkNote: desktopLink.side === 'desktop'
+      ? (desktopLink.status === 'connected' ? t('DSH：已连接，她会跟着你在 DSH 里的提问动。', 'DSH: connected; she follows your questions in DSH.') : t('DSH：还没连上，打开 DSH 后会自动连接。', 'DSH: not connected yet; it connects when DSH is open.'))
+      : desktopLink.status === 'connected' ? t('桌面伴侣：已连接。', 'Desktop companion: connected.')
+      : t(`桌面伴侣：没找到（没开桌面模式时请忽略）${desktopLink.error ? '。原因：' + desktopLink.error.slice(0, 80) : ''}`, `Desktop companion: not found (ignore unless it is running)${desktopLink.error ? '. ' + desktopLink.error.slice(0, 80) : ''}`),
     tier: { tier: tariff.tier, name: tierName, until: tierUntil, rule: tierRule, holidayDataMissing: tariff.holidayDataMissing },
     update: (patch: Partial<Preferences>) => { update(patch); if (patch.autoGalGame !== undefined) stateMachine.setAutoGalGameOnChat(patch.autoGalGame) },
     onSizeStart: () => setSizeAnchor(previous => previous ?? currentSizeLayout.current),
@@ -1309,7 +1336,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   })
   // The panel does not depend on the pet's position, so a drag never rebuilds it.
   const settingsPanel = useMemo(() => isSettingsOpen ? SettingsPanel(settingsProps()) : null,
-    [isSettingsOpen, preferences, status.autoGalGameOnChat, JSON.stringify(wallet), tariff.tier, tierUntil, tariff.holidayDataMissing, group?.mode, viewport.width, viewport.height, JSON.stringify(live2dSettings), live2dRecord, discoveries])
+    [isSettingsOpen, preferences, status.autoGalGameOnChat, JSON.stringify(wallet), tariff.tier, tierUntil, tariff.holidayDataMissing, group?.mode, viewport.width, viewport.height, JSON.stringify(live2dSettings), live2dRecord, discoveries, desktopLink])
 
   // ---- Theatre: background, music and upload handlers ----------------------------
   const pickScene = (id: string) => {
@@ -1454,10 +1481,12 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const crownAlign = petPos.x + stageW / 2 < 200 ? 'start' : petPos.x + stageW / 2 > viewport.width - 200 ? 'end' : 'center'
   const bubbleSide = petPos.x + stageW / 2 < viewport.width / 2 ? 'right' : 'left'
   const showDock = isMenuOpen && !isSettingsOpen && !isDragging
+  // Peeking, the small menu sits above her head; her box runs past the right edge, so pull it back on screen.
+  const peekCrownRight = Math.max(0, Math.round(petPos.x + stageW - (viewport.width - 12)))
   // Peak/valley and balance show above her head (the user chooses which); the other actions live in the hover menu.
   const heads = headChipsShown(preferences.headChips)
   const chip = balanceChipState(wallet)
-  const showWalletChip = heads.balance && !docked && !isSettingsOpen && !isDragging
+  const showWalletChip = heads.balance && !isSettingsOpen && !isDragging
   const showTierChip = heads.tier && preferences.peakNotice && !isSettingsOpen && !isDragging
   const walletTime = wallet.checkedAt ? new Date(wallet.checkedAt).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' }) : ''
   const walletTitle = chip === 'loading' ? t('正在读取余额', 'Reading the balance')
@@ -1500,18 +1529,24 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       {toast && <div className="petToast" role="status">{toast}</div>}
 
       <div className={'characterWrapper state-' + status.state.toLowerCase()}>
-        <div className="petCrown" data-align={crownAlign} style={{ bottom: `${stageH - imageTop + 6}px` }}>
-          <div className="toolbar" data-visible={showDock} data-settings-open={isSettingsOpen} onMouseEnter={handleMouseEnterPet} onMouseLeave={handleMouseLeavePet} role="toolbar" aria-label={t('大肥鱼快捷操作', '大肥鱼 actions')}>
+        <div className="petCrown" data-align={docked ? 'end' : crownAlign} style={docked ? { bottom: `${stageH - imageTop + 6}px`, right: `${peekCrownRight}px` } : { bottom: `${stageH - imageTop + 6}px` }}>
+          {docked ? <div className="petPeekBar" role="toolbar" aria-label={t('探头时的快捷操作', 'Peek actions')}>
+            <button type="button" className="petPeekBtn petPeekSettings" aria-expanded={isSettingsOpen} onClick={() => setIsSettingsOpen(!isSettingsOpen)} title={t('打开设置（她留在原地）', 'Open settings (she stays here)')}>{dockIcon(SETTINGS_ICON)}{t('设置', 'Settings')}</button>
+            <span className="petPeekSep" aria-hidden="true" />
+            <button type="button" className="petPeekBtn petEdgePeek" aria-pressed={true} onClick={togglePeek} aria-keyshortcuts={preferences.peekShortcut || undefined} aria-label={t('回来陪我', 'Come back')} title={t('回来陪我：回到刚才的位置', 'Come back to your previous spot')}>
+              {dockIcon(PEEK_ICON)}<span>{t('回来', 'Come back')}</span>{preferences.peekShortcut && <kbd>{preferences.peekShortcut}</kbd>}
+            </button>
+          </div> : <div className="toolbar" data-visible={showDock} data-settings-open={isSettingsOpen} onMouseEnter={handleMouseEnterPet} onMouseLeave={handleMouseLeavePet} role="toolbar" aria-label={t('大肥鱼快捷操作', '大肥鱼 actions')}>
             <button type="button" className="toolBtn toolBtnPrimary" onClick={openTheatre} title={t('进入剧场模式（Alt+T）', 'Open theatre (Alt+T)')}>{dockIcon('M2.5 4.5h11v7h-11zM5.5 13.5h5')}{t('剧场', 'Theatre')}</button>
-            <button type="button" className="toolBtn petSettingsButton" aria-expanded={isSettingsOpen} onClick={() => setIsSettingsOpen(!isSettingsOpen)} title={t('打开设置', 'Open settings')}>{dockIcon('M8 5.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4')}{t('设置', 'Settings')}</button>
+            <button type="button" className="toolBtn petSettingsButton" aria-expanded={isSettingsOpen} onClick={() => setIsSettingsOpen(!isSettingsOpen)} title={t('打开设置', 'Open settings')}>{dockIcon(SETTINGS_ICON)}{t('设置', 'Settings')}</button>
             <span className="toolDivider" aria-hidden="true" />
             <button type="button" className="toolBtn toolIcon" aria-pressed={preferences.quiet} onClick={() => setPreferences(previous => quietPreset(previous))} aria-label={preferences.quiet ? t('结束安静模式', 'End quiet mode') : t('安静模式', 'Quiet mode')} title={preferences.quiet ? t('结束安静模式', 'End quiet mode') : t('安静模式：暂停闲聊、音效和游荡', 'Quiet mode: pause chatter, sounds and wandering')}>{dockIcon('M12.5 9.5A5 5 0 016.5 3.5a5 5 0 106 6z')}</button>
             <button type="button" className="toolBtn petEdgePeek" aria-pressed={docked} onClick={togglePeek} aria-keyshortcuts={preferences.peekShortcut || undefined} aria-label={docked ? t('回来陪我', 'Come back') : t('去边缘偷看', 'Peek from the edge')} title={docked ? t('回来陪我：回到刚才的位置', 'Come back to your previous spot') : t('到右侧探头陪伴', 'Keep you company from the right edge')}>
-              {dockIcon('M2 12.5h12M4 12.5v-2M12 12.5v-2M5 8a3 3 0 116 0M6.5 7.5h.01M9.5 7.5h.01')}
+              {dockIcon(PEEK_ICON)}
               <span>{docked ? t('回来', 'Come back') : t('探头', 'Peek')}</span><kbd>{preferences.peekShortcut || t('未设置', 'No shortcut')}</kbd>
             </button>
             {codeText && <button type="button" className="toolBtn toolIcon" onClick={() => void copyCode(codeText)} aria-label={t('复制代码', 'Copy code')} title={t('复制最近回答中的代码', 'Copy code from the latest answer')}>{dockIcon('M5.5 5.5h8v8h-8zM10.5 5.5v-3h-8v8h3')}</button>}
-          </div>
+          </div>}
           {!isSettingsOpen && !isDragging && <div className="petCrownRow">
             {showTierChip && <button type="button" className="petTierChip" data-tier={tariff.tier} title={tierName + '\n' + tierRule} aria-label={`${tierName} ${tierUntil}`} onClick={() => setTierAnnounce({ tier: tariff.tier, until: Date.now() + 9000 })}>
               <i aria-hidden="true" /><span>{tierShort}</span>{tierUntil && <span className="petTierUntil">{tierUntil}</span>}

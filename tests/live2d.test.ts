@@ -65,7 +65,7 @@ test('Live2D import: 4096 textures are scaled to 2048, smaller ones are kept', (
 })
 
 test('Live2D looks: every pose the overlay can show has a look built from the model\'s own switches', () => {
-  const poses = ['Maid', 'Answering', 'baifan', 'getit', 'Think1', 'Think2', 'Think3', 'Think4', 'Think5', 'sajiao', 'Dizzy', 'smug', 'shy', 'angry', 'surprised', 'proud', 'happy']
+  const poses = ['Maid', 'Answering', 'baifan', 'getit', 'Think1', 'Think2', 'Think3', 'Think4', 'Think5', 'sajiao', 'Dizzy', 'smug', 'shy', 'angry', 'surprised', 'proud', 'happy', 'smirk']
   const switches = new Set(['钢盆', '加载', '圈圈眼', '屑屑眼', '爱心眼', '脸红', '黑脸', '＞＜', '竖食指开', '流冷汗', '单片眼镜', '黑框眼镜'])
   for (const pose of poses) {
     assert.ok(LIVE2D_LOOKS[pose], pose)

@@ -185,7 +185,30 @@
 [data-whale-pet] .petSpriteSize { transition: transform .65s cubic-bezier(.25,.1,.25,1); }
 /* The peeking picture replaces her walking picture in place, without sliding again. */
 .petWidget[data-whale-pet][data-docked="true"][data-peek-swap="true"] { transition: none; }
-[data-whale-pet][data-peek-edge="right"] .petCrown { position: fixed; left: auto; right: 12px; bottom: 12px !important; transform: none; align-items: flex-end; }
+/* Peeking: one small block (settings | come back) above her head, peak/valley and balance below it. */
+[data-whale-pet][data-peek-edge="right"] .petCrown { left: auto; transform: none; align-items: flex-end; }
+[data-whale-pet][data-peek-edge="right"] .petCrownRow { flex-direction: column; align-items: flex-end; }
+[data-whale-pet] .petPeekBar {
+  display: inline-flex; align-items: center; gap: 0;
+  height: 26px; padding: 0 2px;
+  border: 1px solid var(--wp-line); border-radius: 999px;
+  background: var(--wp-surface); box-shadow: var(--wp-shadow-s);
+  -webkit-backdrop-filter: var(--wp-blur); backdrop-filter: var(--wp-blur);
+  pointer-events: auto;
+}
+[data-whale-pet] .petPeekBtn {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 22px; padding: 0 8px 0 7px;
+  border: 0; border-radius: 999px; background: transparent; color: var(--wp-ink);
+  font-size: 11.5px; font-weight: 650; white-space: nowrap; cursor: pointer;
+  transition: background-color .15s ease, color .15s ease;
+}
+[data-whale-pet] .petPeekBtn svg { width: 12px; height: 12px; flex: none; opacity: .85; }
+[data-whale-pet] .petPeekBtn:hover { background: var(--wp-control-hover); }
+[data-whale-pet] .petPeekBtn[aria-expanded="true"] { background: var(--wp-accent-soft); color: var(--wp-accent); }
+[data-whale-pet] .petPeekBtn.petEdgePeek { color: var(--wp-accent); }
+[data-whale-pet] .petPeekBtn kbd { font: 10px var(--wp-mono); opacity: .7; padding-left: 2px; }
+[data-whale-pet] .petPeekSep { width: 1px; height: 12px; background: var(--wp-line-strong); }
 @media (prefers-reduced-motion: reduce) { [data-whale-pet] .petSpriteSize { transition: none; } }
 [data-whale-pet] .toolBtn:hover { background: var(--wp-control-hover); }
 [data-whale-pet] .toolBtn svg { flex: none; opacity: .85; }
@@ -504,5 +527,4 @@
   [data-whale-pet], [data-whale-pet] *, [data-whale-pet] *::before, [data-whale-pet] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
 
-/* Parked controls stay available while her body is outside the window. */
-[data-whale-pet][data-docked="true"] .toolbar { opacity: 1; transform: none; pointer-events: auto; }
+/* Parked controls (the small peek menu) are always shown: see .petPeekBar. */

@@ -3,3 +3,6 @@
 
 # Keep PowerShell helper and installer checks consistent on Windows checkouts.
 *.ps1 text eol=crlf
+
+# The desktop launcher is a Windows Script Host file: keep CRLF too.
+*.vbs text eol=crlf

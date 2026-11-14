@@ -6,7 +6,7 @@
 ## English
 
 - [Installation recovery and older versions](INSTALLATION_RECOVERY.md)
-- [User guide](install/README.txt)
+- [User guide](USER_GUIDE.md) (also [中文操作说明](USER_GUIDE.zh-CN.md)); the short text guide shipped with the package is [install/README.txt](install/README.txt)
 - [Release history](../CHANGELOG.md): [v0.8.1](releases/v0.8.1.md) · [v0.8.0](releases/v0.8.0.md) · [v0.7.0](releases/v0.7.0.md) · [v0.6.0](releases/v0.6.0.md) · [v0.5.2](releases/v0.5.2.md), [v0.5.1](releases/v0.5.1.md), [v0.5.0](releases/v0.5.0.md), [v0.4.0](releases/v0.4.0.md), [v0.3.0](releases/v0.3.0.md), [v0.2.0](releases/v0.2.0.md), [v0.1.0](releases/v0.1.0.md)
 - [Contributing](../CONTRIBUTING.md) and [artwork permissions](../ASSETS_LICENSE.md)
 
@@ -16,7 +16,7 @@ Use the root-level install.bat and uninstall.bat to install and remove the plugi
 ## 中文
 
 - [安装问题与旧版本修复](INSTALLATION_RECOVERY.md)
-- [使用指南](install/使用说明.txt)
+- [操作说明](USER_GUIDE.zh-CN.md)（另有 [English user guide](USER_GUIDE.md)）；安装包里的简短文字说明是 [install/使用说明.txt](install/使用说明.txt)
 - [更新日志](../CHANGELOG.md)：[v0.8.1](releases/v0.8.1.md) · [v0.8.0](releases/v0.8.0.md) · [v0.7.0](releases/v0.7.0.md) · [v0.6.0](releases/v0.6.0.md) · [v0.5.2](releases/v0.5.2.md), [v0.5.1](releases/v0.5.1.md)、[v0.5.0](releases/v0.5.0.md)、[v0.4.0](releases/v0.4.0.md)、[v0.3.0](releases/v0.3.0.md)、[v0.2.0](releases/v0.2.0.md)、[v0.1.0](releases/v0.1.0.md)
 - [贡献指南](../CONTRIBUTING.md)与[美术授权说明](../ASSETS_LICENSE.md)
 

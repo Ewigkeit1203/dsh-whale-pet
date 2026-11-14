@@ -7,6 +7,14 @@
 <a name="english"></a>
 ## English
 
+### [Unreleased]
+
+- **Peeking, tidier.** While she peeks, a small Settings | Come back block sits above her head with the pricing period and balance below it; the full hover menu returns when she comes back. Opening Settings while she peeks leaves her at the edge and opens the panel to her left.
+- **The peeking arm reads as one arm (Live2D).** The forearm and hand are drawn over the upper arm and moved so the forearm's top end sits on the upper arm's lower end (measured on the model's meshes, chosen from rendered options). Coming back, her arm returns behind her hair and skirt instead of snapping from in front of the skirt to behind it.
+- **A new idle face (Live2D):** now and then a heavy-lidded, slightly pleased look.
+- **Desktop mode (preview, developers only):** 大肥鱼 on the system desktop in her own transparent, always-on-top, click-through window, following DSH over a local link (thinking, answering, rice break, balance). Releases add a separate click-to-run Windows download (`DaFeiYu.exe`, Electron built in, no model included).
+- **User guide:** a new [user guide](docs/USER_GUIDE.md) / [操作说明](docs/USER_GUIDE.zh-CN.md); the README now shows only the latest release, with Chinese first.
+
 ### [v0.8.1] - 2026-11-12
 
 - **Balance and reminders:** five clear balance states, refresh/retry details, configurable head chips and a daily low-balance reminder. Answers completed while DSH is in the background can mark the title and greet you once when you return; reminders can be disabled.
@@ -194,6 +202,14 @@
 
 <a name="chinese"></a>
 ## 中文版本
+
+### [未发布]
+
+- **探头更清爽。** 探头时头顶只留一个“设置｜回来”小块，下面是峰谷时间和余额；回来后恢复完整菜单。探头时打开设置，她留在原地，面板在她左边打开。
+- **探头的手臂连成一条（Live2D）。** 小臂和手画在大臂上面，并移动到小臂头正好接在大臂末端的位置（按模型网格测量，从渲染方案中选定）。回来时手臂收在头发和裙子后面，不再先出现在裙子前面再瞬移到后面。
+- **新的待机表情（Live2D）：** 偶尔会露出半闭着眼、有点得意的表情。
+- **桌面模式（预览，仅开发者）：** 大肥鱼出现在系统桌面上，透明、置顶、点击穿透，通过本机连接跟随 DSH（思考、回答、干饭、余额）。发布时另附一个点击即可运行的 Windows 下载包（`DaFeiYu.exe`，自带 Electron，不含模型）。
+- **操作说明：** 新增[操作说明](docs/USER_GUIDE.zh-CN.md) / [User guide](docs/USER_GUIDE.md)；README 只保留最新版本介绍，中文放在英文前面。
 
 ### [v0.8.1] - 2026-11-12
 

@@ -47,10 +47,16 @@ function loadBundle(storage?: { getItem(key: string): string | null; setItem(key
   let overlay: any
   const effects: any[] = []
   const mount = (extra: Record<string, unknown> = {}) => {
-    plugin.apply({ ...extra, slots: {
+    const ctx = { ...extra, slots: {
       inject(_name: string, callback: any) { callback() },
       register(_config: any, render: any) { overlay = render() },
-    }, effect(callback: any) { effects.push(callback) } })
+    }, effect(callback: any) { effects.push(callback) } }
+    // Like DSH's Cordis context: reading any property it was not told about throws. (inject is a Context method.)
+    plugin.apply(new Proxy(ctx, { get(target: any, prop) {
+      if (typeof prop === 'symbol' || prop in target) return target[prop]
+      if (prop === 'inject') return undefined
+      throw new Error(`cannot get property "${String(prop)}" without inject`)
+    } }))
     return overlay.props.stateMachine
   }
   return { context, FakeElement, dispatch(name: string, event: any) { for(const callback of listeners.get(name) || [])callback(event) }, StateMachine: context.BundleStateMachine, Audio: context.BundleAudio, viewEffects, mount,
@@ -693,15 +699,23 @@ test('browser bundle: crown peek docks her, suppresses chatter and restores the 
  assert.ok(!walk(tree).some(n=>n.props.className==='speechBubble'))
  peek().props.onClick();tree=runtime.render();assert.equal(tree.props['data-docked'],false);assert.deepEqual({...tree.props.style},origin)
 })
-test('browser bundle: peek remains available with peak notices off, and settings preserve the return position',t=>{
+test('browser bundle: peeking shows only a small settings / come-back menu; settings open where she is and the return position is kept',t=>{
  const storage={getItem:()=>JSON.stringify({peakNotice:false,onboardingDone:true}),setItem(){}}
  const runtime=loadBundle(storage);const sm=runtime.mount();t.after(()=>sm.dispose());let tree=runtime.render();const origin={...tree.props.style}
  const peek=()=>walk(tree).find(n=>String(n.props.className).split(' ').includes('petEdgePeek'))
- assert.ok(peek());peek().props.onClick();tree=runtime.render()
+ const bar=()=>walk(tree).find(n=>n.props.className==='petPeekBar')
+ assert.ok(peek());assert.equal(bar(),undefined,'the full hover menu while she is out');peek().props.onClick();tree=runtime.render()
+ assert.ok(!walk(tree).some(n=>n.props.className==='toolbar'),'no full menu while peeking')
+ assert.deepEqual(bar().children.flat(9).filter((n:any)=>n&&n.type==='button').map((n:any)=>n.props.className),['petPeekBtn petPeekSettings','petPeekBtn petEdgePeek'])
+ assert.ok(walk(bar()).some(n=>n.type==='kbd'&&n.children.includes('Alt+P')),'the shortcut is shown')
+ const docked={...tree.props.style}
  walk(tree).find(n=>n.children.includes('设置')).props.onClick();tree=runtime.render()
- assert.equal(tree.props['data-docked'],false)
+ assert.equal(tree.props['data-docked'],true,'she stays at the edge');assert.deepEqual({...tree.props.style},docked,'and does not move')
+ const panel=walk(tree).find(n=>n.props.className==='settingsDrawer');assert.ok(panel);assert.equal(panel.props['data-side'],'left','settings open to her left')
+ assert.ok(bar(),'the small menu stays while settings are open')
  walk(tree).find(n=>n.children.includes('设置')).props.onClick();tree=runtime.render();assert.equal(tree.props['data-docked'],true)
  peek().props.onClick();tree=runtime.render();assert.deepEqual({...tree.props.style},origin)
+ assert.ok(walk(tree).some(n=>n.props.className==='toolbar'),'back with her: the full menu returns');assert.equal(bar(),undefined)
 })
 
 test('browser bundle: custom peek shortcut toggles only once, displays beside the button and always peeks from the right',t=>{

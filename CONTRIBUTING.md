@@ -20,6 +20,7 @@
 - 修改行为时补有意义的回归测试，至少运行下面四项检查。界面变化附窗口/全屏、明暗主题或相应场景的证据；音效变化应实际试听；宿主接入变化应注明测试的 DSH 版本和降级表现。
 - **任何正式发布或已有下载附件替换，都要先完成审查、检查、测试和候选包，再由 Ewigkeit1203 明确同意后执行。** 自动检查通过或 PR 合并不等于发布授权。未经确认不创建正式 Release、不替换安装包、不移动已有版本标签。
 - 安装包必须与审查的源码对应，带版本说明与 SHA-256；构建后核对实际文件，不能只验证源码。
+- **每次发布新版本都要同步更新 README：** 中英文的“最新版本”小节只保留这个版本的介绍（上一版的内容删掉，它已经在 CHANGELOG 里），同时更新安装步骤里的包名和测试数量；把 CHANGELOG 里的“未发布”改成新版本号；必要时更新[操作说明](docs/USER_GUIDE.zh-CN.md)，去掉已发布功能上的“下个版本”标记。README 里中文说明放在英文前面。
 - 本指南描述项目流程；它不代表 GitHub 分支保护或强制审批已在仓库设置中启用。仓库维护者应只向信任的协作者授予写入及发布权限。
 
 本地检查（Node.js 22.18+ 或 24+）：
@@ -58,6 +59,7 @@ Contributions are welcome: reproducible bug reports, testing, UX suggestions, co
 - AI-assisted code is welcome, but contributors must understand, review and test it. Review, relevant regression tests and applicable real-DSH checks are required before merging. Resolve failures and regressions first; product changes require maintainer agreement.
 - Run build, type checking, tests and bundle syntax checks listed above. Include visual evidence for UI changes, listen to sound changes, and state the DSH version tested for integration changes.
 - **Before publishing a release or replacing downloadable assets, complete review, checks, tests and the candidate package, then obtain explicit approval from Ewigkeit1203.** A green check or merged PR is not release permission. Do not move existing version tags.
+- **Update the README with every release:** the “Latest release” section (both languages) keeps only the new version (the previous one already lives in the changelog); update the package name and test count in the install steps; turn the changelog's Unreleased section into the new version; update the [user guide](docs/USER_GUIDE.md) where needed and drop its “next release” marks for what shipped. The Chinese section stays above the English one.
 - Match release assets to the reviewed source, verify the package and include release notes and a SHA-256 checksum. This policy does not itself enable GitHub branch protection; write/release access should be granted only to trusted collaborators.
 - Edit source and rebuild tracked lib/ files. Preserve embedded artwork, no extra runtime dependencies, independent pet themes, native composer controls, draft safety, default mute/notifications off, local preferences and no persisted or externally shared chat history.
 

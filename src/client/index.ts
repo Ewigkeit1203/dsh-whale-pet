@@ -5,6 +5,7 @@ import { PetStateMachine } from './state-machine.js'
 import { PetOverlay } from './PetOverlay.js'
 import { watchAccountBalances, ACCOUNT_CLIENT_VERSION } from './account-balance.js'
 import { isQuotaError } from './balance-chip.js'
+import { applyLinkSnapshot, linkLost, startDesktopLink, type LinkDriver } from './desktop-link.js'
 import './galgame.css'
 
 export const name = 'dsh-whale-pet-client'
@@ -126,9 +127,18 @@ function queryQuotaErrorKey(session: string | null): string | null {
   return key && isQuotaError(code) ? JSON.stringify([session, key]) : null
 }
 
+/**
+ * Set by the desktop companion (desktop/shell.js, window.__whaleDesktopShell.host): there she follows DSH over
+ * the link instead of reading DSH's page. Never looked up on ctx: Cordis throws for any property it was not
+ * told about ("cannot get property … without inject"), which would stop her from appearing in DSH at all.
+ */
+type DesktopHost = (machine: PetStateMachine, link: { apply: (machine: LinkDriver, snapshot: unknown) => boolean; lost: (machine: LinkDriver) => void }) => void | (() => void)
+
 export function apply(ctx: Context): void {
   const stateMachine = new PetStateMachine()
   let hostAccountService = false
+  const desktopShell = typeof window !== 'undefined' ? (window as any).__whaleDesktopShell : undefined
+  const desktopHost = typeof desktopShell?.host === 'function' ? desktopShell.host as DesktopHost : undefined
 
   // 1. Mount PetOverlay into the global frame-wide floating slot ('shell.overlay')
   ctx.slots.inject('shell.overlay', () => {
@@ -144,7 +154,20 @@ export function apply(ctx: Context): void {
   // 1b. Balance through DSH's own account service, in a sub-scope that waits
   // for the services without delaying the companion. Older hosts without them
   // simply never run this block and keep the DOM fallback.
-  if (typeof (ctx as any).inject === 'function') {
+  if (desktopHost) {
+    // On the desktop: no DSH page to read and no account service; DSH's page sends what it saw.
+    ctx.effect(() => {
+      const stop = desktopHost(stateMachine, { apply: applyLinkSnapshot, lost: linkLost })
+      return () => { if (typeof stop === 'function') stop(); stateMachine.dispose() }
+    })
+  } else {
+    // 1a. In DSH: keep the desktop companion (if it is running) up to date.
+    ctx.effect(() => startDesktopLink(stateMachine, {
+      onState: state => window.dispatchEvent(new CustomEvent('dsh-whale-pet:desktop-link', { detail: state })),
+    }))
+  }
+
+  if (!desktopHost && typeof (ctx as any).inject === 'function') {
     (ctx as any).inject(['remote', 'remote.account', 'remoteAccess'], (scoped: any) => {
       const remote = scoped.remote
       const access = scoped.remoteAccess
@@ -249,8 +272,8 @@ export function apply(ctx: Context): void {
     }
   })
 
-  // 3. Model Reasoning & Streaming Detection via MutationObserver & Polling
-  ctx.effect(() => {
+  // 3. Model Reasoning & Streaming Detection via MutationObserver & Polling (DSH only; the desktop follows the link)
+  if (!desktopHost) ctx.effect(() => {
     let lastSessionId: string | null | undefined = undefined
     let wasRunning = false
     let observedTurn = false
