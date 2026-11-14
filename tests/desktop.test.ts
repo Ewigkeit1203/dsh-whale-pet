@@ -149,4 +149,8 @@ test('Desktop companion: a question from her theatre goes to DSH and the outcome
   p.window.__whaleDesktopShell.theatre(false);assert.deepEqual(p.sent,[['focus',true],['interactive',true],['focus',false],['interactive',false]],'closed: back to the user')
   // The theatre's own controls take the mouse even though her root lets clicks through elsewhere.
   assert.match(read('index.html'),/body\.dsh-galgame-mode #whale-desktop-root \{ pointer-events: auto; \}/)
+  // Her notices stay readable in the theatre: white text over the theme colour, above the dialogue box.
+  const css=readFileSync(new URL('../src/client/PetOverlay.module.css',import.meta.url),'utf8'),gal=readFileSync(new URL('../src/client/galgame.css',import.meta.url),'utf8')
+  assert.match(css,/\[data-whale-pet\]\.petToast\[data-pet-theme\] \{ color: #fff; \}/)
+  assert.match(gal,/\[data-whale-pet="toast"\]\.petToast \{ bottom: calc\(var\(--box-bottom\) \+ max\(var\(--box-h\), 200px\) \+ 18px\)/)
 })

@@ -97,7 +97,7 @@ const desktopShell = (): DesktopShellApi | null => {
   const shell = typeof window !== 'undefined' ? (window as any).__whaleDesktopShell : undefined
   return shell && typeof shell.sendToDsh === 'function' ? shell as DesktopShellApi : null
 }
-/** Coming back from the edge (matches the .65s lean transition in PetOverlay.module.css, plus a margin). */
+/** Coming back from the edge: the .75s slide home in PetOverlay.module.css (data-returning), plus a margin. */
 const RETURN_MS = 800
 const COMPOSER_SELECTOR = '[data-composer-card], [data-composer-seat]'
 /** The widget's slide to the edge (CSS .7s): the picture turns into the peeking one when she arrives. */

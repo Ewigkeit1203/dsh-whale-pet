@@ -11,12 +11,12 @@ body.dsh-galgame-mode.dsh-galgame-immersive [data-slot="conversation.chat.flow"]
 body.dsh-galgame-mode [data-composer-seat] { opacity: 0 !important; transform: translateY(60px) !important; pointer-events: none !important; }
 
 /* Shared geometry for the stage, thought bubble and dialogue box */
-[data-whale-pet]:is(.galgameBackdrop, .galgameCharacterCentered, .galgameTheatreBox, .comicThoughtBubble) {
+[data-whale-pet]:is(.galgameBackdrop, .galgameCharacterCentered, .galgameTheatreBox, .comicThoughtBubble, .petToast) {
   --box-bottom: 20px;
   --box-h: clamp(240px, 38vh, 360px);
   --head-room: max(26vh, 190px);
 }
-[data-whale-pet][data-expanded="true"]:is(.galgameCharacterCentered, .galgameTheatreBox, .comicThoughtBubble) {
+[data-whale-pet][data-expanded="true"]:is(.galgameCharacterCentered, .galgameTheatreBox, .comicThoughtBubble, .petToast) {
   --box-h: min(900px, calc(100vh - var(--head-room) - var(--box-bottom)));
 }
 
@@ -142,6 +142,9 @@ body.dsh-galgame-mode [data-composer-seat] { opacity: 0 !important; transform: t
 [data-whale-pet][data-pet-theme="light"]:is(.galgameTheatreBox, .theatreHud) {
   --gal-glass: linear-gradient(180deg, rgba(44, 64, 124, .66) 0%, rgba(22, 34, 76, .78) 100%);
 }
+
+/* The theatre's notices float just above the dialogue box, never over its text box or buttons. */
+[data-whale-pet="toast"].petToast { bottom: calc(var(--box-bottom) + max(var(--box-h), 200px) + 18px); max-width: min(720px, calc(100vw - 48px)); }
 
 /* Dialogue box */
 [data-whale-pet].galgameTheatreBox {
@@ -503,7 +506,7 @@ body.dsh-galgame-mode [data-composer-seat] { opacity: 0 !important; transform: t
   [data-whale-pet] .galgameQuotes:first-child { left: 10px; }
 }
 @media (max-height: 600px) {
-  [data-whale-pet]:is(.galgameTheatreBox, .comicThoughtBubble, .galgameCharacterCentered) { --box-h: max(200px, 48vh); --box-bottom: 10px; }
+  [data-whale-pet]:is(.galgameTheatreBox, .comicThoughtBubble, .galgameCharacterCentered, .petToast) { --box-h: max(200px, 48vh); --box-bottom: 10px; }
 }
 @media (prefers-reduced-motion: reduce) {
   [data-whale-pet], [data-whale-pet] *, [data-whale-pet] *::before, [data-whale-pet] *::after { animation: none !important; transition: none !important; }

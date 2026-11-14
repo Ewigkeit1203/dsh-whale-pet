@@ -15,6 +15,9 @@
   /* Background blur means nothing over a transparent window yet costs a full-strength blur pass every
      frame: solid surfaces on the desktop. */
   html[data-whale-desktop] *, html[data-whale-desktop] *::before, html[data-whale-desktop] *::after { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  /* Without the blur, her dress showed through the theatre's dialogue box: a nearly solid box instead. */
+  html[data-whale-desktop] [data-whale-pet].galgameTheatreBox[data-pet-theme] { --gal-glass: linear-gradient(180deg, rgba(30, 44, 92, .94) 0%, rgba(14, 22, 50, .97) 100%); }
+  html[data-whale-desktop] [data-whale-pet].galgameTheatreBox[data-pet-theme="light"] { --gal-glass: linear-gradient(180deg, rgba(44, 64, 124, .92) 0%, rgba(22, 34, 76, .96) 100%); }
   html[data-whale-desktop] [data-whale-pet][data-pet-theme] { --wp-blur: none; --wp-surface: var(--wp-surface-solid); --wp-surface-strong: var(--wp-surface-solid); }
   /* The balance comes from DSH over the link: none to show (not even a placeholder) until DSH is connected. */
   html[data-whale-desktop]:not([data-whale-dsh-link="on"]) [data-whale-pet] :is(.petWalletChip, .petWalletPop) { display: none; }

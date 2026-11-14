@@ -329,6 +329,9 @@
 @keyframes wpFloat { 30% { transform: translateY(-10px); } 65% { transform: translateY(3px); } }
 
 /* Toast + onboarding */
+/* Its own colours win over the theme's text colour on [data-whale-pet][data-pet-theme] (the theatre's toast
+   carries both attributes, and dark ink on the dark toast was unreadable). */
+.petToast, [data-whale-pet].petToast[data-pet-theme] { color: #fff; }
 .petToast {
   position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 1000005;
   padding: 10px 18px; border-radius: 12px;
