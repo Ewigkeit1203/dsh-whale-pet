@@ -24,8 +24,17 @@
   // ---- click-through --------------------------------------------------------------------------
   // The window ignores the mouse and only forwards moves. While the pointer is on something of hers
   // that takes pointer events (her body's hull, a chip, a panel), the window takes the mouse instead.
-  var interactive = false, pressed = false, focused = false
+  var interactive = false, pressed = false, focused = false, theatreOpen = false
+  // Her theatre is opened on purpose (tray, shortcut, menu), so it may take the keyboard: Enter, Esc and
+  // typing a question work right away. Closing it gives the keyboard back to the user's own window.
+  desktop.theatre = function (open) {
+    theatreOpen = Boolean(open)
+    if (theatreOpen !== focused) { focused = theatreOpen; if (bridge) bridge.setFocus(theatreOpen) }
+    // The open theatre covers the screen and takes the whole mouse; closed, only she does again.
+    setInteractive(theatreOpen)
+  }
   function hers(x, y) {
+    if (theatreOpen) return true
     var element = document.elementFromPoint(x, y)
     return Boolean(element && element !== document.documentElement && element !== document.body && element !== root)
   }
@@ -48,8 +57,9 @@
   }, true)
   window.addEventListener('pointerdown', function (event) {
     pressed = true
-    // Keyboard focus only for fields she shows (settings); otherwise the user's own window keeps it.
-    var wanted = typing(event.target)
+    // Keyboard focus only for fields she shows (settings) and while her theatre is open; otherwise the
+    // user's own window keeps it.
+    var wanted = theatreOpen || typing(event.target)
     if (wanted !== focused) { focused = wanted; if (bridge) bridge.setFocus(wanted) }
   }, true)
   function released(event) { pressed = false; pending = null; setInteractive(hers(event.clientX, event.clientY)) }
@@ -61,5 +71,6 @@
 
   if (bridge) bridge.onCommand(function (command) {
     if (command === 'settings') window.dispatchEvent(new Event('dsh-whale-pet:open-settings'))
+    else if (command === 'theatre') window.dispatchEvent(new Event('dsh-whale-pet:toggle-theatre'))
   })
 })()

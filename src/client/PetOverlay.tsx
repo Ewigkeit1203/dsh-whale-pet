@@ -9,6 +9,7 @@ import { POSE_META, spriteGeometry, live2dWidgetGeometry } from './poses.js'
 import { layoutGroup, layoutResizedGroup, type GroupLayout, clampPet, rightPeekPosition, peekArtPosition, type EdgePeekRoom, wanderDestination, nextWanderDelay, placeGroupX, groupFits, type PanelSide } from './layout.js'
 import { walletView } from './wallet.js'
 import { desktopLinkState, type DesktopLinkState } from './desktop-link.js'
+import { submitToDshComposer, type ComposerResult } from './dsh-composer.js'
 import { balanceChipState, headChipsShown, lowBalanceDue, balanceDay, LOW_BALANCE_DAY_KEY } from './balance-chip.js'
 import { GUIDE_STEPS, readDiscoveries, saveDiscoveries, discover, guideStep, type InteractionId, type Discoveries } from './discovery.js'
 import { AnswerNotice, WELCOME_BACK_LINES, markTitle } from './answer-notice.js'
@@ -90,6 +91,14 @@ const SETTINGS_ICON = 'M8 5.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM8 1.5v2M8 12.5v2M
 const PEEK_ICON = 'M2 12.5h12M4 12.5v-2M12 12.5v-2M5 8a3 3 0 116 0M6.5 7.5h.01M9.5 7.5h.01'
 /** A late-night face kept as an idle glance of its own: heavy-lidded, a little pleased with herself (Live2D only). */
 const SMIRK_POSE = 'smirk'
+/** The desktop companion's shell (desktop/shell.js), when she runs on the desktop; never present in DSH. */
+interface DesktopShellApi { sendToDsh(text: string, done: (result: ComposerResult | 'failed') => void): void; theatre?(open: boolean): void }
+const desktopShell = (): DesktopShellApi | null => {
+  const shell = typeof window !== 'undefined' ? (window as any).__whaleDesktopShell : undefined
+  return shell && typeof shell.sendToDsh === 'function' ? shell as DesktopShellApi : null
+}
+/** Coming back from the edge: the .75s slide home in PetOverlay.module.css (data-returning), plus a margin. */
+const RETURN_MS = 800
 const COMPOSER_SELECTOR = '[data-composer-card], [data-composer-seat]'
 /** The widget's slide to the edge (CSS .7s): the picture turns into the peeking one when she arrives. */
 const PEEK_WALK_MS = 720
@@ -316,6 +325,18 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   // Peeking, she stays at the edge while settings are open (the panel opens to her left); the free
   // position is kept intact for when she comes back.
   const docked = preferences.docked
+  // Just back from the edge (see data-returning). Decided during the render that undocks her, so the
+  // return transitions are already in place on the very frame she starts moving.
+  const [returnState, setReturning] = useState(false)
+  const [lastDocked, setLastDocked] = useState(docked)
+  const dockChanged = lastDocked !== docked
+  const returning = dockChanged ? lastDocked && !docked : returnState
+  if (dockChanged) { setLastDocked(docked); setReturning(returning) }
+  useEffect(() => {
+    if (!returning) return
+    const timer = setTimeout(() => setReturning(false), RETURN_MS)
+    return () => clearTimeout(timer)
+  }, [returning])
   const petBox = docked
     ? peekArt
       ? peekArtPosition(position.y, { width: stageW, height: stageH }, geometry, viewport.width, viewport.height, { composer: peekComposer })
@@ -746,6 +767,14 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     window.addEventListener('dsh-whale-pet:open-settings', open)
     return () => window.removeEventListener('dsh-whale-pet:open-settings', open)
   }, [])
+  // The desktop companion's tray menu and global shortcut open or close the theatre; while it is open
+  // there, her window keeps the keyboard (Enter, Esc and typing), and gives it back when it closes.
+  useEffect(() => {
+    const toggle = () => { if (!isDraggingRef.current) stateMachine.setGalGameMode(!stateMachine.getStatus().isGalGameMode) }
+    window.addEventListener('dsh-whale-pet:toggle-theatre', toggle)
+    return () => window.removeEventListener('dsh-whale-pet:toggle-theatre', toggle)
+  }, [stateMachine])
+  useEffect(() => { desktopShell()?.theatre?.(status.isGalGameMode) }, [status.isGalGameMode])
   const seenQuotaError = useRef<string | null>(null)
   useEffect(() => {
     const key = status.quotaErrorKey
@@ -1030,47 +1059,33 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     else if (dialoguePages.length > 1) setCurrentPageIndex(0)
   }
 
-  // Send via the native DSH composer, keeping the draft whenever that fails.
+  // Send via the native DSH composer, keeping the draft whenever that fails. On the desktop the question
+  // goes to DSH over the link and DSH's page sends it through the same composer path (dsh-composer.ts).
   const handleSendMessage = () => {
     const text = inputValue.trim()
     if (!text) return
     unlockAudio()
-    const composerEl = (
-      document.querySelector('[data-composer-input]') ||
-      document.querySelector('[data-composer-card] [contenteditable="true"]') ||
-      document.querySelector('[data-composer-card] [role="textbox"]') ||
-      document.querySelector('[data-composer-seat] [contenteditable="true"]') ||
-      document.querySelector('[data-composer-seat] textarea') ||
-      document.querySelector('textarea')
-    ) as HTMLElement | null
-    if (!composerEl) {
-      stateMachine.setLatestDialogue(t('未找到 DSH 输入框，请先打开一个对话。你的草稿已保留。', 'Open a DSH conversation first. Your draft has been kept.'))
+    const shell = desktopShell()
+    if (shell) {
+      if (desktopLink.status !== 'connected') {
+        flash(t('DSH 还没连上：打开 DSH 后就能在这里提问。你的草稿已保留。', 'DSH is not connected: open DSH to ask from here. Your draft has been kept.'))
+        return
+      }
+      setInputValue('')
+      shell.sendToDsh(text, result => {
+        if (result === 'sent') return
+        setInputValue(previous => previous || text)
+        flash(result === 'no-composer' ? t('DSH 里没有打开的对话：先在 DSH 里打开一个对话。你的草稿已保留。', 'No conversation is open in DSH: open one there first. Your draft has been kept.')
+          : result === 'no-button' ? t('DSH 现在没法发送（可能还在回答）。你的草稿已保留。', 'DSH cannot send right now (it may still be answering). Your draft has been kept.')
+          : t('没能把消息交给 DSH。你的草稿已保留。', 'Could not hand the message to DSH. Your draft has been kept.'))
+      })
       return
     }
-    if (composerEl instanceof HTMLTextAreaElement || composerEl instanceof HTMLInputElement) {
-      composerEl.focus()
-      const proto = composerEl instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype
-      Object.getOwnPropertyDescriptor(proto, 'value')?.set?.call(composerEl, text)
-      composerEl.dispatchEvent(new Event('input', { bubbles: true }))
-      composerEl.dispatchEvent(new Event('change', { bubbles: true }))
-    } else {
-      composerEl.focus()
-      const sel = window.getSelection()
-      if (sel) { const range = document.createRange(); range.selectNodeContents(composerEl); sel.removeAllRanges(); sel.addRange(range) }
-      let inserted = false
-      try { inserted = document.execCommand('insertText', false, text) } catch { inserted = false }
-      if (!inserted) {
-        try { composerEl.dispatchEvent(new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText', data: text })) } catch { /* ignore */ }
-        composerEl.textContent = text
-        composerEl.dispatchEvent(new Event('input', { bubbles: true }))
-      }
-    }
-    later(() => {
-      const card = document.querySelector('[data-composer-card]') || document.querySelector('[data-composer-seat]')
-      const sendBtn = card ? Array.from(card.querySelectorAll('button')).find(b => /send|发送|steer|queue/i.test(b.getAttribute('aria-label') || b.textContent || '') && !b.disabled && b.getAttribute('aria-disabled') !== 'true') || null : null
-      if (sendBtn && !sendBtn.hasAttribute('disabled')) { sendBtn.click(); setInputValue('') }
+    submitToDshComposer(text, result => {
+      if (result === 'sent') setInputValue('')
+      else if (result === 'no-composer') stateMachine.setLatestDialogue(t('未找到 DSH 输入框，请先打开一个对话。你的草稿已保留。', 'Open a DSH conversation first. Your draft has been kept.'))
       else stateMachine.setLatestDialogue(t('暂时无法发送，请检查 DSH 输入框与发送按钮。你的草稿已保留。', 'Unable to send. Check the DSH composer; your draft has been kept.'))
-    }, 80)
+    }, later)
   }
 
   const displayDialogue = preferences.reading === 'scroll' ? dialogueSource : dialoguePages[currentPageIndex] || dialoguePages[0] || ''
@@ -1511,7 +1526,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       key="widget"
       data-ghost={ghost && !isSettingsOpen} data-hidden={petHidden}
       data-paused={!foreground || reduceMotion} data-docked={docked} data-peek-edge={docked ? 'right' : undefined} data-peek-lean={docked && live2dOn ? true : undefined} data-peek-swap={peekArt || undefined}
-      data-sizing={Boolean(sizeAnchor) || undefined} data-dragging={isDragging || undefined} data-settling={affection === 'float' || affection === 'dizzy' || undefined}
+      data-sizing={Boolean(sizeAnchor) || undefined} data-returning={returning || undefined} data-dragging={isDragging || undefined} data-settling={affection === 'float' || affection === 'dizzy' || undefined}
       data-wandering={status.state === 'WANDERING' || undefined}
       data-whale-pet="widget" data-pet-theme={preferences.theme} lang={lang}
       className="petWidget"

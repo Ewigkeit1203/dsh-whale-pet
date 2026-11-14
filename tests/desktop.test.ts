@@ -14,21 +14,23 @@ function page(options:{react?:boolean,bundle?:boolean,register?:boolean,storage?
   const React={createElement:(type:any,props:any)=>({type,props})}
   const frames:Function[]=[]
   const window:any={addEventListener:listen,requestAnimationFrame:(fn:Function)=>frames.push(fn),dispatchEvent(event:any){for(const fn of listeners.get(event.type)??[])fn(event)},
-    whaleDesktop:{setInteractive:(v:boolean)=>sent.push(['interactive',v]),setFocus:(v:boolean)=>sent.push(['focus',v]),onCommand:(fn:Function)=>listen('command',fn)}}
+    whaleDesktop:{setInteractive:(v:boolean)=>sent.push(['interactive',v]),setFocus:(v:boolean)=>sent.push(['focus',v]),onCommand:(fn:Function)=>listen('command',fn),onLink:(fn:Function)=>listen('link',fn),sendToDsh:(id:string,text:string)=>sent.push(['send',id,text])}}
   if(options.react!==false)window.__WhaleDesktopReact={React,createRoot:(node:any)=>({render:(element:any)=>rendered.push([node,element])})}
   const docEvents:string[]=[]
   const document:any={documentElement:html,body,getElementById:(id:string)=>id==='whale-desktop-root'?root:null,createElement:()=>({}),elementFromPoint:()=>under,addEventListener:listen,
     hasFocus:()=>false,hidden:false,dispatchEvent(event:any){docEvents.push(event.type)}}
   const store:Record<string,string>={...(options.storage??{})}
   const localStorage={getItem:(k:string)=>k in store?store[k]:null,setItem:(k:string,v:string)=>{store[k]=String(v)}}
-  const context:any={window,document,localStorage,Event:class{type:string;constructor(type:string){this.type=type}},console}
+  const timers:Function[]=[]
+  const context:any={window,document,localStorage,Event:class{type:string;constructor(type:string){this.type=type}},CustomEvent:class{type:string;detail:any;constructor(type:string,init?:any){this.type=type;this.detail=init?.detail}},console,Date,
+    setTimeout:(fn:Function)=>timers.push(fn),clearTimeout:()=>{}}
   vm.createContext(context)
   vm.runInContext(read('shell.js'),context)
   const applied:any[]=[]
   if(options.bundle!==false)window.__ModuleLoader__.load({id:'dsh-whale-pet',factory(require:any){assert.equal(require('react'),React);assert.throws(()=>require('fs'));return{apply(ctx:any){applied.push(ctx);ctx.effect(()=>()=>{});ctx.inject(['remote'],()=>{throw Error('no DSH services on the desktop')});if(options.register!==false)ctx.slots.inject('shell.overlay',()=>ctx.slots.register({id:'dsh-whale-pet'},()=>'pet'))}}}})
   vm.runInContext(read('mount.js'),context)
   const fire=(type:string,event:any={})=>{for(const fn of listeners.get(type)??[])fn(event);if(type==='mousemove')for(const fn of frames.splice(0))fn()}
-  return{window,document,docEvents,store,frames,listeners,html,root,body,sent,rendered,notes,applied,fire,point(element:any){under=element}}
+  return{window,document,docEvents,store,frames,listeners,timers,html,root,body,sent,rendered,notes,applied,fire,point(element:any){under=element}}
 }
 
 test('Desktop companion: the shell lends React to the bundle and mounts what it registers in shell.overlay',()=>{
@@ -69,7 +71,7 @@ test('Desktop companion: the main process keeps the window transparent, on top, 
   const main=read('main.cjs'),preload=read('preload.cjs'),html=read('index.html')
   for(const needle of ['transparent: true','frame: false','skipTaskbar: true','setAlwaysOnTop(true','setIgnoreMouseEvents(true, { forward: true })','contextIsolation: true','nodeIntegration: false','sandbox: true','requestSingleInstanceLock','setWindowOpenHandler'])assert.ok(main.includes(needle),needle)
   assert.ok(!/nodeIntegration:\s*true|webSecurity:\s*false/.test(main))
-  assert.deepEqual([...preload.matchAll(/^\s+(\w+): /gm)].map(m=>m[1]),['setInteractive','setFocus','onCommand','onLink'],'the bridge exposes nothing else')
+  assert.deepEqual([...preload.matchAll(/^\s+(\w+): /gm)].map(m=>m[1]),['setInteractive','setFocus','onCommand','onLink','sendToDsh'],'the bridge exposes nothing else')
   assert.ok(html.indexOf('vendor/react.js')<html.indexOf('shell.js')&&html.indexOf('shell.js')<html.indexOf('../lib/client.js')&&html.indexOf('../lib/client.js')<html.indexOf('mount.js'),'load order')
   assert.ok(/background:\s*transparent/.test(html))
 })
@@ -125,4 +127,30 @@ test('Desktop companion: the click-to-run package carries exactly the runtime fi
   // The release attaches it as a separate download and checks it holds no model.
   const release=readFileSync(new URL('../.github/workflows/release.yml',import.meta.url),'utf8')
   assert.ok(release.includes('pnpm run package:desktop')&&release.includes('dsh-whale-pet-desktop-$tag-win-x64.zip')&&release.includes("'*.moc3'"))
+})
+
+test('Desktop companion: a question from her theatre goes to DSH and the outcome comes back; her theatre holds the keyboard while open',()=>{
+  const p=page()
+  const results:string[]=[]
+  p.window.__whaleDesktopShell.sendToDsh('今天吃什么',(r:string)=>results.push(r))
+  const [kind,id,text]=p.sent.find((s:any)=>s[0]==='send')
+  assert.equal(kind,'send');assert.equal(text,'今天吃什么')
+  p.fire('link',{type:'ack',id:'someone-else',result:'sent'});assert.deepEqual(results,[],'only its own answer')
+  p.fire('link',{type:'ack',id,result:'no-composer'});assert.deepEqual(results,['no-composer'])
+  p.fire('link',{type:'ack',id,result:'sent'});assert.deepEqual(results,['no-composer'],'settled once')
+  // No answer at all: reported as failed (after 20 s).
+  p.window.__whaleDesktopShell.sendToDsh('还在吗',(r:string)=>results.push(r));for(const fn of p.timers.splice(0))fn()
+  assert.deepEqual(results,['no-composer','failed'])
+  // Theatre: the tray / shortcut command toggles it; while open the window keeps the keyboard on any click.
+  let toggled=0;p.listeners.set('dsh-whale-pet:toggle-theatre',[()=>toggled++]);p.fire('command','theatre');assert.equal(toggled,1)
+  p.sent.length=0
+  p.window.__whaleDesktopShell.theatre(true);assert.deepEqual(p.sent,[['focus',true],['interactive',true]],'open: keyboard and the whole mouse')
+  p.fire('pointerdown',{target:{closest:()=>null}});assert.deepEqual(p.sent,[['focus',true],['interactive',true]],'clicking the stage keeps the keyboard')
+  p.window.__whaleDesktopShell.theatre(false);assert.deepEqual(p.sent,[['focus',true],['interactive',true],['focus',false],['interactive',false]],'closed: back to the user')
+  // The theatre's own controls take the mouse even though her root lets clicks through elsewhere.
+  assert.match(read('index.html'),/body\.dsh-galgame-mode #whale-desktop-root \{ pointer-events: auto; \}/)
+  // Her notices stay readable in the theatre: white text over the theme colour, above the dialogue box.
+  const css=readFileSync(new URL('../src/client/PetOverlay.module.css',import.meta.url),'utf8'),gal=readFileSync(new URL('../src/client/galgame.css',import.meta.url),'utf8')
+  assert.match(css,/\[data-whale-pet\]\.petToast\[data-pet-theme\] \{ color: #fff; \}/)
+  assert.match(gal,/\[data-whale-pet="toast"\]\.petToast \{ bottom: calc\(var\(--box-bottom\) \+ max\(var\(--box-h\), 200px\) \+ 18px\)/)
 })

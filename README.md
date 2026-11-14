@@ -87,18 +87,18 @@
 
 **👉 [操作说明](docs/USER_GUIDE.zh-CN.md)**：安装、互动、探头、剧场、Live2D 导入、设置和快捷键都在这里。
 
-### 最新版本：v0.8.1
+### 最新版本：v0.8.2
 
-- **余额与提醒：** 五种明确的余额状态、详情与刷新/重试入口、可配置头顶标签和每日低余额提醒。后台完成回答后可标记标题，回来时提醒一次，也可关闭。
-- **上手与导入：** 三步引导移到角色身旁，新增本机互动图鉴；Live2D 导入卡提供获取链接、进度和文件夹拖放。
-- **安装目录整理：** 只需双击根目录 install.bat 或 uninstall.bat；必需的 PowerShell 辅助脚本放在 installer/，请保留该文件夹。启动器仍兼容旧版根目录脚本布局。
-- 修复账户切换串余额、正常回答错误码误报、异常图鉴日期、提醒关闭后残留，以及摸尾巴触发戳人生气的问题。
+- **桌面模式（预览）：** 她可以待在系统桌面上，透明置顶、不挡点击，DSH 开着时自动联动（思考、回答、干饭、余额）。Releases 里有点击即可运行的 Windows 版 `DaFeiYu.exe`。
+- **在桌面上直接提问：** **Alt+Shift+T** 打开桌面剧场，问题交给 DSH 发送，回答显示在桌面上，不用切换窗口。
+- **探头更清爽：** 头顶只留“设置｜回来”小块；探头时开设置她不动；回来时先转正再走回去；Live2D 手臂连成一条，不再瞬移。
+- 新的待机表情、看得清的剧场提示，以及新的[操作说明](docs/USER_GUIDE.zh-CN.md)。
 
-完整说明见 [v0.8.1 发布说明](docs/releases/v0.8.1.md)。更早版本的更新内容请看[更新日志](CHANGELOG.md#chinese)。
+完整说明见 [v0.8.2 发布说明](docs/releases/v0.8.2.md)。更早版本的更新内容请看[更新日志](CHANGELOG.md#chinese)。
 
 ### 安装或升级
 
-1. 从 [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) 下载 **dsh-whale-pet-v0.8.1.zip**。
+1. 从 [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) 下载 **dsh-whale-pet-v0.8.2.zip**。
 2. 完整解压到固定文件夹，例如 `D:\dsh-whale-pet`。
 3. 双击 `install.bat`，再打开 DSH，或在已打开的窗口中按 **Ctrl + R** 刷新。
 4. 升级时覆盖同一目录中的插件文件；若换了目录，请重新运行安装脚本。解压后的文件需要保留。
@@ -143,7 +143,7 @@ npm test
 node --check lib/client.js
 ```
 
-构建会把界面、状态机、宿主适配器、CSS 和 20 张插画编入 DSH `__ModuleLoader__` 使用的 `lib/client.js`。请修改源码后重新构建，不要手动编辑 `lib/client.js`。当前共有 **209 项自动测试**。
+构建会把界面、状态机、宿主适配器、CSS 和 20 张插画编入 DSH `__ModuleLoader__` 使用的 `lib/client.js`。请修改源码后重新构建，不要手动编辑 `lib/client.js`。当前共有 **213 项自动测试**。
 
 ### 贡献者与致谢
 
@@ -176,18 +176,18 @@ The product name is **大肥鱼** in both languages; `dsh-whale-pet` remains the
 
 **👉 [User guide](docs/USER_GUIDE.md)**: installing, playing with her, peeking, the theatre, importing the Live2D model, settings and shortcuts.
 
-### Latest release: v0.8.1
+### Latest release: v0.8.2
 
-- **Balance and reminders:** five clear balance states, refresh/retry details, configurable head chips and a daily low-balance reminder. Answers completed while DSH is in the background can mark the title and greet you once when you return; reminders can be disabled.
-- **Getting started:** a three-step guide beside her, a local interaction gallery and a clearer Live2D import card with the model download link, progress and folder drop support.
-- **Installer layout:** double-click the root install.bat or uninstall.bat. Their required PowerShell helper is in installer/; keep that folder with the package. Legacy root-level helper layouts remain supported.
-- Fixes: account changes cannot retain the previous balance, normal answers mentioning error codes do not trigger quota warnings, invalid gallery dates are ignored, disabled reminders cancel pending greetings, and tail strokes no longer trigger poke anger.
+- **Desktop mode (preview):** she can live on your desktop, transparent and always on top without blocking clicks, and follows DSH automatically (thinking, answering, rice break, balance). Releases include a click-to-run Windows app, `DaFeiYu.exe`.
+- **Ask from the desktop:** **Alt+Shift+T** opens her theatre on the desktop; questions go through DSH and the answer appears on the desktop, no window switching.
+- **Tidier peeking:** one small Settings | Come back block above her head; Settings while peeking leaves her in place; coming back she straightens up first, then walks home; the Live2D arm stays in one piece with no jump.
+- A new idle face, readable theatre notices and a new [user guide](docs/USER_GUIDE.md).
 
-Full notes: [v0.8.1](docs/releases/v0.8.1.md). Earlier versions are in the [changelog](CHANGELOG.md#english).
+Full notes: [v0.8.2](docs/releases/v0.8.2.md). Earlier versions are in the [changelog](CHANGELOG.md#english).
 
 ### Install or upgrade
 
-1. Download **dsh-whale-pet-v0.8.1.zip** from [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases).
+1. Download **dsh-whale-pet-v0.8.2.zip** from [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases).
 2. Extract the entire archive into a permanent folder, such as `D:\dsh-whale-pet`.
 3. Run `install.bat`, then open DSH or press **Ctrl + R** in its window.
 4. Upgrade in the same folder, or rerun the installer if you moved the plugin. Keep the extracted files in place.
@@ -232,7 +232,7 @@ npm test
 node --check lib/client.js
 ```
 
-The build compiles the views, state, host adapter, CSS and all 20 illustrations into `lib/client.js` for DSH's `__ModuleLoader__`. Edit the source and rebuild; do not edit `lib/client.js` by hand. Current automated suite: **209 tests**.
+The build compiles the views, state, host adapter, CSS and all 20 illustrations into `lib/client.js` for DSH's `__ModuleLoader__`. Edit the source and rebuild; do not edit `lib/client.js` by hand. Current automated suite: **213 tests**.
 
 ### Contributors and acknowledgements
 

@@ -8,6 +8,7 @@
  * Nothing here can run code or touch files on either side: the only message is a status snapshot.
  */
 import type { BalanceSnapshot, PetStatusInfo } from './types.js';
+import type { ComposerResult } from './dsh-composer.js';
 export declare const DESKTOP_LINK: {
     readonly ports: readonly [38917, 38918, 38919, 38920, 38921];
     readonly app: "dsh-whale-pet-desktop";
@@ -19,6 +20,10 @@ export declare const DESKTOP_LINK: {
     /** Looking for the companion: quickly at first, then less often while it is not running. */
     readonly scanMs: readonly [3000, 5000, 10000, 30000, 60000];
     readonly helloTimeoutMs: 800;
+    /** GET /commands is held open by the companion for up to 20 s; give up a little later. */
+    readonly commandWaitMs: 25000;
+    /** The longest question the desktop theatre may hand to DSH. */
+    readonly commandTextLimit: 20000;
     /** Longer answers are cut (the desktop bubble shows the end, the theatre will page). */
     readonly textLimit: 60000;
 };
@@ -64,12 +69,22 @@ export type DesktopLinkState = {
 };
 /** The latest link state, for the settings panel (the link may start before the panel mounts). */
 export declare function desktopLinkState(): DesktopLinkState;
+/** A question typed in the desktop theatre, to be sent through DSH's own composer. */
+export interface LinkCommand {
+    type: 'send';
+    id: string;
+    text: string;
+}
+/** Checks a command from the companion; anything else is ignored. */
+export declare function readLinkCommand(value: unknown): LinkCommand | null;
 interface LinkDeps {
     fetch: typeof fetch;
     setTimeout: (fn: () => void, ms: number) => unknown;
     clearTimeout: (timer: any) => void;
     now: () => number;
     onState?: (state: DesktopLinkState) => void;
+    /** DSH: send a question from the desktop theatre and report how it went. */
+    onCommand?: (command: LinkCommand, done: (result: ComposerResult) => void) => void;
 }
 /**
  * DSH: find the companion and keep it up to date. Returns a stop function.

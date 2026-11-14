@@ -401,6 +401,6 @@ export function TheatreView(v: TheatreViewProps) {
       </article>) : <p>{t('当前页面暂无已加载记录。', 'No loaded messages on this page.')}</p>}
     </aside>}
 
-    {v.toast && <div data-whale-pet="toast" data-pet-theme={p.theme} className="petToast" role="status">{v.toast}</div>}
+    {v.toast && <div data-whale-pet="toast" data-pet-theme={p.theme} data-expanded={v.expanded} className="petToast" role="status">{v.toast}</div>}
   </React.Fragment>
 }

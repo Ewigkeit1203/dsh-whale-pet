@@ -137,3 +137,59 @@ test('Desktop link server: loopback only, DSH origin only, preflight for the pri
   await new Promise(r => setTimeout(r, 1100))
   assert.equal(states.at(-1).connected, false, 'no push for 6 s: DSH is gone')
 })
+
+test('Desktop link server: a question waits for DSH, is handed over at once, acknowledged, and dropped when too old', async t => {
+  let clock = 1000
+  const acks: [string, string][] = []
+  const server = createLinkServer({ ports: [47221], now: () => clock, pollMs: 400, onSnapshot() {}, onState() {}, onAck: (id: string, result: string) => acks.push([id, result]) })
+  t.after(() => server.close())
+  const port = await server.start()
+  assert.equal(server.enqueue('q1', '在吗'), false, 'not connected yet: nothing to send it')
+  await request(port, { method: 'POST', path: '/push', body: '{"v":1}' })
+  // DSH is waiting: the question goes out immediately.
+  const waiting = request(port, { path: '/commands' })
+  await new Promise(r => setTimeout(r, 50))
+  assert.equal(server.enqueue('q1', '在吗'), true)
+  assert.deepEqual(JSON.parse((await waiting).body), { commands: [{ type: 'send', id: 'q1', text: '在吗' }] })
+  // Nothing to send: the wait ends empty after pollMs.
+  assert.deepEqual(JSON.parse((await request(port, { path: '/commands' })).body), { commands: [] })
+  // DSH reports the outcome.
+  assert.equal((await request(port, { method: 'POST', path: '/ack', body: JSON.stringify({ id: 'q1', result: 'sent' }) })).status, 200)
+  assert.equal((await request(port, { method: 'POST', path: '/ack', body: JSON.stringify({ id: 'q1', result: 'rm -rf' }) })).status, 400, 'only known outcomes')
+  assert.deepEqual(acks, [['q1', 'sent']])
+  // Only DSH may pick questions up.
+  assert.equal((await request(port, { path: '/commands', origin: 'https://evil.example' })).status, 403)
+  // Not picked up in 15 s: reported failed, never sent late.
+  assert.equal(server.enqueue('q2', '晚到的问题'), true)
+  clock += 16000
+  assert.deepEqual(JSON.parse((await request(port, { path: '/commands' })).body), { commands: [] })
+  assert.deepEqual(acks.at(-1), ['q2', 'failed'])
+  assert.equal(server.enqueue('q3', 'x'.repeat(20001)), false, 'too long')
+})
+
+test('DSH link: questions from the desktop are sent through DSH\'s composer and acknowledged', async t => {
+  const { readLinkCommand } = await import('../lib/client/desktop-link.js')
+  assert.deepEqual(readLinkCommand({ type: 'send', id: 'a', text: 'hi' }), { type: 'send', id: 'a', text: 'hi' })
+  for (const bad of [null, { type: 'run', id: 'a', text: 'x' }, { type: 'send', id: '', text: 'x' }, { type: 'send', id: 'a', text: '   ' }, { type: 'send', id: 'a', text: 'x'.repeat(20001) }]) assert.equal(readLinkCommand(bad), null)
+  const dsh = new PetStateMachine(); t.after(() => dsh.dispose())
+  const posted: string[] = []
+  let served = false
+  const fetch = async (url: string, init?: any) => {
+    const path = url.split(/:\d+/)[1]
+    if (path === '/hello') return { ok: true, status: 200, json: async () => ({ app: DESKTOP_LINK.app, v: 1 }) }
+    if (path === '/push') return { ok: true, status: 200, json: async () => ({ ok: true }) }
+    if (path === '/ack') { posted.push(init.body); return { ok: true, status: 200, json: async () => ({ ok: true }) } }
+    if (path === '/commands') {
+      if (served) return new Promise(() => {}) // keeps waiting, like the companion
+      served = true
+      return { ok: true, status: 200, json: async () => ({ commands: [{ type: 'send', id: 'q9', text: '今天吃什么' }, { type: 'exec', id: 'x', text: 'calc' }] }) }
+    }
+    throw new TypeError('unexpected ' + url)
+  }
+  const asked: string[] = []
+  const stop = startDesktopLink(dsh, { fetch: fetch as any, onCommand: (command, done) => { asked.push(command.text); done('sent') } })
+  t.after(stop)
+  for (let i = 0; i < 50 && !posted.length; i++) await new Promise(r => setTimeout(r, 10))
+  assert.deepEqual(asked, ['今天吃什么'], 'only the send command, once')
+  assert.deepEqual(posted.map(b => JSON.parse(b)), [{ id: 'q9', result: 'sent' }])
+})

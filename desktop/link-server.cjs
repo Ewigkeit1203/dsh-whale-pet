@@ -3,7 +3,11 @@
  * posts her status to. See src/client/desktop-link.ts for the page's end.
  *
  * Safety: loopback only; only DSH's page origin; only the Host names of this machine (no DNS rebinding);
- * two fixed routes; a size cap; the body is handed to her page as data and never executed or stored.
+ * four fixed routes; a size cap; the body is handed to her page as data and never executed or stored.
+ *
+ * The other direction (a question asked in the desktop theatre): DSH's page keeps one GET /commands open;
+ * enqueue() answers it at once, the page sends the text through DSH's own composer and reports the outcome
+ * with POST /ack. The only command is "send this text"; questions older than 15 s are dropped, not sent late.
  */
 const http = require('node:http')
 
@@ -15,10 +19,16 @@ const LINK = {
   maxBody: 512 * 1024,
   /** No push for this long: DSH is gone (it pushes at least every 2 s). */
   silenceMs: 6000,
+  /** How long GET /commands is held open when there is nothing to send. */
+  pollMs: 20000,
+  /** A question DSH did not pick up within this time is reported as failed instead of sent late. */
+  commandTtlMs: 15000,
+  maxText: 20000,
 }
+const RESULTS = new Set(['sent', 'no-composer', 'no-button', 'failed'])
 
 /**
- * @param {{ onSnapshot(snapshot: unknown): void, onState(state: { connected: boolean, port: number | null, rejected: string | null }): void, ports?: number[], origins?: string[], now?: () => number }} options
+ * @param {{ onSnapshot(snapshot: unknown): void, onState(state: { connected: boolean, port: number | null, rejected: string | null }): void, onAck?(id: string, result: string): void, ports?: number[], origins?: string[], now?: () => number, pollMs?: number }} options
  */
 function createLinkServer(options) {
   const ports = options.ports || LINK.ports
@@ -28,6 +38,24 @@ function createLinkServer(options) {
   let lastPush = 0
   let server = null
   let watch = null
+  /** @type {{ id: string, text: string, at: number }[]} */
+  let queue = []
+  /** @type {null | { respond(commands: object[]): void }} */
+  let waiter = null
+  const pollMs = options.pollMs || LINK.pollMs
+  const ack = (id, result) => { if (options.onAck) options.onAck(id, result) }
+  /** Drops questions nobody picked up in time (reported as failed), then hands the rest to a waiting DSH. */
+  function flush() {
+    const fresh = []
+    for (const command of queue) { if (now() - command.at > LINK.commandTtlMs) ack(command.id, 'failed'); else fresh.push(command) }
+    queue = fresh
+    if (!waiter || !queue.length) return
+    const commands = queue.map(command => ({ type: 'send', id: command.id, text: command.text }))
+    queue = []
+    const current = waiter
+    waiter = null
+    current.respond(commands)
+  }
 
   const report = () => options.onState({ ...state })
   const setConnected = connected => { if (state.connected !== connected) { state.connected = connected; report() } }
@@ -57,6 +85,28 @@ function createLinkServer(options) {
     const path = (request.url || '').split('?')[0]
     if (request.method === 'OPTIONS') { response.writeHead(204, cors); response.end(); return }
     if (request.method === 'GET' && path === '/hello') { json(200, { app: LINK.app, v: LINK.version }); return }
+    if (request.method === 'GET' && path === '/commands') {
+      if (waiter) waiter.respond([])
+      let done = false
+      const timer = setTimeout(() => entry.respond([]), pollMs)
+      const entry = { respond(commands) { if (done) return; done = true; clearTimeout(timer); if (waiter === entry) waiter = null; json(200, { commands }) } }
+      request.on('close', () => { if (!done) { done = true; clearTimeout(timer); if (waiter === entry) waiter = null } })
+      waiter = entry
+      flush()
+      return
+    }
+    if (request.method === 'POST' && path === '/ack') {
+      let body = ''
+      request.on('data', chunk => { body += chunk; if (body.length > 1024) request.destroy() })
+      request.on('end', () => {
+        let message
+        try { message = JSON.parse(body) } catch { json(400, { ok: false }); return }
+        if (!message || typeof message.id !== 'string' || message.id.length > 64 || !RESULTS.has(message.result)) { json(400, { ok: false }); return }
+        ack(message.id, message.result)
+        json(200, { ok: true })
+      })
+      return
+    }
     if (request.method === 'POST' && path === '/push') {
       let size = 0
       const chunks = []
@@ -91,18 +141,31 @@ function createLinkServer(options) {
 
   return {
     state,
+    /** A question typed in the desktop theatre, for DSH to send. False when DSH is not connected. */
+    enqueue(id, text) {
+      if (!state.connected || typeof id !== 'string' || !id || id.length > 64 || typeof text !== 'string' || !text.trim() || text.length > LINK.maxText) return false
+      queue.push({ id, text, at: now() })
+      flush()
+      return true
+    },
     async start() {
       const found = await listenOn(0)
       state.started = true
       if (!found) { report(); return null }
       server = found.server
       state.port = found.port
-      watch = setInterval(() => { if (state.connected && now() - lastPush > LINK.silenceMs) setConnected(false) }, 1000)
+      watch = setInterval(() => {
+        if (state.connected && now() - lastPush > LINK.silenceMs) setConnected(false)
+        flush()
+      }, 1000)
       if (watch.unref) watch.unref()
       report()
       return found.port
     },
     close() {
+      if (waiter) waiter.respond([])
+      for (const command of queue) ack(command.id, 'failed')
+      queue = []
       if (watch) clearInterval(watch)
       if (server) server.close()
       server = null

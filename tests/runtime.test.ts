@@ -716,6 +716,9 @@ test('browser bundle: peeking shows only a small settings / come-back menu; sett
  walk(tree).find(n=>n.children.includes('设置')).props.onClick();tree=runtime.render();assert.equal(tree.props['data-docked'],true)
  peek().props.onClick();tree=runtime.render();assert.deepEqual({...tree.props.style},origin)
  assert.ok(walk(tree).some(n=>n.props.className==='toolbar'),'back with her: the full menu returns');assert.equal(bar(),undefined)
+ // Coming back: the return transitions are on from the very render that undocks her (straighten up first, then slide).
+ peek().props.onClick();tree=runtime.render();assert.equal(tree.props['data-returning'],undefined,'not while going out')
+ peek().props.onClick();tree=runtime.render();assert.equal(tree.props['data-docked'],false);assert.equal(tree.props['data-returning'],true,'on the first frame back')
 })
 
 test('browser bundle: custom peek shortcut toggles only once, displays beside the button and always peeks from the right',t=>{

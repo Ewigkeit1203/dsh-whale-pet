@@ -118,6 +118,11 @@
   transition: left .28s cubic-bezier(.2, .8, .2, 1), top .28s cubic-bezier(.2, .8, .2, 1);
 }
 .petWidget[data-whale-pet][data-docked="true"] { transition: left .7s cubic-bezier(.25,.1,.25,1), top .7s cubic-bezier(.25,.1,.25,1); }
+/* Coming back from the edge: she straightens up quickly (about .3s, still around her peeking pivot) while
+   the slide home eases in and out over .75s, so she is upright well before she arrives and travels the
+   rest of the way standing straight. */
+.petWidget[data-whale-pet][data-returning] { transition: left .75s cubic-bezier(.45,0,.3,1), top .75s cubic-bezier(.45,0,.3,1); }
+[data-whale-pet][data-returning] .petSpriteSize { transform-origin: 50% 14%; transition: transform .3s cubic-bezier(.2,.7,.3,1); }
 [data-whale-pet][data-docked="true"] .puppetRoot { filter: none; }
 [data-whale-pet][data-docked="true"] .puppetCanvas { animation: none; }
 [data-whale-pet][data-docked="true"] .characterBase { cursor: default; }
@@ -209,7 +214,7 @@
 [data-whale-pet] .petPeekBtn.petEdgePeek { color: var(--wp-accent); }
 [data-whale-pet] .petPeekBtn kbd { font: 10px var(--wp-mono); opacity: .7; padding-left: 2px; }
 [data-whale-pet] .petPeekSep { width: 1px; height: 12px; background: var(--wp-line-strong); }
-@media (prefers-reduced-motion: reduce) { [data-whale-pet] .petSpriteSize { transition: none; } }
+@media (prefers-reduced-motion: reduce) { [data-whale-pet] .petSpriteSize { transition: none !important; } }
 [data-whale-pet] .toolBtn:hover { background: var(--wp-control-hover); }
 [data-whale-pet] .toolBtn svg { flex: none; opacity: .85; }
 [data-whale-pet] .toolBtnPrimary { background: var(--wp-accent-soft); color: var(--wp-accent); }
@@ -324,6 +329,9 @@
 @keyframes wpFloat { 30% { transform: translateY(-10px); } 65% { transform: translateY(3px); } }
 
 /* Toast + onboarding */
+/* Its own colours win over the theme's text colour on [data-whale-pet][data-pet-theme] (the theatre's toast
+   carries both attributes, and dark ink on the dark toast was unreadable). */
+.petToast, [data-whale-pet].petToast[data-pet-theme] { color: #fff; }
 .petToast {
   position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 1000005;
   padding: 10px 18px; border-radius: 12px;
