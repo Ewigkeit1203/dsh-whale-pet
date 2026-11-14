@@ -9,6 +9,9 @@
   /* The desktop has no DSH theme: her own variables fall back to their defaults. */
   body { font-family: "Microsoft YaHei UI", "PingFang SC", "Segoe UI", system-ui, sans-serif; font-size: 14px; }
   #whale-desktop-root { position: fixed; inset: 0; pointer-events: none; }
+  /* Her theatre is a full stage opened on purpose: like in DSH, all of it takes the mouse (the text box,
+     its buttons, Exit, clicking to turn the page) until it is closed. */
+  body.dsh-galgame-mode #whale-desktop-root { pointer-events: auto; }
   /* Background blur means nothing over a transparent window yet costs a full-strength blur pass every
      frame: solid surfaces on the desktop. */
   html[data-whale-desktop] *, html[data-whale-desktop] *::before, html[data-whale-desktop] *::after { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }

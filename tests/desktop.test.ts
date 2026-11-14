@@ -144,7 +144,9 @@ test('Desktop companion: a question from her theatre goes to DSH and the outcome
   // Theatre: the tray / shortcut command toggles it; while open the window keeps the keyboard on any click.
   let toggled=0;p.listeners.set('dsh-whale-pet:toggle-theatre',[()=>toggled++]);p.fire('command','theatre');assert.equal(toggled,1)
   p.sent.length=0
-  p.window.__whaleDesktopShell.theatre(true);assert.deepEqual(p.sent,[['focus',true]])
-  p.fire('pointerdown',{target:{closest:()=>null}});assert.deepEqual(p.sent,[['focus',true]],'clicking the stage keeps the keyboard')
-  p.window.__whaleDesktopShell.theatre(false);assert.deepEqual(p.sent,[['focus',true],['focus',false]],'closed: back to the user')
+  p.window.__whaleDesktopShell.theatre(true);assert.deepEqual(p.sent,[['focus',true],['interactive',true]],'open: keyboard and the whole mouse')
+  p.fire('pointerdown',{target:{closest:()=>null}});assert.deepEqual(p.sent,[['focus',true],['interactive',true]],'clicking the stage keeps the keyboard')
+  p.window.__whaleDesktopShell.theatre(false);assert.deepEqual(p.sent,[['focus',true],['interactive',true],['focus',false],['interactive',false]],'closed: back to the user')
+  // The theatre's own controls take the mouse even though her root lets clicks through elsewhere.
+  assert.match(read('index.html'),/body\.dsh-galgame-mode #whale-desktop-root \{ pointer-events: auto; \}/)
 })

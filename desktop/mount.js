@@ -30,8 +30,11 @@
   desktop.theatre = function (open) {
     theatreOpen = Boolean(open)
     if (theatreOpen !== focused) { focused = theatreOpen; if (bridge) bridge.setFocus(theatreOpen) }
+    // The open theatre covers the screen and takes the whole mouse; closed, only she does again.
+    setInteractive(theatreOpen)
   }
   function hers(x, y) {
+    if (theatreOpen) return true
     var element = document.elementFromPoint(x, y)
     return Boolean(element && element !== document.documentElement && element !== document.body && element !== root)
   }
