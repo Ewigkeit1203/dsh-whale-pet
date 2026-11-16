@@ -87,7 +87,11 @@
 
 **👉 [操作说明](docs/USER_GUIDE.zh-CN.md)**：安装、互动、探头、剧场、Live2D 导入、设置和快捷键都在这里。
 
-### 最新版本：v0.8.3
+### 最新版本：v0.8.4
+
+- **修复：桌面剧场的回顾读不到消息。** DSH 把会话标识放在标题栏、消息排在它旁边时，回顾现在也能读到；同一范围里出现别的会话时宁可不显示，绝不混在一起。
+
+v0.8.4 是 v0.8.3 的修复版。v0.8.3 带来了：
 
 - **只有一个她：** 桌面版连上并显示她时，DSH 里的她暂时离开；桌面版隐藏、退出或断开后她回到 DSH。
 - **去桌面／回 DSH：** 设置最上面的大按钮，一键让她去桌面或回到 DSH，也能直接进入剧场。
@@ -96,11 +100,11 @@
 
 桌面模式（预览）：她可以待在系统桌面上，透明置顶、不挡点击，DSH 开着时自动联动；Releases 里有点击即可运行的 Windows 版 `DaFeiYu.exe`，**Alt+Shift+T** 打开桌面剧场直接提问。
 
-完整说明见 [v0.8.3 发布说明](docs/releases/v0.8.3.md)。更早版本的更新内容请看[更新日志](CHANGELOG.md#chinese)。
+完整说明见 [v0.8.4](docs/releases/v0.8.4.md) 和 [v0.8.3](docs/releases/v0.8.3.md) 发布说明。更早版本的更新内容请看[更新日志](CHANGELOG.md#chinese)。
 
 ### 安装或升级
 
-1. 从 [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) 下载 **dsh-whale-pet-v0.8.3.zip**。
+1. 从 [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) 下载 **dsh-whale-pet-v0.8.4.zip**。
 2. 完整解压到固定文件夹，例如 `D:\dsh-whale-pet`。
 3. 双击 `install.bat`，再打开 DSH，或在已打开的窗口中按 **Ctrl + R** 刷新。
 4. 升级时覆盖同一目录中的插件文件；若换了目录，请重新运行安装脚本。解压后的文件需要保留。
@@ -178,7 +182,11 @@ The product name is **大肥鱼** in both languages; `dsh-whale-pet` remains the
 
 **👉 [User guide](docs/USER_GUIDE.md)**: installing, playing with her, peeking, the theatre, importing the Live2D model, settings and shortcuts.
 
-### Latest release: v0.8.3
+### Latest release: v0.8.4
+
+- **Fix: Log in the desktop theatre found no messages.** When DSH puts the conversation identity on a header beside the messages, Log now reads them; if another conversation shows up in the same scope it shows nothing rather than mixing them.
+
+v0.8.4 is a fix release for v0.8.3, which brought:
 
 - **Only one of her:** while the desktop app is connected and shows her, she steps out of DSH; she comes back when it hides, quits or disconnects.
 - **To the desktop and back:** large buttons at the top of Settings send her to the desktop or back into DSH, or open the theatre.
@@ -187,11 +195,11 @@ The product name is **大肥鱼** in both languages; `dsh-whale-pet` remains the
 
 Desktop mode (preview): she can live on your desktop, transparent and always on top without blocking clicks, following DSH automatically; Releases include a click-to-run Windows app, `DaFeiYu.exe`, and **Alt+Shift+T** opens her theatre there to ask directly.
 
-Full notes: [v0.8.3](docs/releases/v0.8.3.md). Earlier versions are in the [changelog](CHANGELOG.md#english).
+Full notes: [v0.8.4](docs/releases/v0.8.4.md) and [v0.8.3](docs/releases/v0.8.3.md). Earlier versions are in the [changelog](CHANGELOG.md#english).
 
 ### Install or upgrade
 
-1. Download **dsh-whale-pet-v0.8.3.zip** from [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases).
+1. Download **dsh-whale-pet-v0.8.4.zip** from [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases).
 2. Extract the entire archive into a permanent folder, such as `D:\dsh-whale-pet`.
 3. Run `install.bat`, then open DSH or press **Ctrl + R** in its window.
 4. Upgrade in the same folder, or rerun the installer if you moved the plugin. Keep the extracted files in place.

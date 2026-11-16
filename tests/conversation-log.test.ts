@@ -42,7 +42,7 @@ test('Conversation history: reads only the active session and excludes the compa
     return value
   })
   messages.push(node('assistant-step', 'must exclude the companion', true))
-  const active: any = { getAttribute: () => 'session-a', querySelectorAll: () => messages }
+  const active: any = { getAttribute: () => 'session-a', querySelectorAll: (selector: string) => selector === '[data-conversation-session]' ? [] : messages }
   const root: any = { querySelector: () => active, querySelectorAll() { throw Error('Must not scan other conversations') } }
   const log = loadedConversationLog('page-a', root)
   assert.deepEqual(log.context, context)
@@ -51,4 +51,24 @@ test('Conversation history: reads only the active session and excludes the compa
   const missing: any = { querySelector: () => null }
   assert.deepEqual(currentConversationContext('page-a', missing), { source: 'page-a', session: null })
   assert.deepEqual(loadedConversationLog('page-a', missing), { context: { source: 'page-a', session: null }, status: 'unavailable', entries: [], truncated: false })
+})
+
+test('Conversation history: a session header can sit beside its messages, but ambiguous scopes never merge conversations', () => {
+  const node: any = { parentElement: null, closest: () => null, getAttribute: () => 'user-prompt',
+    cloneNode: () => ({ textContent: 'loaded sibling message', querySelectorAll: () => [] }) }
+  const marker: any = { parentElement: null, getAttribute: () => 'session-a', querySelectorAll: () => [] }
+  const other: any = { getAttribute: () => 'session-b' }
+  let ambiguous = false
+  const scope: any = { parentElement: null, getAttribute: () => null,
+    querySelectorAll: (selector: string) => selector === '[data-conversation-session]' ? (ambiguous ? [marker, other] : [marker]) : [node] }
+  marker.parentElement = scope; node.parentElement = scope
+  const root: any = { querySelector: () => marker }
+  assert.deepEqual(loadedConversationLog('page-a', root).entries, [{ role: 'user', text: 'loaded sibling message' }])
+  ambiguous = true
+  assert.deepEqual(loadedConversationLog('page-a', root), { context, status: 'unavailable', entries: [], truncated: false })
+  // A caller's scoped root is a hard boundary, even when a parent outside it contains messages.
+  marker.parentElement = scope
+  const restricted: any = { querySelector: () => marker, querySelectorAll: () => [], parentElement: scope }
+  marker.parentElement = restricted
+  assert.deepEqual(loadedConversationLog('page-a', restricted).entries, [])
 })

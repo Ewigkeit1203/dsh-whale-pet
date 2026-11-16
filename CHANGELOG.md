@@ -7,6 +7,10 @@
 <a name="english"></a>
 ## English
 
+### [v0.8.4] - 2026-11-15
+
+- **Fix: Log in the desktop theatre found no messages** when DSH puts the conversation identity on a header beside the messages. Log now reads the nearest scope that holds the messages, within the page it was given, and only when every conversation marker in it is the current one; otherwise it shows nothing rather than mixing conversations.
+
 ### [v0.8.3] - 2026-11-15
 
 - **Only one of her.** While the desktop app is connected and shows her, she steps out of DSH and comes back when it hides, quits or disconnects; a normal quit tells DSH at once, and a stuck desktop app can no longer keep her hidden.
@@ -213,6 +217,10 @@
 
 <a name="chinese"></a>
 ## 中文版本
+
+### [v0.8.4] - 2026-11-15
+
+- **修复：桌面剧场的回顾读不到消息。** DSH 把会话标识放在标题栏、消息排在它旁边时，回顾会读取包含这些消息的最近范围（不超出给定页面），并且只在该范围里的会话标识都是当前会话时才显示；否则宁可不显示，绝不把不同会话混在一起。
 
 ### [v0.8.3] - 2026-11-15
 
