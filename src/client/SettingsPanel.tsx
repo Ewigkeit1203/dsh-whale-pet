@@ -32,6 +32,8 @@ export interface SettingsPanelProps {
   notify: () => void
   close: () => void
   openTheatre: () => void
+  /** Roadmap step 4: where she keeps you company. In DSH: go to the desktop; on the desktop: back into DSH. */
+  place?: { label: string; hint: string; go: () => void }
   live2d: Live2DSettings
   importLive2D: (files: File[]) => void
   /** Interactions found so far (id → first time), and a way to see the first-run guide again. */
@@ -47,7 +49,7 @@ const SIZE_STEPS = [0.5, 0.75, 1, 1.15, 1.3]
 const SIZE_NAMES = ['XS', 'S', 'M', 'L', 'XL']
 
 /** Plain render function (no hooks): header, scrollable body, fixed footer. */
-export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, quiet, reset, doctor, notify, close, openTheatre, live2d, importLive2D, removeLive2D, onSizeStart, discoveries, replayGuide, linkNote }: SettingsPanelProps) {
+export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, quiet, reset, doctor, notify, close, openTheatre, live2d, importLive2D, removeLive2D, onSizeStart, discoveries, replayGuide, linkNote, place }: SettingsPanelProps) {
   const t = (zh: string, en: string) => p.language === 'en' ? en : zh
   const selected = SIZE_STEPS.reduce((best, v) => Math.abs(v - p.scale) < Math.abs(best - p.scale) ? v : best)
   const sizeIndex = SIZE_STEPS.indexOf(selected)
@@ -79,6 +81,10 @@ export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, q
     </header>
 
     <div className="petSettingsBody">
+      <div className="petPlaceActions">
+        {place && <button type="button" className="petPlaceButton" data-pet-place onClick={place.go}><strong>{place.label}</strong><small>{place.hint}</small></button>}
+        <button type="button" className="petPlaceButton" data-pet-theatre onClick={openTheatre}><strong>{t('进入剧场模式', 'Open theatre')}</strong><small>{t('和她面对面聊天', 'Talk with her face to face')}</small></button>
+      </div>
       <section className="petWalletCard" data-status={wallet.status} data-low={wallet.low || undefined} aria-label={t('账户余额', 'Account balance')}>
         <div className="petWalletHead"><span>{t('账户余额', 'Account balance')}</span><span className="petWalletBadge">{walletBadge}</span></div>
         <dl className="petWalletFigures">
@@ -246,7 +252,6 @@ export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, q
 
     <footer className="petSettingsFooter">
       <p className="petUnofficial">{t('非官方社区插件', 'Unofficial community plugin')}</p>
-      <button type="button" className="petPrimary" onClick={openTheatre}>{t('进入剧场模式', 'Open theatre')}</button>
     </footer>
   </>
 }

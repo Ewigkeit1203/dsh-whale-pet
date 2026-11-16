@@ -77,7 +77,10 @@ function createWindow() {
   win.webContents.setWindowOpenHandler(({ url }) => { if (/^https?:/i.test(url)) shell.openExternal(url); return { action: 'deny' } })
   win.webContents.on('will-navigate', (event, url) => { if (url !== win.webContents.getURL()) { event.preventDefault(); if (/^https?:/i.test(url)) shell.openExternal(url) } })
   win.on('close', event => { if (!quitting) { event.preventDefault(); hideCompanion() } })
-  win.on('closed', () => { win = null })
+  // Only one of her (roadmap step 4): DSH's page hides its own copy while this window is really on screen.
+  win.on('show', () => { if (link) link.setShown(true) })
+  win.on('hide', () => { if (link) link.setShown(false) })
+  win.on('closed', () => { win = null; if (link) link.setShown(false) })
 }
 
 /** Shows or hides her; the page stops every frame while hidden (see shell.js). */
@@ -86,6 +89,7 @@ function showCompanion() {
   if (!win) return
   win.showInactive()
   win.webContents.send('whale-desktop:command', 'shown')
+  if (link) link.setShown(win.isVisible())
   refreshTray()
 }
 function hideCompanion() {
@@ -93,6 +97,7 @@ function hideCompanion() {
   if (!win) return
   win.hide()
   win.webContents.send('whale-desktop:command', 'hidden')
+  if (link) link.setShown(false)
   refreshTray()
 }
 function toggleVisible() {
@@ -152,6 +157,19 @@ app.whenReady().then(() => {
     if (!id) return
     if (!link || !link.enqueue(id, String(message.text || ''))) sendLink({ type: 'ack', id, result: 'failed' })
   })
+  // Her theatre's Log: DSH reads the messages loaded in its current conversation and posts them back.
+  // Read-only: the request carries nothing but its id. No link (or an older one) answers at once with no log.
+  ipcMain.on('whale-desktop:history', (event, message) => {
+    if (!win || event.sender !== win.webContents || !message || typeof message !== 'object') return
+    const id = String(message.id || '').slice(0, 64)
+    if (!id) return
+    if (!link || typeof link.enqueueHistory !== 'function' || !link.enqueueHistory(id)) sendLink({ type: 'history', id, log: null })
+  })
+  // Her settings: "back to DSH" hides this window; DSH's page then shows her there again.
+  ipcMain.on('whale-desktop:hide', event => {
+    if (!win || event.sender !== win.webContents) return
+    hideCompanion()
+  })
   ipcMain.on('whale-desktop:focus', (event, focus) => {
     if (!win || event.sender !== win.webContents) return
     if (focus) win.focus(); else win.blur()
@@ -160,8 +178,19 @@ app.whenReady().then(() => {
   link = createLinkServer({
     onSnapshot: snapshot => sendLink({ type: 'snapshot', snapshot }),
     onAck: (id, result) => sendLink({ type: 'ack', id, result }),
+    // The page checks the log (readLog) before showing it; null when DSH did not answer in time.
+    onHistory: (id, log) => sendLink({ type: 'history', id, log: log === undefined ? null : log }),
     onState: state => { sendLink({ type: 'state', connected: state.connected }); refreshTray() },
+    // From DSH's settings ("keep me company on the desktop"): only these two, nothing else.
+    // False (refused) when her window is gone or the companion is quitting.
+    onRequest: action => {
+      if (!win || win.isDestroyed() || quitting) return false
+      if (action === 'theatre') openTheatre(); else showCompanion()
+      return true
+    },
   })
+  // The window may already be on screen (ready-to-show can come first).
+  link.setShown(Boolean(win && win.isVisible()))
   void link.start()
 
   const refit = () => { if (win) { const area = workArea(); win.setBounds(area) } }
@@ -172,7 +201,7 @@ app.whenReady().then(() => {
 
 // Any quit (tray, Windows shutdown or log-off, an update) really closes the window instead of hiding it;
 // without this the hidden-on-close window would hold up a Windows shutdown.
-app.on('before-quit', () => { quitting = true })
+app.on('before-quit', () => { quitting = true; if (link) link.leaving() })
 app.on('will-quit', () => { globalShortcut.unregisterAll(); if (link) link.close() })
 // The tray keeps the companion alive while the window is hidden.
 app.on('window-all-closed', () => { if (quitting) app.quit() })

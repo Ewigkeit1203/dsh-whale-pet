@@ -479,6 +479,8 @@ body.dsh-galgame-mode [data-composer-seat] { opacity: 0 !important; transform: t
 }
 [data-whale-pet].petLog > header { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; margin: 0 -22px; padding: 16px 22px 12px; background: var(--wp-surface-solid); border-bottom: 1px solid var(--wp-line); }
 [data-whale-pet].petLog > header strong { font-size: 15px; }
+[data-whale-pet].petLog .petLogActions { display: flex; gap: 8px; }
+[data-whale-pet].petLog button:disabled { opacity: .5; cursor: default; }
 [data-whale-pet].petLog button { height: 30px; padding: 0 12px; border: 1px solid var(--wp-line); border-radius: var(--wp-radius-s); background: var(--wp-raised); color: var(--wp-ink); font-size: 12.5px; cursor: pointer; }
 [data-whale-pet].petLog .petLogNote { margin: 12px 0; color: var(--wp-ink-3); font-size: 12px; }
 [data-whale-pet].petLog > article { margin: 12px 0; padding: 12px 14px; border: 1px solid var(--wp-line); border-radius: var(--wp-radius-m); white-space: pre-wrap; overflow-wrap: anywhere; }

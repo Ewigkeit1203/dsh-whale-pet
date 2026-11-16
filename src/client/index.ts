@@ -7,6 +7,7 @@ import { watchAccountBalances, ACCOUNT_CLIENT_VERSION } from './account-balance.
 import { isQuotaError } from './balance-chip.js'
 import { applyLinkSnapshot, linkLost, startDesktopLink, type LinkDriver } from './desktop-link.js'
 import { submitToDshComposer } from './dsh-composer.js'
+import { createConversationSource, currentConversationContext, loadedConversationLog, readConversationLogSnapshot } from './conversation-log.js'
 import './galgame.css'
 
 export const name = 'dsh-whale-pet-client'
@@ -133,13 +134,14 @@ function queryQuotaErrorKey(session: string | null): string | null {
  * the link instead of reading DSH's page. Never looked up on ctx: Cordis throws for any property it was not
  * told about ("cannot get property … without inject"), which would stop her from appearing in DSH at all.
  */
-type DesktopHost = (machine: PetStateMachine, link: { apply: (machine: LinkDriver, snapshot: unknown) => boolean; lost: (machine: LinkDriver) => void }) => void | (() => void)
+type DesktopHost = (machine: PetStateMachine, link: { apply: (machine: LinkDriver, snapshot: unknown) => boolean; lost: (machine: LinkDriver) => void; readLog: typeof readConversationLogSnapshot }) => void | (() => void)
 
 export function apply(ctx: Context): void {
   const stateMachine = new PetStateMachine()
   let hostAccountService = false
   const desktopShell = typeof window !== 'undefined' ? (window as any).__whaleDesktopShell : undefined
   const desktopHost = typeof desktopShell?.host === 'function' ? desktopShell.host as DesktopHost : undefined
+  let desktopConversationChanged: (() => void) | null = null
 
   // 1. Mount PetOverlay into the global frame-wide floating slot ('shell.overlay')
   ctx.slots.inject('shell.overlay', () => {
@@ -158,15 +160,26 @@ export function apply(ctx: Context): void {
   if (desktopHost) {
     // On the desktop: no DSH page to read and no account service; DSH's page sends what it saw.
     ctx.effect(() => {
-      const stop = desktopHost(stateMachine, { apply: applyLinkSnapshot, lost: linkLost })
+      const stop = desktopHost(stateMachine, { apply: applyLinkSnapshot, lost: linkLost, readLog: readConversationLogSnapshot })
       return () => { if (typeof stop === 'function') stop(); stateMachine.dispose() }
     })
   } else {
     // 1a. In DSH: keep the desktop companion (if it is running) up to date.
     // Questions asked in the desktop theatre go out through DSH's own composer, like the theatre here.
+    const conversationSource = createConversationSource()
+    const conversation = () => stateMachine.getStatus().hostBalance?.status === 'signed-out'
+      ? { source: conversationSource, session: null } : currentConversationContext(conversationSource)
     ctx.effect(() => startDesktopLink(stateMachine, {
       onState: state => window.dispatchEvent(new CustomEvent('dsh-whale-pet:desktop-link', { detail: state })),
       onCommand: (command, done) => submitToDshComposer(command.text, done),
+      getConversation: conversation,
+      subscribeConversation: changed => {
+        desktopConversationChanged = changed
+        return () => { if (desktopConversationChanged === changed) desktopConversationChanged = null }
+      },
+      readHistory: () => conversation().session === null
+        ? { context: conversation(), status: 'unavailable', entries: [], truncated: false }
+        : loadedConversationLog(conversationSource),
     }))
   }
 
@@ -296,6 +309,7 @@ export function apply(ctx: Context): void {
         stateMachine.setLatestDialogue('')
         stateMachine.setQuotaError(null)
         observedTurn = false
+        desktopConversationChanged?.()
       }
       lastSessionId = sessionId
 

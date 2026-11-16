@@ -9,7 +9,7 @@ export interface HistoryEntry {
     role: 'user' | 'assistant';
     text: string;
 }
-export declare function readConversationLog(): HistoryEntry[];
+export declare function readConversationLog(root?: ParentNode, limit?: number, textLimit?: number): HistoryEntry[];
 /** Preserve code and block boundaries while excluding reasoning and controls. */
 export declare function messageText(container: Element): string;
 //# sourceMappingURL=experience.d.ts.map

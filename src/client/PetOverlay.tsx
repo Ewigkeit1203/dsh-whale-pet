@@ -1,6 +1,6 @@
 import { matchesPeekShortcut } from './peek-shortcut.js'
 import { SettingsPanel } from './SettingsPanel.js'
-import { TheatreView, type TheatrePanel, type SceneLayers } from './TheatreView.js'
+import { TheatreView, type TheatrePanel, type SceneLayers, type HistoryStatus } from './TheatreView.js'
 import { paginateText, revealDelay, diagnosticReport } from './usability.js'
 import { dialogueBlocks, readConversationLog, type HistoryEntry } from './experience.js'
 import { readPreferences, savePreferences, quietPreset, defaultPreferences, type Preferences } from './preferences.js'
@@ -8,7 +8,7 @@ import { FEATURES, effectiveForm } from './features.js'
 import { POSE_META, spriteGeometry, live2dWidgetGeometry } from './poses.js'
 import { layoutGroup, layoutResizedGroup, type GroupLayout, clampPet, rightPeekPosition, peekArtPosition, type EdgePeekRoom, wanderDestination, nextWanderDelay, placeGroupX, groupFits, type PanelSide } from './layout.js'
 import { walletView } from './wallet.js'
-import { desktopLinkState, type DesktopLinkState } from './desktop-link.js'
+import { desktopLinkState, requestDesktop, type DesktopLinkState } from './desktop-link.js'
 import { submitToDshComposer, type ComposerResult } from './dsh-composer.js'
 import { balanceChipState, headChipsShown, lowBalanceDue, balanceDay, LOW_BALANCE_DAY_KEY } from './balance-chip.js'
 import { GUIDE_STEPS, readDiscoveries, saveDiscoveries, discover, guideStep, type InteractionId, type Discoveries } from './discovery.js'
@@ -92,7 +92,14 @@ const PEEK_ICON = 'M2 12.5h12M4 12.5v-2M12 12.5v-2M5 8a3 3 0 116 0M6.5 7.5h.01M9
 /** A late-night face kept as an idle glance of its own: heavy-lidded, a little pleased with herself (Live2D only). */
 const SMIRK_POSE = 'smirk'
 /** The desktop companion's shell (desktop/shell.js), when she runs on the desktop; never present in DSH. */
-interface DesktopShellApi { sendToDsh(text: string, done: (result: ComposerResult | 'failed') => void): void; theatre?(open: boolean): void }
+/** The desktop theatre's Log, read from DSH's current conversation on request (desktop/shell.js readHistory). */
+type DesktopHistoryResult = { status: 'ready'; entries: HistoryEntry[]; truncated: boolean } | { status: 'unavailable' | 'disconnected' | 'outdated' | 'failed' }
+interface DesktopShellApi {
+  sendToDsh(text: string, done: (result: ComposerResult | 'failed') => void): void
+  theatre?(open: boolean): void
+  /** Answers at most once; returns a function that cancels the request. */
+  readHistory?(done: (result: DesktopHistoryResult) => void): (() => void) | void
+}
 const desktopShell = (): DesktopShellApi | null => {
   const shell = typeof window !== 'undefined' ? (window as any).__whaleDesktopShell : undefined
   return shell && typeof shell.sendToDsh === 'function' ? shell as DesktopShellApi : null
@@ -136,6 +143,32 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const [uiHidden, setUiHidden] = useState(false)
   const [logOpen, setLogOpen] = useState(false)
   const [history, setHistory] = useState<HistoryEntry[]>([])
+  const [historyStatus, setHistoryStatus] = useState<HistoryStatus>('local')
+  const [historyTruncated, setHistoryTruncated] = useState(false)
+  /** The desktop Log request in flight. Any newer request, closing the Log or a conversation change bumps the turn, so a late answer is dropped. */
+  const historyAsk = useRef<{ turn: number; cancel: () => void } | null>(null)
+  const historyTurn = useRef(0)
+  const logOpenRef = useRef(false)
+  logOpenRef.current = logOpen
+  const dropHistoryAsk = () => { historyTurn.current++; const ask = historyAsk.current; historyAsk.current = null; ask?.cancel() }
+  /** Fills the Log: from this page in DSH, from DSH's current conversation on the desktop (never from the desktop's own page). */
+  const loadHistory = () => {
+    dropHistoryAsk()
+    const shell = desktopShell()
+    if (!shell?.readHistory) { setHistory(readConversationLog()); setHistoryTruncated(false); setHistoryStatus('local'); return }
+    const turn = historyTurn.current
+    setHistory([]); setHistoryTruncated(false); setHistoryStatus('loading')
+    let answered = false
+    const cancel = shell.readHistory(result => {
+      answered = true
+      if (turn !== historyTurn.current) return
+      historyAsk.current = null
+      if (result && result.status === 'ready' && Array.isArray(result.entries)) { setHistory(result.entries); setHistoryTruncated(Boolean(result.truncated)); setHistoryStatus('ready') }
+      else setHistoryStatus(result && ['unavailable', 'disconnected', 'outdated'].includes(result.status) ? result.status : 'failed')
+    })
+    if (!answered && turn === historyTurn.current) historyAsk.current = { turn, cancel: typeof cancel === 'function' ? cancel : () => {} }
+  }
+  const openLog = () => { setLogOpen(true); loadHistory() }
   const [revealed, setRevealed] = useState(0)
   const [toast, setToast] = useState('')
   const [affection, setAffection] = useState<'pat' | 'tail' | 'dizzy' | 'float' | ''>('')
@@ -165,6 +198,15 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const [bubbleHidden, setBubbleHidden] = useState(false)
   const wheelTime = useRef(0)
   const [foreground, setForeground] = useState(true)
+  // DSH ↔ desktop link (roadmap step 2): shown as one line in settings.
+  const [desktopLink, setDesktopLink] = useState<DesktopLinkState & { side?: 'desktop' }>(desktopLinkState)
+  useEffect(() => {
+    const changed = (event: Event) => { const detail = (event as CustomEvent).detail; if (detail && typeof detail.status === 'string') setDesktopLink(detail) }
+    window.addEventListener('dsh-whale-pet:desktop-link', changed)
+    return () => window.removeEventListener('dsh-whale-pet:desktop-link', changed)
+  }, [])
+  /** Only one of her (roadmap step 4): in DSH, she is away while her desktop window is on screen. */
+  const away = desktopLink.side !== 'desktop' && desktopLink.status === 'connected' && desktopLink.shown === true
   const [reduceMotion, setReduceMotion] = useState(false)
   const previousStream = useRef(false)
   const [isDragging, setIsDragging] = useState(false)
@@ -487,6 +529,19 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     if (!status.isGalGameMode) { setUiHidden(false); setLogOpen(false) }
   }, [status.isGalGameMode])
 
+  // A closed Log keeps nothing from DSH, and an answer that arrives after it closed is dropped.
+  useEffect(() => {
+    if (logOpen) return
+    dropHistoryAsk()
+    if (desktopShell()?.readHistory) { setHistory([]); setHistoryTruncated(false) }
+  }, [logOpen])
+  // On the desktop: DSH switched conversations or the link dropped. An open Log reads the new one at once.
+  useEffect(() => {
+    const changed = () => { if (logOpenRef.current) loadHistory() }
+    window.addEventListener('dsh-whale-pet:desktop-conversation', changed)
+    return () => { window.removeEventListener('dsh-whale-pet:desktop-conversation', changed); dropHistoryAsk() }
+  }, [])
+
   useEffect(() => {
     const measure = () => {
       const box = textScrollRef.current
@@ -516,10 +571,12 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   }, [status.isStreaming, status.isReasoning, foreground, preferences.notifications])
 
   useEffect(() => {
-    if (status.isGalGameMode) document.body.classList.add('dsh-galgame-mode')
+    if (status.isGalGameMode && !away) document.body.classList.add('dsh-galgame-mode')
     else document.body.classList.remove('dsh-galgame-mode')
     return () => { document.body.classList.remove('dsh-galgame-mode') }
-  }, [status.isGalGameMode])
+  }, [status.isGalGameMode, away])
+  // She went to the desktop: her theatre here closes with her (it would otherwise open again on her return).
+  useEffect(() => { if (away && status.isGalGameMode) stateMachine.setGalGameMode(false) }, [away, status.isGalGameMode])
 
   // ---- Theatre reading ------------------------------------------------------
   // Without an answer yet the theatre shows her own line, with the user's chosen names.
@@ -549,7 +606,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
         event.preventDefault()
         if (event.key === 'ArrowLeft') setCurrentPageIndex(i => Math.max(0, i - 1))
         else if (event.key.toLowerCase() === 'a') update({ autoAdvance: !preferences.autoAdvance })
-        else if (event.key.toLowerCase() === 'l') { setHistory(readConversationLog()); setLogOpen(true) }
+        else if (event.key.toLowerCase() === 'l') openLog()
         else if (event.key.toLowerCase() === 'm') toggleMute()
         else if (event.key.toLowerCase() === 'h') setUiHidden(value => !value)
         else handleAdvancePage()
@@ -581,7 +638,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   useEffect(() => () => voiceRef.current?.dispose(), [])
 
   // ---- Voice ----------------------------------------------------------------
-  const voiceAllowed = !preferences.muted && !preferences.quiet && preferences.volume > 0 && foreground && !uiHidden && !logOpen
+  const voiceAllowed = !preferences.muted && !preferences.quiet && preferences.volume > 0 && foreground && !uiHidden && !logOpen && !away
   useEffect(() => { voiceRef.current?.setVolume(preferences.volume) }, [preferences.volume])
 
   // ---- Theatre scene & music -------------------------------------------------
@@ -673,7 +730,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   }, [status.isGalGameMode, sceneTarget])
 
   // Music follows the theatre: it fades in on entry and fades out on exit or when the page is hidden.
-  const wantBgm = status.isGalGameMode && preferences.bgmOn && pageVisible
+  const wantBgm = status.isGalGameMode && preferences.bgmOn && pageVisible && !away
   useEffect(() => {
     const bgm = bgmRef.current
     if (!bgm) return
@@ -690,13 +747,6 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
 
   // ---- Discoveries: the interaction gallery and the first-run guide ---------------
   const [discoveries, setDiscoveries] = useState<Discoveries>(readDiscoveries)
-  // DSH ↔ desktop link (roadmap step 2): shown as one line in settings.
-  const [desktopLink, setDesktopLink] = useState<DesktopLinkState & { side?: 'desktop' }>(desktopLinkState)
-  useEffect(() => {
-    const changed = (event: Event) => { const detail = (event as CustomEvent).detail; if (detail && typeof detail.status === 'string') setDesktopLink(detail) }
-    window.addEventListener('dsh-whale-pet:desktop-link', changed)
-    return () => window.removeEventListener('dsh-whale-pet:desktop-link', changed)
-  }, [])
   const [guideDone, setGuideDone] = useState<InteractionId[]>([])
   const [guideThanks, setGuideThanks] = useState(false)
   const onboardingRef = useRef(preferences.onboardingDone)
@@ -1343,6 +1393,25 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     },
     close: () => setIsSettingsOpen(false),
     openTheatre,
+    place: desktopLink.side === 'desktop'
+      ? {
+        label: t('回 DSH 里陪我', 'Back into DSH'),
+        hint: desktopLink.status === 'connected'
+          ? t('桌面上的她先藏起来，DSH 里的她回来。托盘或 Alt+Shift+H 再叫她出来。', 'She hides here and comes back in DSH. The tray or Alt+Shift+H brings her out again.')
+          : t('DSH 还没连上：她只会先藏起来。托盘或 Alt+Shift+H 再叫她出来。', 'DSH is not connected: she only hides. The tray or Alt+Shift+H brings her out again.'),
+        go: () => { setIsSettingsOpen(false); (window as any).__whaleDesktopShell?.hide?.() },
+      }
+      : {
+        label: t('去桌面陪我', 'Keep me company on the desktop'),
+        hint: desktopLink.status === 'connected'
+          ? t('她会跑到桌面上；这期间 DSH 里看不到她。', 'She moves onto your desktop; meanwhile she is not shown in DSH.')
+          : t('需要先启动桌面伴侣（DaFeiYu.exe；开发时 npm.cmd run desktop），启动后她会自己过去。', 'Start the desktop companion first (DaFeiYu.exe; npm.cmd run desktop when developing); she goes over by herself.'),
+        go: () => {
+          if (desktopLink.status !== 'connected') { flash(t('桌面伴侣没在运行：请先启动 DaFeiYu.exe', 'The desktop companion is not running: start DaFeiYu.exe first')); return }
+          setIsSettingsOpen(false)
+          void requestDesktop('show').then(ok => { if (!ok) flash(t('桌面伴侣没有回应，请从托盘打开她', 'The desktop companion did not answer; open her from its tray icon')) })
+        },
+      },
     live2d: live2dSettings,
     importLive2D: (files: File[]) => { void importLive2D(files) },
     removeLive2D: () => { void removeLive2D() },
@@ -1427,13 +1496,13 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   }))
 
   // ---- Theatre ----------------------------------------------------------------
-  if (status.isGalGameMode) {
+  if (status.isGalGameMode && !away) {
     return TheatreView({
       t, p: preferences, status, lang, petName,
       puppet: { imgSrc: currentImgSrc, poseName: hitPose, poseScale: (POSE_META[hitPose] ?? POSE_META.Maid).scale, isMaiden, live: preferences.liveMotion && liveSupported, motion: reduceMotion ? 0 : 1, emote: reaction?.emote ?? pageEmotion.emote ?? null, emoteKey: reaction?.emote ? reaction.key : pageEmotion.emote ? pageEmotion.key : 0, live2d: live2dBinding, onTouch: touchHer },
       tier: preferences.peakNotice ? { tier: tariff.tier, label: tierName, until: tierUntil } : null,
       phase: status.isStreaming || status.isReasoning ? phaseLabel + (elapsed !== null ? ' · ' + elapsed + 's' : '') + (nativeSpeed !== null ? ' · ' + nativeSpeed.toFixed(1) + ' tokens/s' : '') : null,
-      uiHidden, expanded, logOpen, history,
+      uiHidden, expanded, logOpen, history, historyStatus, historyTruncated,
       showThoughts: isThoughtBubbleVisible && (status.isReasoning || Boolean(status.reasoningText)),
       visibleText, isRevealing, pageIndex: currentPageIndex, pageCount: dialoguePages.length,
       inputValue, toast, textRef: textScrollRef, thoughtRef: thoughtScrollRef,
@@ -1449,8 +1518,9 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
         unlock: unlockAudio,
         hideUi: setUiHidden,
         toggleExpanded: () => setExpanded(value => !value),
-        openLog: () => { setHistory(readConversationLog()); setLogOpen(true) },
-        closeLog: () => setLogOpen(false),
+        openLog,
+        closeLog: () => { dropHistoryAsk(); setLogOpen(false) },
+        refreshLog: loadHistory,
         toggleAuto: () => update({ autoAdvance: !preferences.autoAdvance }),
         toggleMute,
         toggleReading: () => update({ reading: preferences.reading === 'pages' ? 'scroll' : 'pages' }),
@@ -1521,6 +1591,8 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   }
   const puppetOpacity = ghost && !isSettingsOpen ? Math.min(0.25, preferences.opacity) : preferences.opacity
 
+  // On the desktop now: nothing of her in DSH (her state machine keeps following DSH for the desktop).
+  if (away) return null
   return (
     <div
       key="widget"

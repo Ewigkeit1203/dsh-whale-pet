@@ -22,13 +22,9 @@ Get-ChildItem -LiteralPath (Join-Path $projectRoot 'docs') | Where-Object { $_.N
 function Write-ReleaseArchive([string]$Directory, [string]$Name) {
     $zip = Join-Path $distRoot $Name
     Compress-Archive -Path (Join-Path $Directory '*') -DestinationPath $zip -Force
-    $hasher = [Security.Cryptography.SHA256]::Create()
-    $zipStream = [IO.File]::OpenRead($zip)
-    try { $hash = ([BitConverter]::ToString($hasher.ComputeHash($zipStream))).Replace('-', '').ToLowerInvariant() }
-    finally { $zipStream.Dispose(); $hasher.Dispose() }
-    [IO.File]::WriteAllText($zip + '.sha256', $hash + '  ' + (Split-Path -Leaf $zip) + "`n", [Text.UTF8Encoding]::new($false))
+    # Only the ZIP is a download; no checksum side file (GitHub shows each release asset's digest).
+    if (Test-Path -LiteralPath ($zip + '.sha256')) { Remove-Item -LiteralPath ($zip + '.sha256') -Force }
     Write-Output ('Release package: ' + $zip)
-    Write-Output ('SHA256: ' + $hash)
 }
 Write-ReleaseArchive $stage ('dsh-whale-pet-v' + $version + '.zip')
 # A sibling directory inside our own stage keeps cleanup bounded to one verified tree.

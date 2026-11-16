@@ -14,6 +14,12 @@ export interface SceneLayers { a: string; b: string; front: 'a' | 'b' }
 export interface TheatreSceneCard { id: string; label: string; thumb: string; active: boolean; kind: 'painted' | 'none' | 'custom' | 'auto' }
 export interface TheatreTrack { id: string; label: string; mood: string }
 
+/**
+ * Where the Log's messages come from. 'local': read from this DSH page. Every other value is the desktop
+ * theatre asking DSH for its current conversation (desktop/shell.js readHistory).
+ */
+export type HistoryStatus = 'local' | 'loading' | 'ready' | 'unavailable' | 'disconnected' | 'outdated' | 'failed'
+
 export interface TheatreViewProps {
   t: (zh: string, en: string) => string
   p: Preferences
@@ -27,6 +33,9 @@ export interface TheatreViewProps {
   expanded: boolean
   logOpen: boolean
   history: HistoryEntry[]
+  historyStatus: HistoryStatus
+  /** DSH sent only the most recent of the loaded messages. */
+  historyTruncated: boolean
   showThoughts: boolean
   visibleText: string
   isRevealing: boolean
@@ -51,6 +60,8 @@ export interface TheatreViewProps {
     toggleExpanded: () => void
     openLog: () => void
     closeLog: () => void
+    /** Desktop only: ask DSH again. */
+    refreshLog: () => void
     toggleAuto: () => void
     toggleMute: () => void
     toggleReading: () => void
@@ -117,6 +128,21 @@ const NEXT = 'M10.8 3.4h1.6v9.2h-1.6zM3.4 3.4L10 8l-6.6 4.6z'
  * characters fade in one by one, as in Yuzusoft visual novels. Markup in the
  * tail (bold, inline code, line breaks) falls back to plain rendering.
  */
+/** The line under the Log's title: where the messages come from, or why there are none. */
+function theatreLogNote(t: TheatreViewProps['t'], status: HistoryStatus, truncated: boolean): string {
+  switch (status) {
+    case 'local': return t('显示当前页面已加载的问答，切换会话后重新打开即可更新。', 'Showing messages loaded on this page. Reopen after switching conversations.')
+    case 'loading': return t('正在从 DSH 读取当前会话…', 'Reading the current conversation from DSH…')
+    case 'ready': return truncated
+      ? t('仅显示当前会话已加载的最近记录。', 'Showing only the most recent messages loaded in the current conversation.')
+      : t('显示 DSH 当前会话已加载的问答，切换会话后会自动更新。', 'Showing the messages loaded in the current DSH conversation; it updates when you switch conversations.')
+    case 'unavailable': return t('DSH 里现在没有打开的会话。打开一个会话后点“刷新”。', 'No conversation is open in DSH. Open one, then choose Refresh.')
+    case 'disconnected': return t('DSH 未连接。打开 DSH 后再点“刷新”。', 'DSH is not connected. Open DSH, then choose Refresh.')
+    case 'outdated': return t('DSH 里的插件版本较旧，读不到回顾。请把 DSH 里的插件更新到与桌面版相同的版本。', 'The plugin in DSH is older and cannot share the log. Update it to the same version as the desktop app.')
+    default: return t('没能从 DSH 读到记录，请稍后点“刷新”。', 'Could not read the log from DSH. Try Refresh in a moment.')
+  }
+}
+
 function revealText(v: TheatreViewProps) {
   const chars = Array.from(v.visibleText)
   const tailLength = v.isRevealing ? Math.min(6, chars.length) : 0
@@ -393,12 +419,13 @@ export function TheatreView(v: TheatreViewProps) {
     {v.uiHidden && <button type="button" {...common} data-whale-pet="restore" className="petRestore" onClick={() => on.hideUi(false)}>{t('点击恢复对话', 'Click to restore dialogue')}</button>}
 
     {v.logOpen && !v.uiHidden && <aside {...common} data-whale-pet="log" className="petLog" role="dialog" aria-label={t('历史回顾', 'Conversation log')}>
-      <header><strong>{t('历史回顾', 'Conversation log')}</strong><button type="button" onClick={on.closeLog}>{t('关闭', 'Close')}</button></header>
-      <p className="petLogNote">{t('显示当前页面已加载的问答，切换会话后重新打开即可更新。', 'Showing messages loaded on this page. Reopen after switching conversations.')}</p>
+      <header><strong>{t('历史回顾', 'Conversation log')}</strong><span className="petLogActions">{v.historyStatus !== 'local' && <button type="button" disabled={v.historyStatus === 'loading'} onClick={on.refreshLog}>{t('刷新', 'Refresh')}</button>}<button type="button" onClick={on.closeLog}>{t('关闭', 'Close')}</button></span></header>
+      <p className="petLogNote" data-history={v.historyStatus} role="status">{theatreLogNote(t, v.historyStatus, v.historyTruncated)}</p>
       {v.history.length ? v.history.map((entry, index) => <article key={index} data-role={entry.role}>
         <div className="petLogMeta"><strong>{entry.role === 'user' ? t('你', 'You') : v.petName}</strong><button type="button" onClick={() => on.copy(entry.text)}>{t('复制', 'Copy')}</button></div>
         <DialogueContent text={entry.text} copy={on.copy} copyLabel={t('复制', 'Copy')} />
-      </article>) : <p>{t('当前页面暂无已加载记录。', 'No loaded messages on this page.')}</p>}
+      </article>) : v.historyStatus === 'local' ? <p>{t('当前页面暂无已加载记录。', 'No loaded messages on this page.')}</p>
+        : v.historyStatus === 'ready' ? <p>{t('DSH 当前会话里还没有已加载的问答。', 'No messages are loaded in the current DSH conversation.')}</p> : null}
     </aside>}
 
     {v.toast && <div data-whale-pet="toast" data-pet-theme={p.theme} data-expanded={v.expanded} className="petToast" role="status">{v.toast}</div>}

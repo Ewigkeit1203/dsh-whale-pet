@@ -2,6 +2,7 @@ import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 import vm from 'node:vm'
+import {CONVERSATION_LOG_LIMITS,readConversationContext} from '../lib/client/conversation-log.js'
 
 const read=(name:string)=>readFileSync(new URL('../desktop/'+name,import.meta.url),'utf8')
 
@@ -14,7 +15,7 @@ function page(options:{react?:boolean,bundle?:boolean,register?:boolean,storage?
   const React={createElement:(type:any,props:any)=>({type,props})}
   const frames:Function[]=[]
   const window:any={addEventListener:listen,requestAnimationFrame:(fn:Function)=>frames.push(fn),dispatchEvent(event:any){for(const fn of listeners.get(event.type)??[])fn(event)},
-    whaleDesktop:{setInteractive:(v:boolean)=>sent.push(['interactive',v]),setFocus:(v:boolean)=>sent.push(['focus',v]),onCommand:(fn:Function)=>listen('command',fn),onLink:(fn:Function)=>listen('link',fn),sendToDsh:(id:string,text:string)=>sent.push(['send',id,text])}}
+    whaleDesktop:{setInteractive:(v:boolean)=>sent.push(['interactive',v]),setFocus:(v:boolean)=>sent.push(['focus',v]),onCommand:(fn:Function)=>listen('command',fn),onLink:(fn:Function)=>listen('link',fn),sendToDsh:(id:string,text:string)=>sent.push(['send',id,text]),readHistory:(id:string)=>sent.push(['history',id])}}
   if(options.react!==false)window.__WhaleDesktopReact={React,createRoot:(node:any)=>({render:(element:any)=>rendered.push([node,element])})}
   const docEvents:string[]=[]
   const document:any={documentElement:html,body,getElementById:(id:string)=>id==='whale-desktop-root'?root:null,createElement:()=>({}),elementFromPoint:()=>under,addEventListener:listen,
@@ -71,7 +72,7 @@ test('Desktop companion: the main process keeps the window transparent, on top, 
   const main=read('main.cjs'),preload=read('preload.cjs'),html=read('index.html')
   for(const needle of ['transparent: true','frame: false','skipTaskbar: true','setAlwaysOnTop(true','setIgnoreMouseEvents(true, { forward: true })','contextIsolation: true','nodeIntegration: false','sandbox: true','requestSingleInstanceLock','setWindowOpenHandler'])assert.ok(main.includes(needle),needle)
   assert.ok(!/nodeIntegration:\s*true|webSecurity:\s*false/.test(main))
-  assert.deepEqual([...preload.matchAll(/^\s+(\w+): /gm)].map(m=>m[1]),['setInteractive','setFocus','onCommand','onLink','sendToDsh'],'the bridge exposes nothing else')
+  assert.deepEqual([...preload.matchAll(/^\s+(\w+): /gm)].map(m=>m[1]),['setInteractive','setFocus','onCommand','onLink','sendToDsh','readHistory','hide'],'the bridge exposes nothing else')
   assert.ok(html.indexOf('vendor/react.js')<html.indexOf('shell.js')&&html.indexOf('shell.js')<html.indexOf('../lib/client.js')&&html.indexOf('../lib/client.js')<html.indexOf('mount.js'),'load order')
   assert.ok(/background:\s*transparent/.test(html))
 })
@@ -114,7 +115,7 @@ test('Desktop companion: no background blur over the transparent window; diagnos
   const loaded=main.slice(main.indexOf("'did-finish-load'"),main.indexOf("'did-finish-load'")+300)
   assert.match(loaded,/wanted \? 'shown' : 'hidden'/);assert.ok(!loaded.includes('isVisible'))
   // A system quit (Windows shutdown, log-off) must close the window, not hide it.
-  assert.match(main,/app\.on\('before-quit', \(\) => \{ quitting = true \}\)/)
+  assert.match(main,/app\.on\('before-quit', \(\) => \{ quitting = true; if \(link\) link\.leaving\(\) \}\)/,'and DSH hears at once that she is leaving')
 })
 
 test('Desktop companion: the click-to-run package carries exactly the runtime files, never a model or the dev launchers',()=>{
@@ -124,6 +125,10 @@ test('Desktop companion: the click-to-run package carries exactly the runtime fi
   assert.deepEqual(files.sort(),['desktop/index.html','desktop/link-server.cjs','desktop/main.cjs','desktop/mount.js','desktop/preload.cjs','desktop/shell.js','desktop/vendor/react.js','lib/client.js'])
   assert.ok(!/launch\.cjs|\.vbs|moc3|model3/.test(list))
   assert.match(script,/main: 'desktop\/main\.cjs'/)
+  // Licenses and the Live2D notices go with the download, outside the ASAR, and the release checks them.
+  for(const notice of ['LICENSE.txt','ASSETS_LICENSE.md','THIRD_PARTY_NOTICES.md'])assert.ok(script.includes(`'${notice}'`),notice)
+  assert.ok(script.includes("join(appPath, 'notices')"))
+  assert.ok(readFileSync(new URL('../.github/workflows/release.yml',import.meta.url),'utf8').includes("'LICENSE.txt', 'ASSETS_LICENSE.md', 'THIRD_PARTY_NOTICES.md'"))
   // The release attaches it as a separate download and checks it holds no model.
   const release=readFileSync(new URL('../.github/workflows/release.yml',import.meta.url),'utf8')
   assert.ok(release.includes('pnpm run package:desktop')&&release.includes('dsh-whale-pet-desktop-$tag-win-x64.zip')&&release.includes("'*.moc3'"))
@@ -153,4 +158,75 @@ test('Desktop companion: a question from her theatre goes to DSH and the outcome
   const css=readFileSync(new URL('../src/client/PetOverlay.module.css',import.meta.url),'utf8'),gal=readFileSync(new URL('../src/client/galgame.css',import.meta.url),'utf8')
   assert.match(css,/\[data-whale-pet\]\.petToast\[data-pet-theme\] \{ color: #fff; \}/)
   assert.match(gal,/\[data-whale-pet="toast"\]\.petToast \{ bottom: calc\(var\(--box-bottom\) \+ max\(var\(--box-h\), 200px\) \+ 18px\)/)
+})
+
+test('Desktop companion: her Log asks DSH for its current conversation and shows only that conversation',()=>{
+  const p=page(),shell=p.window.__whaleDesktopShell
+  // The bundle hands over its checker for DSH's log (conversation-log.ts); this stand-in accepts well-formed logs.
+  const readLog=(v:any)=>v&&typeof v==='object'&&v.context&&Array.isArray(v.entries)&&(v.status==='ready'||v.status==='unavailable')?v:null
+  shell.host({},{apply:()=>true,lost:()=>{},readLog})
+  const A={source:'page-1',session:'s-a'},B={source:'page-1',session:'s-b'}
+  // Results come from the page's realm: compare their plain data.
+  const results:any[]=[],take=()=>JSON.parse(JSON.stringify(results.pop())),ask=()=>shell.readHistory((r:any)=>results.push(r))
+  const asked=()=>p.sent.filter((s:any)=>s[0]==='history').map((s:any)=>s[1])
+  let changes=0;p.listeners.set('dsh-whale-pet:desktop-conversation',[()=>changes++])
+  // Not connected: answered at once, nothing sent.
+  ask();assert.deepEqual(take(),{status:'disconnected'});assert.deepEqual(asked(),[])
+  // Connected to an older DSH plugin that does not name its conversation: never the desktop's own page.
+  p.fire('link',{type:'state',connected:true});p.fire('link',{type:'snapshot',snapshot:{v:1}})
+  ask();assert.deepEqual(take(),{status:'outdated'});assert.deepEqual(asked(),[]);assert.equal(changes,0)
+  // DSH names conversation A: asked by id, answered once, only with A's messages.
+  p.fire('link',{type:'snapshot',snapshot:{v:1,conversation:A}});assert.equal(changes,1)
+  ask();const [id1]=asked();assert.ok(id1)
+  const entries=[{role:'user',text:'今天吃什么'},{role:'assistant',text:'吃鱼'}]
+  p.fire('link',{type:'history',id:'someone-else',log:{context:A,status:'ready',entries,truncated:false}});assert.deepEqual(results,[],'only its own answer')
+  p.fire('link',{type:'history',id:id1,log:{context:A,status:'ready',entries,truncated:true}})
+  assert.deepEqual(take(),{status:'ready',entries,truncated:true})
+  p.fire('link',{type:'history',id:id1,log:{context:A,status:'ready',entries:[],truncated:false}});assert.deepEqual(results,[],'settled once')
+  // A same snapshot again is no change.
+  p.fire('link',{type:'snapshot',snapshot:{v:1,conversation:{...A}}});assert.equal(changes,1)
+  // An answer for another conversation than the one asked for (DSH switched meanwhile) is not shown.
+  ask();p.fire('link',{type:'history',id:asked().at(-1),log:{context:B,status:'ready',entries,truncated:false}});assert.deepEqual(take(),{status:'failed'})
+  // DSH switches to B while a request is in flight: the request is dropped, unanswered; its late answer is ignored.
+  ask();const stale=asked().at(-1)
+  p.fire('link',{type:'snapshot',snapshot:{v:1,conversation:B}});assert.equal(changes,2)
+  p.fire('link',{type:'history',id:stale,log:{context:A,status:'ready',entries,truncated:false}});assert.deepEqual(results,[],'never brings back the old conversation')
+  // A newer request replaces an older one; cancelling drops it.
+  ask();const first=asked().at(-1);ask();const second=asked().at(-1)
+  p.fire('link',{type:'history',id:first,log:{context:B,status:'ready',entries,truncated:false}});assert.deepEqual(results,[])
+  p.fire('link',{type:'history',id:second,log:{context:B,status:'unavailable',entries:[],truncated:false}});assert.deepEqual(take(),{status:'unavailable'})
+  const cancel=shell.readHistory((r:any)=>results.push(r));cancel()
+  p.fire('link',{type:'history',id:asked().at(-1),log:{context:B,status:'ready',entries,truncated:false}});assert.deepEqual(results,[],'cancelled')
+  // No log (DSH did not answer in time, or an invalid one) is a failure; so is no answer at all.
+  ask();p.fire('link',{type:'history',id:asked().at(-1),log:null});assert.deepEqual(take(),{status:'failed'})
+  ask();p.fire('link',{type:'history',id:asked().at(-1),log:{context:B,entries:'<b>not a list</b>'}});assert.deepEqual(take(),{status:'failed'})
+  p.timers.splice(0);ask();for(const fn of p.timers.splice(0))fn();assert.deepEqual(take(),{status:'failed'})
+  // The link drops with a request in flight: answered as disconnected, and the conversation is forgotten.
+  ask();p.fire('link',{type:'state',connected:false});assert.deepEqual(take(),{status:'disconnected'});assert.equal(changes,3)
+  ask();assert.deepEqual(take(),{status:'disconnected'})
+})
+
+test('Desktop companion: the main process forwards Log requests to the link and always answers them',()=>{
+  const main=read('main.cjs')
+  assert.ok(main.includes("ipcMain.on('whale-desktop:history'"))
+  assert.ok(main.includes("typeof link.enqueueHistory !== 'function' || !link.enqueueHistory(id)) sendLink({ type: 'history', id, log: null })"),'no link, an older one or a full queue: answered at once with no log')
+  assert.ok(main.includes("onHistory: (id, log) => sendLink({ type: 'history', id, log: log === undefined ? null : log })"))
+  const handler=main.slice(main.indexOf("'whale-desktop:history'"),main.indexOf("'whale-desktop:history'")+400)
+  assert.ok(handler.includes('event.sender !== win.webContents'),'only her own page may ask')
+})
+
+test('Desktop companion: her shell accepts exactly the conversations the link protocol accepts (same length limits)',()=>{
+  const {source:maxSource,session:maxSession}=CONVERSATION_LOG_LIMITS
+  const cases:any[]=[
+    {source:'s'.repeat(maxSource),session:'x'.repeat(maxSession)},{source:'s'.repeat(maxSource+1),session:'x'},{source:'s',session:'x'.repeat(maxSession+1)},
+    {source:'s',session:null},{source:'',session:'x'},{source:'s',session:''},{source:1,session:'x'},{source:'s'},null,
+  ]
+  for(const context of cases){
+    const p=page(),shell=p.window.__whaleDesktopShell
+    p.fire('link',{type:'state',connected:true});p.fire('link',{type:'snapshot',snapshot:{v:1,conversation:context}})
+    let status='asked';shell.readHistory((r:any)=>{status=r.status})
+    // The shell asks DSH only for a conversation it recognises; anything else reads as an older DSH plugin.
+    assert.equal(status==='asked',readConversationContext(context)!==null,JSON.stringify(context)?.slice(0,60))
+    assert.equal(status==='asked'?'asked':status,readConversationContext(context)?'asked':'outdated')
+  }
 })

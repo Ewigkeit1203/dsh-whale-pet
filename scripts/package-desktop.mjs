@@ -69,6 +69,7 @@ const guide = `大肥鱼桌面 ${pkg.version}（预览）
 - Windows 可能提示“未知发布者”：点“更多信息” › “仍要运行”。
 - 这个文件夹可以放在任何地方；删除文件夹即可卸载。
 操作说明：https://github.com/Ewigkeit1203/dsh-whale-pet/blob/main/docs/USER_GUIDE.zh-CN.md
+许可证与第三方声明（含 Live2D）：notices 文件夹。
 
 DaFeiYu desktop ${pkg.version} (preview)
 
@@ -79,10 +80,18 @@ Double-click DaFeiYu.exe and she appears on your desktop.
 - Windows may say "Unknown publisher": choose More info › Run anyway.
 - Keep the folder anywhere; delete the folder to uninstall.
 User guide: https://github.com/Ewigkeit1203/dsh-whale-pet/blob/main/docs/USER_GUIDE.md
+Licenses and third-party notices (including Live2D): the notices folder.
 
 Unofficial community plugin; not affiliated with or endorsed by DeepSeek.
 `
 // UTF-8 with BOM so Notepad shows the Chinese correctly.
 writeFileSync(join(appPath, '使用说明.txt'), '﻿' + guide.replace(/\n/g, '\r\n'))
+// The same licenses and third-party notices as the plugin download (lib/client.js embeds Live2D Cubism),
+// outside the ASAR; Electron's own LICENSE and LICENSES.chromium.html stay at the top level.
+const notices = join(appPath, 'notices')
+mkdirSync(notices, { recursive: true })
+for (const [from, to] of [['LICENSE', 'LICENSE.txt'], ['ASSETS_LICENSE.md', 'ASSETS_LICENSE.md'], ['docs/THIRD_PARTY_NOTICES.md', 'THIRD_PARTY_NOTICES.md']]) {
+  cpSync(join(root, from), join(notices, to))
+}
 rmSync(stage, { recursive: true, force: true })
 console.log(`[package-desktop] ${appPath}`)
