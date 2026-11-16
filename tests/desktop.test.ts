@@ -125,6 +125,12 @@ test('Desktop companion: the click-to-run package carries exactly the runtime fi
   assert.deepEqual(files.sort(),['desktop/index.html','desktop/link-server.cjs','desktop/main.cjs','desktop/mount.js','desktop/preload.cjs','desktop/shell.js','desktop/vendor/react.js','lib/client.js'])
   assert.ok(!/launch\.cjs|\.vbs|moc3|model3/.test(list))
   assert.match(script,/main: 'desktop\/main\.cjs'/)
+  // A release attaches exactly this version's plugin and desktop ZIPs, named explicitly; no checksum side files.
+  const workflow=readFileSync(new URL('../.github/workflows/release.yml',import.meta.url),'utf8')
+  const create=workflow.split('\n').find(line=>line.includes('gh release create'))!
+  assert.deepEqual([...create.matchAll(/"(dist\/[^"]+)"/g)].map(m=>m[1]),['dist/dsh-whale-pet-$tag.zip','dist/dsh-whale-pet-desktop-$tag-win-x64.zip'])
+  assert.ok(!/dist\/\*\.zip/.test(workflow.replace(/^\s*#.*$/gm,'')),'no wildcard downloads')
+  assert.ok(!/WriteAllText\([^)]*\.sha256/.test(workflow)&&!readFileSync(new URL('../scripts/package-release.ps1',import.meta.url),'utf8').includes('WriteAllText($zip + \'.sha256\''))
   // Licenses and the Live2D notices go with the download, outside the ASAR, and the release checks them.
   for(const notice of ['LICENSE.txt','ASSETS_LICENSE.md','THIRD_PARTY_NOTICES.md'])assert.ok(script.includes(`'${notice}'`),notice)
   assert.ok(script.includes("join(appPath, 'notices')"))

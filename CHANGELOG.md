@@ -13,7 +13,7 @@
 - **To the desktop and back.** Two large buttons at the top of Settings: “Keep me company on the desktop” and “Open theatre” in DSH, “Back into DSH” on the desktop.
 - **Log in the desktop theatre.** Reads the messages already loaded in DSH's current conversation on request (the most recent 40, without reasoning), follows a conversation switch and keeps nothing once closed; it says why when DSH is not connected, has no conversation open or runs an older plugin.
 - **Fix: stale balance on the desktop.** Signing out, switching accounts or revoking balance access in DSH now clears the balance on the desktop too.
-- **Cleaner downloads.** Releases carry only the ZIPs, without `.sha256` side files; the desktop ZIP is checked byte for byte against the build before release and never contains a model.
+- **Cleaner downloads.** Releases carry only the plugin and desktop ZIPs, without `.sha256` side files (the installer-fix ZIP stays on v0.8.2); the desktop ZIP is checked byte for byte against the build before release and never contains a model.
 
 ### [v0.8.2] - 2026-11-14
 
@@ -220,7 +220,7 @@
 - **去桌面／回 DSH。** 设置最上面两个大按钮：DSH 里是“去桌面陪我”和“进入剧场模式”，桌面版里是“回 DSH 里陪我”。
 - **桌面剧场的回顾。** 打开时向 DSH 读取当前会话已加载的问答（最近 40 条，不含推理），切换会话时跟着更新，关上不保留；DSH 没连上、没有打开的会话或插件较旧时会说明原因。
 - **修复：桌面上的旧余额。** 在 DSH 里退出账号、切换账号或撤销余额权限后，桌面上的余额也会清掉。
-- **下载更干净。** Releases 只放 ZIP，不再附带 `.sha256` 文件；桌面版 ZIP 发布前与构建逐字节核对，绝不含模型。
+- **下载更干净。** Releases 只放插件和桌面版两个 ZIP，不再附带 `.sha256` 文件（安装工具修复包仍在 v0.8.2）；桌面版 ZIP 发布前与构建逐字节核对，绝不含模型。
 
 ### [v0.8.2] - 2026-11-14
 
