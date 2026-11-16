@@ -521,6 +521,22 @@
 [data-whale-pet] .petWide small { font-size: 11.5px; color: var(--wp-ink-3); }
 [data-whale-pet] .petWide[aria-pressed="true"] { border-color: var(--wp-accent); background: var(--wp-accent-soft); }
 
+/* Top of settings (roadmap step 4): where she keeps you company, and her theatre. Two big buttons side by side. */
+[data-whale-pet] .petPlaceActions { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+[data-whale-pet] .petPlaceButton {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+  min-height: 64px; padding: 10px 12px;
+  border: 0; border-radius: 12px;
+  background: var(--wp-accent); color: var(--wp-accent-ink); text-align: left; cursor: pointer;
+  transition: background-color .15s ease, transform .15s ease;
+}
+[data-whale-pet] .petPlaceButton + .petPlaceButton { background: var(--wp-raised); color: var(--wp-ink); box-shadow: inset 0 0 0 1px var(--wp-line); }
+[data-whale-pet] .petPlaceButton:hover { background: var(--wp-accent-hover); }
+[data-whale-pet] .petPlaceButton + .petPlaceButton:hover { background: var(--wp-control); }
+[data-whale-pet] .petPlaceButton:active { transform: translateY(1px); }
+[data-whale-pet] .petPlaceButton strong { font-size: 13.5px; font-weight: 600; }
+[data-whale-pet] .petPlaceButton small { font-size: 11.5px; line-height: 1.4; opacity: .82; }
+
 /* Footer: note and primary action share one row, 12px apart, 16px from the bottom edge. */
 [data-whale-pet] .petSettingsFooter {
   flex: none;

@@ -26,9 +26,9 @@ Release ZIPs use the artwork embedded in lib/client.js and omit the duplicate so
 
 发布 ZIP 使用 lib/client.js 内嵌的立绘，不再重复包含源码 assets/ 目录；PNG/WebP 原图仍完整保留在源码仓库，供开发使用。
 
-Release tags run a Windows build, source tests, launchers and extracted archive checks before publishing the exact checked ZIPs. A source push alone does not publish. The installer-fix ZIP contains only installers and recovery instructions, for an existing plugin folder.
+Release tags run a Windows build, source tests, launchers and extracted archive checks before publishing the exact checked ZIPs. A source push alone does not publish. Each release attaches the plugin ZIP and the desktop ZIP, without checksum side files. The installer-fix ZIP (installers and recovery instructions only, for an existing plugin folder) is still built and tested, but attached only up to v0.8.2.
 
-版本标签发布前先在 Windows 构建并检查源码、启动器和解压后的安装包，只上传通过检查的原 ZIP。仅推送源码不会发布。安装器修复小包仅含安装卸载工具及修复说明，须放入已有插件目录使用。
+版本标签发布前先在 Windows 构建并检查源码、启动器和解压后的安装包，只上传通过检查的原 ZIP。仅推送源码不会发布。每个版本只附带插件 ZIP 和桌面版 ZIP，不附 .sha256 文件。安装器修复小包（仅含安装卸载工具及修复说明，须放入已有插件目录使用）仍会构建和测试，但只附带到 v0.8.2。
 
 The installer/ folder contains the required PowerShell helper; use install.bat and uninstall.bat at the root. Keep the folder intact.
 

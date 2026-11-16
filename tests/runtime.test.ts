@@ -236,6 +236,49 @@ test('browser bundle: Hide restores the theatre, Log uses loaded messages and mu
   assert.ok(walk(tree).some(node => node.props.className === 'petLog'))
 })
 
+test('browser bundle: on the desktop, Log reads the current DSH conversation and never shows a late or stale answer', t => {
+  const runtime = loadBundle()
+  // The desktop shell (desktop/shell.js) as the bundle sees it; no host here, so the rest runs as in DSH.
+  const asks: Array<{ done: (result: any) => void, cancelled: boolean }> = []
+  runtime.context.window.__whaleDesktopShell = { sendToDsh() {}, readHistory(done: any) { const ask = { done, cancelled: false }; asks.push(ask); return () => { ask.cancelled = true } } }
+  const sm = runtime.mount()
+  t.after(() => sm.dispose())
+  sm.setGalGameMode(true)
+  const find = (match: (node: any) => boolean) => walk(runtime.render()).find(match)
+  const note = () => find(node => node.props.className === 'petLogNote')
+  const articles = () => walk(runtime.render()).filter(node => node.type === 'article')
+  const button = (label: string) => find(node => node.type === 'button' && node.children.includes(label))
+  button('回顾').props.onClick()
+  assert.equal(note().props['data-history'], 'loading'); assert.equal(asks.length, 1)
+  assert.equal(button('刷新').props.disabled, true, 'no second request while one is in flight')
+  asks[0].done({ status: 'ready', entries: [{ role: 'user', text: '今天吃什么' }, { role: 'assistant', text: '吃鱼' }], truncated: true })
+  assert.equal(note().props['data-history'], 'ready'); assert.equal(articles().length, 2)
+  assert.ok(note().children.includes('仅显示当前会话已加载的最近记录。'))
+  // Refresh asks again and clears the old list while it waits.
+  button('刷新').props.onClick()
+  assert.equal(asks.length, 2); assert.equal(articles().length, 0); assert.equal(note().props['data-history'], 'loading')
+  // Closing drops the request: its late answer does not come back when the Log opens again.
+  button('关闭').props.onClick()
+  assert.equal(asks[1].cancelled, true)
+  button('回顾').props.onClick()
+  asks[1].done({ status: 'ready', entries: [{ role: 'user', text: '旧会话' }], truncated: false })
+  assert.equal(articles().length, 0); assert.equal(note().props['data-history'], 'loading')
+  // DSH switched conversations while the Log is open: it reads the new one at once.
+  const changed = runtime.viewEffects.find(fn => String(fn).includes('dsh-whale-pet:desktop-conversation'))
+  const stop = changed(); t.after(stop)
+  runtime.dispatch('dsh-whale-pet:desktop-conversation', {})
+  assert.equal(asks.length, 4); assert.equal(asks[2].cancelled, true)
+  asks[2].done({ status: 'ready', entries: [{ role: 'user', text: '上一个会话' }], truncated: false })
+  assert.equal(articles().length, 0, 'the answer for the previous conversation is dropped')
+  // Each reason for an empty Log has its own words.
+  for (const [status, words] of [['unavailable', 'DSH 里现在没有打开的会话'], ['disconnected', 'DSH 未连接'], ['outdated', '插件版本较旧'], ['failed', '没能从 DSH 读到记录'], ['weird', '没能从 DSH 读到记录']]) {
+    button('刷新').props.onClick(); asks.at(-1)!.done({ status })
+    assert.equal(note().props['data-history'], status === 'weird' ? 'failed' : status)
+    assert.ok(String(note().children).includes(words), status)
+    assert.equal(articles().length, 0)
+  }
+})
+
 test('browser bundle: voice follows newly streamed prose only, and is silent while muted', t => {
   const runtime = loadBundle()
   const sm = runtime.mount()
@@ -855,4 +898,37 @@ test('host adapter: account stream changes clear both balance sources and suppre
  const clean=r.effects.find(fn=>String(fn).includes('const inspectDomState'))();t.after(clean)
  assert.equal(sm.getStatus().balancesKnown,false,'old mounted account card is not re-read after host identity invalidation')
  await emit('signed-out');assert.equal(sm.getStatus().hostBalance?.status,'signed-out')
+})
+
+test('browser bundle: only one of her — while her desktop window is on screen she is not drawn in DSH, and comes back when it is not (roadmap step 4)', t => {
+  const runtime = loadBundle(); const sm = runtime.mount(); t.after(() => sm.dispose())
+  runtime.render()
+  t.after(runtime.viewEffects.find(fn => String(fn).includes('stateMachine.subscribe'))())
+  for (const fn of [...runtime.viewEffects]) if (String(fn).includes('dsh-whale-pet:desktop-link')) fn()
+  assert.ok(runtime.render(), 'drawn while no companion is connected')
+  const link = (detail: any) => runtime.dispatch('dsh-whale-pet:desktop-link', { detail })
+  link({ status: 'connected', port: 38917, shown: false })
+  assert.ok(runtime.render(), 'a companion with her window hidden: she stays in DSH')
+  sm.setGalGameMode(true)
+  runtime.render()
+  link({ status: 'connected', port: 38917, shown: true })
+  assert.equal(runtime.render(), null, 'on the desktop: nothing of her in DSH')
+  for (const fn of [...runtime.viewEffects]) if (/away && status\.isGalGameMode/.test(String(fn))) fn()
+  assert.equal(sm.getStatus().isGalGameMode, false, 'her theatre in DSH closes with her')
+  link({ status: 'searching', error: 'companion quit' })
+  assert.ok(runtime.render(), 'back in DSH as soon as the companion lets go')
+})
+
+test('browser bundle: settings open with "go to the desktop" and the theatre as two big buttons; the desktop is asked only when it is connected', t => {
+  const runtime = loadBundle(); const sm = runtime.mount(); t.after(() => sm.dispose())
+  let tree = runtime.render()
+  walk(tree).find(node => node.children.includes('设置')).props.onClick()
+  tree = runtime.render()
+  const buttons = walk(tree).filter(node => node.props.className === 'petPlaceButton')
+  const text = (node: any) => walk(node).flatMap((n: any) => n.children.filter((c: any) => typeof c === 'string')).join(' ')
+  assert.deepEqual(buttons.map(b => text(b).split(' ')[0]), ['去桌面陪我', '进入剧场模式'])
+  assert.match(text(buttons[0]), /DaFeiYu\.exe/, 'not running: says how to start it')
+  buttons[0].props.onClick()
+  tree = runtime.render()
+  assert.ok(walk(tree).some(node => node.children.some((c: any) => typeof c === 'string' && c.includes('桌面伴侣没在运行'))), 'and says so instead of pretending')
 })

@@ -56,26 +56,49 @@ jobs:
           $tag = "v$((Get-Content package.json -Raw | ConvertFrom-Json).version)"
           & ./tests/package-release.test.ps1 -PackagePath "dist/dsh-whale-pet-$tag.zip"
 
-      - name: Build the click-to-run desktop companion
+      - name: Build and verify the desktop app archive
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
           pnpm run package:desktop
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
-          if (-not (Test-Path -LiteralPath 'dist/DaFeiYu-win32-x64/DaFeiYu.exe')) { throw 'DaFeiYu.exe was not built' }
-          if (Get-ChildItem -LiteralPath 'dist/DaFeiYu-win32-x64' -Recurse -Include '*.moc3', '*.model3.json' | Select-Object -First 1) { throw 'The desktop package must not contain a Live2D model' }
-          $zip = "dist/dsh-whale-pet-desktop-v$version-win-x64.zip"
-          Compress-Archive -Path 'dist/DaFeiYu-win32-x64/*' -DestinationPath $zip -Force
-          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash.ToLowerInvariant()
-          [IO.File]::WriteAllText("$zip.sha256", "$hash  $(Split-Path -Leaf $zip)`n", [Text.UTF8Encoding]::new($false))
+          $tag = "v$((Get-Content package.json -Raw | ConvertFrom-Json).version)"
+          $app = 'dist/DaFeiYu-win32-x64'
+          node scripts/verify-desktop-package.cjs $app
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          # Not -LiteralPath with -Include: Windows PowerShell ignores -Include there and matches every file.
+          $models = @(Get-ChildItem -LiteralPath $app -Recurse -File | Where-Object { $_.Name -like '*.moc3' -or $_.Name -like '*.model3.json' })
+          if ($models.Count) { throw 'User model data found outside ASAR' }
+          $zip = "dist/dsh-whale-pet-desktop-$tag-win-x64.zip"
+          Compress-Archive -Path "$app/*" -DestinationPath $zip -Force
+          # Check the download after extraction too; the ASAR verifier compares every runtime byte.
+          $checked = Join-Path $env:RUNNER_TEMP ('whale-desktop-' + [Guid]::NewGuid().ToString('N'))
+          Expand-Archive -LiteralPath $zip -DestinationPath $checked
+          node scripts/verify-desktop-package.cjs $checked
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          # The download carries the project's licenses and the Live2D third-party notices.
+          foreach ($notice in 'LICENSE.txt', 'ASSETS_LICENSE.md', 'THIRD_PARTY_NOTICES.md') { if (-not (Test-Path -LiteralPath (Join-Path $checked "notices/$notice"))) { throw "Missing notices/$notice in the desktop download" } }
+
+      # The downloads are exactly this version's plugin and desktop ZIPs, named explicitly (never dist/*.zip):
+      # no checksum side files (GitHub shows each asset's digest). The installer-fix ZIP is still built and
+      # tested above for old plugin folders, but no longer attached; v0.8.2's identical one stays available.
+      - name: Check the download list
+        shell: pwsh
+        run: |
+          $tag = "v$((Get-Content package.json -Raw | ConvertFrom-Json).version)"
+          foreach ($name in "dsh-whale-pet-$tag.zip", "dsh-whale-pet-desktop-$tag-win-x64.zip") { if (-not (Test-Path -LiteralPath "dist/$name")) { throw "Missing download: $name" } }
+          $sums = @(Get-ChildItem -LiteralPath dist -Recurse -File -Filter '*.sha256')
+          if ($sums.Count) { throw "Checksum side files must not be produced: $($sums.Name -join ', ')" }
+          "TAG_VERSION=$tag" | Out-File -LiteralPath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Keep checked candidates
         uses: actions/upload-artifact@v4
         with:
           name: checked-release-downloads
+          if-no-files-found: error
           path: |
-            dist/*.zip
-            dist/*.sha256
+            dist/dsh-whale-pet-${{ env.TAG_VERSION }}.zip
+            dist/dsh-whale-pet-desktop-${{ env.TAG_VERSION }}-win-x64.zip
 
       - name: Publish release
         if: startsWith(github.ref, 'refs/tags/v')
@@ -88,5 +111,5 @@ jobs:
           $title = (Get-Content -LiteralPath $notes -Encoding UTF8 -TotalCount 1) -replace '^# +', ''
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) { throw "Release $tag already exists; not overwriting" }
-          gh release create $tag "dist/dsh-whale-pet-$tag.zip" "dist/dsh-whale-pet-$tag.zip.sha256" "dist/dsh-whale-pet-installer-fix-$tag.zip" "dist/dsh-whale-pet-installer-fix-$tag.zip.sha256" "dist/dsh-whale-pet-desktop-$tag-win-x64.zip" "dist/dsh-whale-pet-desktop-$tag-win-x64.zip.sha256" --title $title --notes-file $notes --verify-tag
+          gh release create $tag "dist/dsh-whale-pet-$tag.zip" "dist/dsh-whale-pet-desktop-$tag-win-x64.zip" --title $title --notes-file $notes --verify-tag
           if ($LASTEXITCODE) { exit $LASTEXITCODE }

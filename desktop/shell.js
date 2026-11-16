@@ -75,8 +75,81 @@
     if (bridge && typeof bridge.sendToDsh === 'function') bridge.sendToDsh(id, String(text))
     else settle(id, 'failed')
   }
+  /** Her settings: go back into DSH (hides this window; DSH shows her again). */
+  desktop.hide = function () { if (bridge && typeof bridge.hide === 'function') bridge.hide() }
   if (bridge && typeof bridge.onLink === 'function') bridge.onLink(function (message) {
     if (message && message.type === 'ack') settle(String(message.id), String(message.result))
+  })
+
+  // ---- her theatre's Log: DSH's current conversation, read only when asked -----------------------
+  // There is no DSH page here to read. Each snapshot names DSH's page and its open conversation
+  // (snapshot.conversation: { source, session }); a Log request is answered only with that same
+  // conversation's messages. A newer request, a conversation change or a lost link drops the request,
+  // so a late answer can never bring back another conversation's messages. Nothing is kept: the Log
+  // asks again every time it opens.
+  var linked = false, conversation = null, historyAsk = null, nextHistory = 1
+  function readContext(value) {
+    if (!value || typeof value !== 'object') return null
+    var source = value.source, session = value.session
+    if (typeof source !== 'string' || !source || source.length > 128) return null
+    if (session !== null && (typeof session !== 'string' || !session || session.length > 512)) return null
+    return { source: source, session: session }
+  }
+  function sameContext(a, b) { return Boolean(a && b && a.source === b.source && a.session === b.session) }
+  /** Ends the request in flight; done(result) only when it is answered, never for a dropped one. */
+  function endHistory(result) {
+    var ask = historyAsk
+    if (!ask) return
+    historyAsk = null
+    clearTimeout(ask.timer)
+    if (result) ask.done(result)
+  }
+  function conversationChanged() { window.dispatchEvent(new CustomEvent('dsh-whale-pet:desktop-conversation')) }
+  /**
+   * done gets { status: 'ready', entries, truncated } or { status: 'unavailable' | 'disconnected' |
+   * 'outdated' | 'failed' }, at most once; returns a function that cancels the request.
+   */
+  desktop.readHistory = function (done) {
+    done = typeof done === 'function' ? done : function () {}
+    endHistory(null)
+    if (!bridge || typeof bridge.readHistory !== 'function' || !linked) { done({ status: 'disconnected' }); return function () {} }
+    // Connected, but DSH's plugin does not name its conversation: it is older than this companion.
+    // (Limits match CONVERSATION_LOG_LIMITS in conversation-log.ts: source ≤128, session ≤512.)
+    if (!conversation) { done({ status: 'outdated' }); return function () {} }
+    var ask = { id: 'h' + Date.now().toString(36) + '-' + nextHistory++, context: conversation, done: done, timer: null }
+    ask.timer = setTimeout(function () { if (historyAsk === ask) endHistory({ status: 'failed' }) }, 20000)
+    historyAsk = ask
+    bridge.readHistory(ask.id)
+    return function () { if (historyAsk === ask) endHistory(null) }
+  }
+  if (bridge && typeof bridge.onLink === 'function') bridge.onLink(function (message) {
+    if (!message || typeof message !== 'object') return
+    if (message.type === 'state') {
+      linked = Boolean(message.connected)
+      if (!linked) {
+        var had = conversation
+        conversation = null
+        endHistory({ status: 'disconnected' })
+        if (had) conversationChanged()
+      }
+    } else if (message.type === 'snapshot') {
+      linked = true
+      var next = message.snapshot && typeof message.snapshot === 'object' ? readContext(message.snapshot.conversation) : null
+      if (!sameContext(next, conversation) && (next || conversation)) {
+        conversation = next
+        endHistory(null)
+        conversationChanged()
+      }
+    } else if (message.type === 'history') {
+      var ask = historyAsk
+      if (!ask || String(message.id) !== ask.id) return
+      var log = message.log === null || typeof desktop.readLog !== 'function' ? null : desktop.readLog(message.log)
+      if (!log) { endHistory({ status: 'failed' }); return }
+      // Only the conversation it was asked for, and still the one DSH has open.
+      if (!sameContext(log.context, ask.context) || !sameContext(log.context, conversation)) { endHistory({ status: 'failed' }); return }
+      if (log.status !== 'ready') { endHistory({ status: 'unavailable' }); return }
+      endHistory({ status: 'ready', entries: log.entries, truncated: Boolean(log.truncated) })
+    }
   })
 
   /**
@@ -84,6 +157,8 @@
    * window.__whaleDesktopShell, never on ctx (Cordis throws for unknown ctx properties).
    */
   desktop.host = function (machine, link) {
+    // The bundle's checker for DSH's conversation log (conversation-log.ts), used by readHistory above.
+    if (link && typeof link.readLog === 'function') desktop.readLog = link.readLog
     if (!bridge || typeof bridge.onLink !== 'function') return
     var connected = false
     function announce() {

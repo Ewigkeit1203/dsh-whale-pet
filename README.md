@@ -87,18 +87,20 @@
 
 **👉 [操作说明](docs/USER_GUIDE.zh-CN.md)**：安装、互动、探头、剧场、Live2D 导入、设置和快捷键都在这里。
 
-### 最新版本：v0.8.2
+### 最新版本：v0.8.3
 
-- **桌面模式（预览）：** 她可以待在系统桌面上，透明置顶、不挡点击，DSH 开着时自动联动（思考、回答、干饭、余额）。Releases 里有点击即可运行的 Windows 版 `DaFeiYu.exe`。
-- **在桌面上直接提问：** **Alt+Shift+T** 打开桌面剧场，问题交给 DSH 发送，回答显示在桌面上，不用切换窗口。
-- **探头更清爽：** 头顶只留“设置｜回来”小块；探头时开设置她不动；回来时先转正再走回去；Live2D 手臂连成一条，不再瞬移。
-- 新的待机表情、看得清的剧场提示，以及新的[操作说明](docs/USER_GUIDE.zh-CN.md)。
+- **只有一个她：** 桌面版连上并显示她时，DSH 里的她暂时离开；桌面版隐藏、退出或断开后她回到 DSH。
+- **去桌面／回 DSH：** 设置最上面的大按钮，一键让她去桌面或回到 DSH，也能直接进入剧场。
+- **桌面剧场的回顾：** 读取 DSH 当前会话已加载的问答（最近 40 条），切换会话时自动跟上，关上不保留。
+- **修复：** 退出或切换账号后桌面上不再残留旧余额；Releases 只放 ZIP，不再附带 `.sha256`。
 
-完整说明见 [v0.8.2 发布说明](docs/releases/v0.8.2.md)。更早版本的更新内容请看[更新日志](CHANGELOG.md#chinese)。
+桌面模式（预览）：她可以待在系统桌面上，透明置顶、不挡点击，DSH 开着时自动联动；Releases 里有点击即可运行的 Windows 版 `DaFeiYu.exe`，**Alt+Shift+T** 打开桌面剧场直接提问。
+
+完整说明见 [v0.8.3 发布说明](docs/releases/v0.8.3.md)。更早版本的更新内容请看[更新日志](CHANGELOG.md#chinese)。
 
 ### 安装或升级
 
-1. 从 [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) 下载 **dsh-whale-pet-v0.8.2.zip**。
+1. 从 [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) 下载 **dsh-whale-pet-v0.8.3.zip**。
 2. 完整解压到固定文件夹，例如 `D:\dsh-whale-pet`。
 3. 双击 `install.bat`，再打开 DSH，或在已打开的窗口中按 **Ctrl + R** 刷新。
 4. 升级时覆盖同一目录中的插件文件；若换了目录，请重新运行安装脚本。解压后的文件需要保留。
@@ -143,7 +145,7 @@ npm test
 node --check lib/client.js
 ```
 
-构建会把界面、状态机、宿主适配器、CSS 和 20 张插画编入 DSH `__ModuleLoader__` 使用的 `lib/client.js`。请修改源码后重新构建，不要手动编辑 `lib/client.js`。当前共有 **213 项自动测试**。
+构建会把界面、状态机、宿主适配器、CSS 和 20 张插画编入 DSH `__ModuleLoader__` 使用的 `lib/client.js`。请修改源码后重新构建，不要手动编辑 `lib/client.js`。当前共有 **236 项自动测试**。
 
 ### 贡献者与致谢
 
@@ -176,18 +178,20 @@ The product name is **大肥鱼** in both languages; `dsh-whale-pet` remains the
 
 **👉 [User guide](docs/USER_GUIDE.md)**: installing, playing with her, peeking, the theatre, importing the Live2D model, settings and shortcuts.
 
-### Latest release: v0.8.2
+### Latest release: v0.8.3
 
-- **Desktop mode (preview):** she can live on your desktop, transparent and always on top without blocking clicks, and follows DSH automatically (thinking, answering, rice break, balance). Releases include a click-to-run Windows app, `DaFeiYu.exe`.
-- **Ask from the desktop:** **Alt+Shift+T** opens her theatre on the desktop; questions go through DSH and the answer appears on the desktop, no window switching.
-- **Tidier peeking:** one small Settings | Come back block above her head; Settings while peeking leaves her in place; coming back she straightens up first, then walks home; the Live2D arm stays in one piece with no jump.
-- A new idle face, readable theatre notices and a new [user guide](docs/USER_GUIDE.md).
+- **Only one of her:** while the desktop app is connected and shows her, she steps out of DSH; she comes back when it hides, quits or disconnects.
+- **To the desktop and back:** large buttons at the top of Settings send her to the desktop or back into DSH, or open the theatre.
+- **Log in the desktop theatre:** reads the messages already loaded in DSH's current conversation (the most recent 40), follows a conversation switch and keeps nothing once closed.
+- **Fixes:** no stale balance on the desktop after signing out or switching accounts; Releases carry only the ZIPs, without `.sha256` files.
 
-Full notes: [v0.8.2](docs/releases/v0.8.2.md). Earlier versions are in the [changelog](CHANGELOG.md#english).
+Desktop mode (preview): she can live on your desktop, transparent and always on top without blocking clicks, following DSH automatically; Releases include a click-to-run Windows app, `DaFeiYu.exe`, and **Alt+Shift+T** opens her theatre there to ask directly.
+
+Full notes: [v0.8.3](docs/releases/v0.8.3.md). Earlier versions are in the [changelog](CHANGELOG.md#english).
 
 ### Install or upgrade
 
-1. Download **dsh-whale-pet-v0.8.2.zip** from [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases).
+1. Download **dsh-whale-pet-v0.8.3.zip** from [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases).
 2. Extract the entire archive into a permanent folder, such as `D:\dsh-whale-pet`.
 3. Run `install.bat`, then open DSH or press **Ctrl + R** in its window.
 4. Upgrade in the same folder, or rerun the installer if you moved the plugin. Keep the extracted files in place.
@@ -232,7 +236,7 @@ npm test
 node --check lib/client.js
 ```
 
-The build compiles the views, state, host adapter, CSS and all 20 illustrations into `lib/client.js` for DSH's `__ModuleLoader__`. Edit the source and rebuild; do not edit `lib/client.js` by hand. Current automated suite: **213 tests**.
+The build compiles the views, state, host adapter, CSS and all 20 illustrations into `lib/client.js` for DSH's `__ModuleLoader__`. Edit the source and rebuild; do not edit `lib/client.js` by hand. Current automated suite: **236 tests**.
 
 ### Contributors and acknowledgements
 

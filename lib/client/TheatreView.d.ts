@@ -23,6 +23,11 @@ export interface TheatreTrack {
     label: string;
     mood: string;
 }
+/**
+ * Where the Log's messages come from. 'local': read from this DSH page. Every other value is the desktop
+ * theatre asking DSH for its current conversation (desktop/shell.js readHistory).
+ */
+export type HistoryStatus = 'local' | 'loading' | 'ready' | 'unavailable' | 'disconnected' | 'outdated' | 'failed';
 export interface TheatreViewProps {
     t: (zh: string, en: string) => string;
     p: Preferences;
@@ -51,6 +56,9 @@ export interface TheatreViewProps {
     expanded: boolean;
     logOpen: boolean;
     history: HistoryEntry[];
+    historyStatus: HistoryStatus;
+    /** DSH sent only the most recent of the loaded messages. */
+    historyTruncated: boolean;
     showThoughts: boolean;
     visibleText: string;
     isRevealing: boolean;
@@ -90,6 +98,8 @@ export interface TheatreViewProps {
         toggleExpanded: () => void;
         openLog: () => void;
         closeLog: () => void;
+        /** Desktop only: ask DSH again. */
+        refreshLog: () => void;
         toggleAuto: () => void;
         toggleMute: () => void;
         toggleReading: () => void;

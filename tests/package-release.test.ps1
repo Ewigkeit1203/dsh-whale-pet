@@ -54,11 +54,7 @@ try {
     try { $bundle = $reader.ReadToEnd() } finally { $reader.Dispose() }
     if ([regex]::Matches($bundle, 'data:image/(?:webp|png);base64,').Count -ne 20) { throw 'Embedded illustration fallback is incomplete' }
     if ((Test-Path -LiteralPath (Join-Path $projectRoot 'vendor/live2d/Core/live2dcubismcore.min.js')) -and -not $bundle.Contains('function __dshLoadCubismCore()')) { throw 'Live2D runtime is missing' }
-    $hasher = [Security.Cryptography.SHA256]::Create()
-    $stream = [IO.File]::OpenRead($zipPath)
-    try { $hash = ([BitConverter]::ToString($hasher.ComputeHash($stream))).Replace('-', '').ToLowerInvariant() }
-    finally { $stream.Dispose(); $hasher.Dispose() }
-    if (-not [IO.File]::ReadAllText($zipPath + '.sha256').StartsWith($hash + '  ')) { throw 'Checksum does not match' }
+    if (Test-Path -LiteralPath ($zipPath + '.sha256')) { throw 'Downloads carry no checksum side file' }
     $reader = [IO.StreamReader]::new($entries['package.json'].Open())
     try { $archivePackage = $reader.ReadToEnd() | ConvertFrom-Json } finally { $reader.Dispose() }
     $sourceVersion = (Get-Content -LiteralPath (Join-Path $projectRoot 'package.json') -Raw | ConvertFrom-Json).version
@@ -78,7 +74,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Extracted browser bundle has invalid syntax' }
 if ($LASTEXITCODE -ne 0) { throw 'Extracted uninstallation failed' }
 $remaining = [IO.File]::ReadAllText((Join-Path $fixture 'profile/cordis.patch.yml'))
 if ($remaining.Contains('id: dsh-whale-pet') -or $remaining.Trim() -ne '[]') { throw 'Uninstall did not leave an empty profile list' }
-Write-Output 'PASS: runtime files, 20 embedded illustrations, optional Live2D runtime, exclusions, checksum and isolated install/uninstall'
+Write-Output 'PASS: runtime files, 20 embedded illustrations, optional Live2D runtime, exclusions, no checksum side file and isolated install/uninstall'
 Write-Output ('Smoke fixture: ' + $fixture)
 
 
@@ -119,11 +115,7 @@ try {
         Assert-EntryMatchesSource $entry $source
     }
 } finally { $repairArchive.Dispose() }
-$hasher = [Security.Cryptography.SHA256]::Create()
-$stream = [IO.File]::OpenRead($repairZip)
-try { $repairHash = ([BitConverter]::ToString($hasher.ComputeHash($stream))).Replace('-', '').ToLowerInvariant() }
-finally { $stream.Dispose(); $hasher.Dispose() }
-if (-not [IO.File]::ReadAllText($repairZip + '.sha256').StartsWith($repairHash + '  ')) { throw 'Repair ZIP checksum does not match' }
+if (Test-Path -LiteralPath ($repairZip + '.sha256')) { throw 'Repair ZIP carries no checksum side file' }
 
 $legacy = Join-Path $fixture '旧版本 & (保留) ! %'
 [IO.Compression.ZipFile]::ExtractToDirectory($repairZip, $legacy)
@@ -136,7 +128,7 @@ New-Item -ItemType Directory -Path (Join-Path $legacy 'lib') | Out-Null
 Invoke-ArchiveLauncher $legacy $repairUser 'install.bat'
 Invoke-ArchiveLauncher $legacy $repairUser 'uninstall.bat'
 if ([IO.File]::ReadAllText((Join-Path $legacy 'lib/client.js')) -cne 'old browser runtime' -or [IO.File]::ReadAllText((Join-Path $legacy 'lib/index.js')) -cne 'old host entry') { throw 'Installer repair changed the old runtime' }
-Write-Output 'PASS: actual archived BAT entry points, CRLF/BOM, installer-only ZIP checksum, standalone rejection and old-runtime preservation'
+Write-Output 'PASS: actual archived BAT entry points, CRLF/BOM, installer-only ZIP without a checksum side file, standalone rejection and old-runtime preservation'
 
 # Check complete-package entry points from the difficult paths used by real downloads.
 $modern = Join-Path $fixture "完整新版 & (中文) % ! '"

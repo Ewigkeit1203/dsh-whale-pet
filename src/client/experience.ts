@@ -13,10 +13,16 @@ export function dialogueBlocks(text: string): DialogueBlock[] {
   return blocks
 }
 export interface HistoryEntry { role: 'user' | 'assistant'; text: string }
-export function readConversationLog(): HistoryEntry[] {
-  const nodes = Array.from(document.querySelectorAll('[data-chat-flow-kind="user-prompt"], [data-chat-flow-kind="assistant-step"]'))
-  return nodes.filter(node => !nodes.some(other => other !== node && other.contains(node))).slice(-80).map(node => {
-    return { role: node.getAttribute('data-chat-flow-kind') === 'user-prompt' ? 'user' as const : 'assistant' as const, text: messageText(node).slice(0, 20000) }
+export function readConversationLog(root: ParentNode = document, limit = 80, textLimit = 20000): HistoryEntry[] {
+  const nodes = Array.from(root.querySelectorAll('[data-chat-flow-kind="user-prompt"], [data-chat-flow-kind="assistant-step"]'))
+    .filter(node => !node.closest('[data-whale-pet]'))
+  const selected = new Set(nodes)
+  // Walk the short ancestor chain, instead of comparing every message against the entire conversation.
+  return nodes.filter(node => {
+    for (let parent = node.parentElement; parent; parent = parent.parentElement) if (selected.has(parent)) return false
+    return true
+  }).slice(-limit).map(node => {
+    return { role: node.getAttribute('data-chat-flow-kind') === 'user-prompt' ? 'user' as const : 'assistant' as const, text: messageText(node).slice(0, textLimit) }
   }).filter(entry => entry.text)
 }
 /** Preserve code and block boundaries while excluding reasoning and controls. */
