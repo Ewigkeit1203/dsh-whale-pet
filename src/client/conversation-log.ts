@@ -72,8 +72,22 @@ export function currentConversationContext(source: string, root: ParentNode = do
 /** Called only for a history request, never while serializing a streaming update or a heartbeat. */
 export function loadedConversationLog(source: string, root: ParentNode = document): ConversationLog {
   const context = currentConversationContext(source, root)
-  const container = root.querySelector('[data-conversation-session]')
-  if (!context.session || !container) return { context, status: 'unavailable', entries: [], truncated: false }
+  const marker = root.querySelector('[data-conversation-session]')
+  if (!context.session || !marker) return { context, status: 'unavailable', entries: [], truncated: false }
+  // Some DSH layouts put the identity on a header beside the messages. Use the nearest shared
+  // ancestor with messages, but never combine different conversation markers or leave the supplied root.
+  let container: Element | null = marker
+  const messageSelector = '[data-chat-flow-kind="user-prompt"], [data-chat-flow-kind="assistant-step"]'
+  while (container && !container.querySelectorAll(messageSelector).length) {
+    if (container === root) { container = null; break }
+    container = container.parentElement
+  }
+  if (!container) return { context, status: 'ready', entries: [], truncated: false }
+  const markers = [container, ...Array.from(container.querySelectorAll('[data-conversation-session]'))]
+  if (markers.some(node => {
+    const session = node.getAttribute('data-conversation-session')
+    return session !== null && session !== context.session
+  })) return { context, status: 'unavailable', entries: [], truncated: false }
   // One extra entry/character makes truncation observable while bounding the expensive DOM clones.
   const entries = readConversationLog(container, CONVERSATION_LOG_LIMITS.entries + 1, CONVERSATION_LOG_LIMITS.entryText + 1)
   return boundConversationLog(context, entries)
