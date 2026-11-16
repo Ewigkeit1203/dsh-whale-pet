@@ -490,3 +490,77 @@ test('Conversation history link: switching an empty conversation pushes its new 
   assert.deepEqual(identities, ['a', 'b', null])
   stop(); assert.equal(unsubscribed, true)
 })
+
+test('DSH link maintenance: malformed nested balances never reach the desktop state machine', t => {
+  const dsh = new PetStateMachine(); t.after(() => dsh.dispose())
+  const good = { ...linkSnapshot(dsh.getStatus()), hostBalance: host }
+  for (const value of [{ status: 'ready', source: 'host' }, { ...host, toppedUp: null },
+    { ...host, granted: { status: 'ready', wallets: [null] } }, { ...host, updatedAt: 1e100 },
+    { ...host, toppedUp: { status: 'ready', wallets: [{ currency: 'CNY', amount: 42 }] } }]) {
+    assert.equal(readLinkSnapshot({ ...good, hostBalance: value }), null)
+    assert.equal(applyLinkSnapshot(dsh, { ...good, hostBalance: value }), false)
+  }
+  assert.equal(dsh.getStatus().hostBalance, null)
+  assert.ok(readLinkSnapshot(good))
+})
+
+test('DSH link maintenance: local-only state changes do not repeatedly serialize long answers', async t => {
+  const dsh = new PetStateMachine(); t.after(() => dsh.dispose())
+  let serializations = 0, pushes = 0
+  dsh.setLatestDialogue('x'.repeat(60000))
+  dsh.setHostBalance({ ...host, toJSON() { serializations++; return host } } as any)
+  const fetch = async (url: string) => {
+    if (url.endsWith('/hello')) return { ok: true, json: async () => ({ app: DESKTOP_LINK.app, v: 1 }) }
+    if (url.endsWith('/push')) { pushes++; return { ok: true, json: async () => ({ ok: true }) } }
+    throw Error('unexpected request')
+  }
+  const stop = startDesktopLink(dsh, { fetch: fetch as any }); t.after(stop)
+  for (let i = 0; i < 100 && !pushes; i++) await new Promise(r => setTimeout(r, 5))
+  assert.equal(pushes, 1)
+  serializations = 0
+  for (let i = 0; i < 100; i++) dsh.setGalGameMode(i % 2 === 0)
+  assert.equal(serializations, 0, 'unchanged transport fields must not invoke JSON serialization')
+})
+
+test('DSH link maintenance: a discovery that finishes after unload cannot post an old snapshot', async t => {
+  const dsh = new PetStateMachine(); t.after(() => dsh.dispose())
+  const paths: string[] = []
+  let release: ((value: any) => void) | null = null
+  const fetch = async (url: string) => {
+    paths.push(url.split(/:\d+/)[1])
+    if (url.endsWith('/hello')) return new Promise(resolve => { release = resolve })
+    return { ok: true, json: async () => ({ ok: true }) }
+  }
+  const stop = startDesktopLink(dsh, { fetch: fetch as any }); t.after(stop)
+  for (let i = 0; i < 100 && !release; i++) await new Promise(r => setTimeout(r, 5))
+  assert.ok(release)
+  stop(); release!({ ok: true, json: async () => ({ app: DESKTOP_LINK.app, v: 1 }) })
+  await new Promise(r => setTimeout(r, 10))
+  assert.deepEqual(paths, ['/hello'])
+})
+
+test('DSH link maintenance: an old cleanup cannot remove a newer requester, and hung requests time out', async t => {
+  const { requestDesktop } = await import('../lib/client/desktop-link.js')
+  const dsh = new PetStateMachine(); t.after(() => dsh.dispose())
+  let pushes = 0
+  const fetch = async (url: string, init?: any) => {
+    if (url.endsWith('/hello')) return { ok: true, json: async () => ({ app: DESKTOP_LINK.app, v: 1 }) }
+    if (url.endsWith('/push')) { pushes++; return { ok: true, json: async () => ({ ok: true }) } }
+    if (url.endsWith('/request')) return new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new Error('timeout')))
+    })
+    throw Error('unexpected request')
+  }
+  const oldStop = startDesktopLink(dsh, { fetch: fetch as any, pushTimeoutMs: 40 })
+  for (let i = 0; i < 100 && pushes < 1; i++) await new Promise(r => setTimeout(r, 5))
+  const newStop = startDesktopLink(dsh, { fetch: fetch as any, pushTimeoutMs: 40 }); t.after(newStop)
+  for (let i = 0; i < 100 && pushes < 2; i++) await new Promise(r => setTimeout(r, 5))
+  oldStop()
+  const keptAlive = setTimeout(() => {}, 1000)
+  try {
+    const started = Date.now()
+    assert.equal(await requestDesktop('show'), false)
+    assert.ok(Date.now() - started >= 20, 'the newer requester must run until its deadline, rather than being erased by the old stop')
+    assert.ok(Date.now() - started < 900)
+  } finally { clearTimeout(keptAlive) }
+})

@@ -7,7 +7,7 @@
  * feeds the same calls into its own state machine, so she reacts exactly as she does in DSH.
  * Nothing here can run code or touch files on either side: the only message is a status snapshot.
  */
-import type { BalanceSnapshot, PetStatusInfo } from './types.js'
+import type { BalanceSnapshot, PetStatusInfo, WalletRead } from './types.js'
 import type { ComposerResult } from './dsh-composer.js'
 import { readConversationContext, readConversationLogSnapshot, type ConversationContext, type ConversationLog } from './conversation-log.js'
 
@@ -78,6 +78,23 @@ export interface LinkDriver {
 
 const isLinkText = (value: unknown, limit: number = DESKTOP_LINK.textLimit): value is string => typeof value === 'string' && value.length <= limit
 
+function isLinkWallet(value: unknown): value is WalletRead {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const read = value as Record<string, any>
+  if (read.status === 'unknown' || read.status === 'failed') return true
+  return read.status === 'ready' && Array.isArray(read.wallets) && read.wallets.length <= 64 && read.wallets.every((wallet: any) =>
+    wallet && typeof wallet === 'object' && typeof wallet.currency === 'string' && /^[A-Z]{3}$/.test(wallet.currency) &&
+    isLinkText(wallet.amount, 200) && /^-?\d+(\.\d+)?$/.test(wallet.amount))
+}
+
+/** Compare only transported fields; poses, menus and other local state must not serialize large answers. */
+function sameLinkSnapshot(a: LinkSnapshot | null, b: LinkSnapshot): boolean {
+  return a !== null && a.isReasoning === b.isReasoning && a.isStreaming === b.isStreaming &&
+    a.latestDialogue === b.latestDialogue && a.reasoningText === b.reasoningText && a.quotaErrorKey === b.quotaErrorKey &&
+    a.hostBalance === b.hostBalance && a.balances.known === b.balances.known && a.balances.toppedUp === b.balances.toppedUp &&
+    a.balances.granted === b.balances.granted && a.conversation?.source === b.conversation?.source && a.conversation?.session === b.conversation?.session
+}
+
 /** Checks a snapshot that arrived over the link; anything unexpected is dropped whole. */
 export function readLinkSnapshot(value: unknown): LinkSnapshot | null {
   if (!value || typeof value !== 'object') return null
@@ -88,7 +105,8 @@ export function readLinkSnapshot(value: unknown): LinkSnapshot | null {
   const b = s.balances
   if (!b || typeof b.known !== 'boolean' || !isLinkText(b.toppedUp, 200) || !isLinkText(b.granted, 200)) return null
   const h = s.hostBalance
-  if (h !== null && (!h || typeof h !== 'object' || h.source !== 'host' || !['loading', 'ready', 'stale', 'signed-out', 'error'].includes(h.status))) return null
+  if (h !== null && (!h || typeof h !== 'object' || h.source !== 'host' || !['loading', 'ready', 'stale', 'signed-out', 'error'].includes(h.status) ||
+    !isLinkWallet(h.toppedUp) || !isLinkWallet(h.granted) || (h.updatedAt !== null && (typeof h.updatedAt !== 'number' || !Number.isFinite(h.updatedAt) || h.updatedAt < 0 || h.updatedAt > 8.64e15)))) return null
   if (s.conversation !== undefined && !readConversationContext(s.conversation)) return null
   return s as LinkSnapshot
 }
@@ -209,7 +227,8 @@ export function startDesktopLink(machine: Pick<LinkDriver, 'getStatus'> & { subs
   let timer: unknown = null
   let dueAt = Infinity
   let busy = false, again = false, stopped = false
-  let lastSent = 0, lastBody = '', misses = 0
+  let lastSent = 0, misses = 0
+  let observedSnapshot: LinkSnapshot | null = null
   /** The companion's window, as last told (newest revision wins); reset for every new connection. */
   let shown = false, rev = -1, generation = 0
   const set = (state: DesktopLinkState) => {
@@ -256,6 +275,7 @@ export function startDesktopLink(machine: Pick<LinkDriver, 'getStatus'> & { subs
   const find = async (): Promise<number | null> => {
     let error = ''
     for (const p of DESKTOP_LINK.ports) {
+      if (stopped) return null
       try {
         const signal = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(DESKTOP_LINK.helloTimeoutMs) : undefined
         const response = await d.fetch(url(p, '/hello'), { signal })
@@ -266,7 +286,7 @@ export function startDesktopLink(machine: Pick<LinkDriver, 'getStatus'> & { subs
         error = e instanceof Error ? e.message : String(e)
       }
     }
-    set({ status: 'searching', error })
+    if (!stopped) set({ status: 'searching', error })
     return null
   }
   const tick = async () => {
@@ -275,18 +295,18 @@ export function startDesktopLink(machine: Pick<LinkDriver, 'getStatus'> & { subs
     busy = true
     try {
       if (port === null) {
-        port = await find()
-        if (port === null) {
+        const found = await find()
+        if (stopped) return
+        if (found === null) {
           schedule(DESKTOP_LINK.scanMs[Math.min(misses++, DESKTOP_LINK.scanMs.length - 1)])
           return
         }
-        const found = port
         drop()
         port = found
         misses = 0
-        lastBody = ''
       }
-      const body = JSON.stringify(snapshot())
+      observedSnapshot = snapshot()
+      const body = JSON.stringify(observedSnapshot)
       const at = port, from = generation
       try {
         const signal = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(d.pushTimeoutMs ?? DESKTOP_LINK.pushTimeoutMs) : undefined
@@ -298,7 +318,6 @@ export function startDesktopLink(machine: Pick<LinkDriver, 'getStatus'> & { subs
           if (signal?.aborted) throw e
         }
         if (!current(at, from)) return
-        lastBody = body
         lastSent = d.now()
         set({ status: 'connected', port: at, shown })
         if (!heard(answer, at, from)) return
@@ -375,26 +394,31 @@ export function startDesktopLink(machine: Pick<LinkDriver, 'getStatus'> & { subs
       }
     })()
   }
-  desktopRequester = async action => {
+  const ownRequester = async (action: DesktopRequest): Promise<boolean> => {
     const at = port, from = generation
     if (at === null || stopped) return false
     try {
-      const response = await d.fetch(url(at, '/request'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action }) })
+      const signal = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(d.pushTimeoutMs ?? DESKTOP_LINK.pushTimeoutMs) : undefined
+      const response = await d.fetch(url(at, '/request'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action }), signal })
       if (!response.ok) return false
       const answer = await response.json()
       return heard(answer, at, from) && answer?.ok === true
     } catch { return false }
   }
+  desktopRequester = ownRequester
   const unsubscribe = machine.subscribe(() => {
     if (port === null) return
-    if (JSON.stringify(snapshot()) === lastBody) return
+    const next = snapshot()
+    if (sameLinkSnapshot(observedSnapshot, next)) return
+    observedSnapshot = next
     schedule(Math.max(0, DESKTOP_LINK.minGapMs - (d.now() - lastSent)))
   })
   const unsubscribeConversation = deps.subscribeConversation?.(() => { if (port !== null) schedule(0) })
   schedule(0)
   return () => {
+    if (stopped) return
     stopped = true
-    desktopRequester = null
+    if (desktopRequester === ownRequester) desktopRequester = null
     if (pollAbort) pollAbort.abort()
     if (timer !== null) d.clearTimeout(timer)
     unsubscribe()
