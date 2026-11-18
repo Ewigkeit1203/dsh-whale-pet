@@ -22,7 +22,7 @@ export const INTERACTIONS: readonly InteractionInfo[] = [
   { id: 'carry', name: ['拎起来', 'Pick her up'], hint: ['按住她不放，再动一动鼠标？', 'Hold her and move the pointer?'], how: ['按住她拖动，松手放下', 'Press and drag her, release to put her down'] },
   { id: 'dizzy', name: ['晃晕了', 'Dizzy'], hint: ['拎着她的时候别晃太猛……', 'Do not swing her too hard while carrying…'], how: ['拎起来快速大幅度地晃', 'Carry her and swing fast and wide'] },
   { id: 'peek', name: ['探头', 'Peek'], hint: ['她可以躲到屏幕边上，只露个头。', 'She can hide at the screen edge and peek out.'], how: ['按探头快捷键，或用悬停菜单里的“探头”', 'Press the peek shortcut, or use Peek in the hover menu'] },
-  { id: 'theatre', name: ['对话剧场', 'Theatre'], hint: ['聊天输入框里藏着一个舞台。', 'There is a stage hidden behind the chat input.'], how: ['点击聊天输入框，或用悬停菜单里的“剧场”', 'Click the chat input, or use Theatre in the hover menu'] },
+  { id: 'theatre', name: ['对话剧场', 'Theatre'], hint: ['聊天输入框里藏着一个舞台。', 'There is a stage hidden behind the chat input.'], how: ['打开悬停菜单里的“剧场”开关后点击聊天输入框，或按 Alt+T', 'Turn on Theatre in the hover menu and click the chat input, or press Alt+T'] },
   { id: 'code', name: ['复制代码', 'Copy code'], hint: ['回答里有代码时，她的菜单会多一个按钮。', 'When an answer has code, her menu gets one more button.'], how: ['回答含代码时，在悬停菜单里点复制', 'When an answer has code, use Copy in the hover menu'] },
   { id: 'meal', name: ['干饭时间', 'Rice break'], hint: ['回答完一个问题之后，看看她在做什么。', 'Watch what she does after finishing an answer.'], how: ['等她回答完，她会吃几口饭', 'Wait for an answer to finish; she has a few bites of rice'] },
 ]

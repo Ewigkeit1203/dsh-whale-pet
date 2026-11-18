@@ -132,6 +132,18 @@
 .petWidget[data-whale-pet][data-wandering] { transition: left 3.2s cubic-bezier(.25, .1, .25, 1), top 3.2s cubic-bezier(.25, .1, .25, 1); }
 /* Dragging always wins over wandering and the previous landing transition. */
 .petWidget[data-whale-pet][data-dragging] { transition: none; cursor: grabbing; }
+@media (prefers-reduced-motion: no-preference) {
+  .petWidget[data-desktop-departure] { animation: whale-to-desktop 240ms ease-in both; }
+  [data-whale-desktop][data-whale-desktop-arrival] .petWidget[data-whale-pet] { animation: whale-on-desktop 380ms ease-out both; }
+}
+@keyframes whale-to-desktop {
+  from { opacity: 1; transform: translateX(0) scale(1); }
+  to { opacity: 0; transform: translateX(32px) scale(.96); }
+}
+@keyframes whale-on-desktop {
+  from { opacity: 0; transform: translateX(-32px) scale(.96); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
 /* A moving WebGL canvas does not need a fresh blurred silhouette each frame. */
 .petWidget[data-whale-pet]:is([data-dragging], [data-settling]) .puppetRoot,
 .petWidget[data-whale-pet] .puppetRoot[data-carry-phase] { filter: none; will-change: transform; }
@@ -185,6 +197,14 @@
 [data-whale-pet] .toolbar .petSettingsButton { min-width: 82px; min-height: 34px; flex: 0 0 auto; font-size: 13px; }
 [data-whale-pet] .petSettingsButton span { display: inline; visibility: visible; font-size: inherit; }
 [data-whale-pet] .petEdgePeek kbd { font: 10px var(--wp-mono); opacity: .75; padding-left: 3px; white-space: nowrap; }
+/* Theatre: a saved switch (click the chat input to enter the theatre), with a small track that shows its state. */
+[data-whale-pet] .toolBtn.petTheatreToggle { gap: 5px; padding: 0 9px 0 10px; flex: 0 0 auto; }
+[data-whale-pet] .toolSwitch { position: relative; width: 20px; height: 12px; border-radius: 999px; background: var(--wp-line-strong); transition: background-color .15s ease; }
+[data-whale-pet] .toolSwitch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 8px; height: 8px; border-radius: 50%; background: var(--wp-surface-strong, #fff); box-shadow: 0 1px 2px rgba(0, 0, 0, .2); transition: transform .18s cubic-bezier(.2, .8, .2, 1); }
+[data-whale-pet] .petTheatreToggle[aria-checked="true"] { color: var(--wp-accent); }
+[data-whale-pet] .petTheatreToggle[aria-checked="true"] .toolSwitch { background: var(--wp-accent); }
+[data-whale-pet] .petTheatreToggle[aria-checked="true"] .toolSwitch::after { transform: translateX(8px); }
+@media (prefers-reduced-motion: reduce) { [data-whale-pet] .toolSwitch, [data-whale-pet] .toolSwitch::after { transition: none; } }
 /* The Live2D model leans out from behind the edge; the peeking picture is already drawn that way. */
 [data-whale-pet][data-peek-lean="true"] .petSpriteSize { transform-origin: 50% 14%; transform: rotate(-22deg); }
 [data-whale-pet] .petSpriteSize { transition: transform .65s cubic-bezier(.25,.1,.25,1); }
@@ -521,8 +541,9 @@
 [data-whale-pet] .petWide small { font-size: 11.5px; color: var(--wp-ink-3); }
 [data-whale-pet] .petWide[aria-pressed="true"] { border-color: var(--wp-accent); background: var(--wp-accent-soft); }
 
-/* Top of settings (roadmap step 4): where she keeps you company, and her theatre. Two big buttons side by side. */
-[data-whale-pet] .petPlaceActions { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+/* The desktop handoff follows the balance and pricing cards. */
+/* Room above (after the pricing card) and below (before the first group), so the button does not crowd either. */
+[data-whale-pet] .petPlaceActions { display: grid; margin: 16px 0 12px; }
 [data-whale-pet] .petPlaceButton {
   display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
   min-height: 64px; padding: 10px 12px;
@@ -530,9 +551,8 @@
   background: var(--wp-accent); color: var(--wp-accent-ink); text-align: left; cursor: pointer;
   transition: background-color .15s ease, transform .15s ease;
 }
-[data-whale-pet] .petPlaceButton + .petPlaceButton { background: var(--wp-raised); color: var(--wp-ink); box-shadow: inset 0 0 0 1px var(--wp-line); }
 [data-whale-pet] .petPlaceButton:hover { background: var(--wp-accent-hover); }
-[data-whale-pet] .petPlaceButton + .petPlaceButton:hover { background: var(--wp-control); }
+[data-whale-pet] .petPlaceButton:not(:has(small)) { min-height: 42px; justify-content: center; }
 [data-whale-pet] .petPlaceButton:active { transform: translateY(1px); }
 [data-whale-pet] .petPlaceButton strong { font-size: 13.5px; font-weight: 600; }
 [data-whale-pet] .petPlaceButton small { font-size: 11.5px; line-height: 1.4; opacity: .82; }

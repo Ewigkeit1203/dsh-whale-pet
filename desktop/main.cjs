@@ -10,6 +10,9 @@ const { createLinkServer } = require('./link-server.cjs')
 
 const HIDE_SHORTCUT = 'Alt+Shift+H'
 const THEATRE_SHORTCUT = 'Alt+Shift+T'
+const DESKTOP_PROTOCOL = 'dsh-whale-pet'
+const requestedFromDsh = argv => argv.some(arg => /^dsh-whale-pet:\/\/show\/?$/i.test(arg))
+const registerProtocolOnly = process.argv.includes('--register-whale-protocol')
 /** Tray and global shortcut: open (or close) her theatre, so a question can be asked without opening DSH. */
 function openTheatre() {
   if (!win) return
@@ -32,8 +35,8 @@ function linkLine() {
   return `DSH：未连接（等待中，端口 ${s.port}）/ Waiting` + (s.rejected ? `  · 上次拒绝 ${s.rejected}` : '')
 }
 
-if (!app.requestSingleInstanceLock()) { app.quit() }
-app.on('second-instance', () => showCompanion())
+if (!registerProtocolOnly && !app.requestSingleInstanceLock()) { app.quit() }
+app.on('second-instance', (_event, argv) => showCompanion(requestedFromDsh(argv)))
 
 /** A small round blue icon, drawn here so the companion needs no image file of its own. */
 function trayIcon() {
@@ -65,7 +68,7 @@ function createWindow() {
   // Clicks fall through to whatever is underneath; the page turns this off while the pointer is on her.
   win.setIgnoreMouseEvents(true, { forward: true })
   win.loadFile(path.join(__dirname, 'index.html'))
-  win.once('ready-to-show', () => { if (wanted) showCompanion() })
+  win.once('ready-to-show', () => { if (wanted) showCompanion(requestedFromDsh(process.argv)) })
   // The page may finish loading before or after the window is first shown (it differs by platform):
   // tell it whether she is meant to be shown, never whether the window happens to be visible yet.
   win.webContents.on('did-finish-load', () => {
@@ -84,11 +87,12 @@ function createWindow() {
 }
 
 /** Shows or hides her; the page stops every frame while hidden (see shell.js). */
-function showCompanion() {
+function showCompanion(arriving = false) {
   wanted = true
   if (!win) return
   win.showInactive()
   win.webContents.send('whale-desktop:command', 'shown')
+  if (arriving) win.webContents.send('whale-desktop:command', 'arrive')
   if (link) link.setShown(win.isVisible())
   refreshTray()
 }
@@ -136,6 +140,8 @@ function refreshTray() {
 }
 
 app.whenReady().then(() => {
+  const registered = process.platform === 'win32' && app.isPackaged && app.setAsDefaultProtocolClient(DESKTOP_PROTOCOL)
+  if (registerProtocolOnly) { app.exit(registered ? 0 : 1); return }
   createWindow()
   tray = new Tray(trayIcon())
   tray.on('click', toggleVisible)
@@ -185,7 +191,7 @@ app.whenReady().then(() => {
     // False (refused) when her window is gone or the companion is quitting.
     onRequest: action => {
       if (!win || win.isDestroyed() || quitting) return false
-      if (action === 'theatre') openTheatre(); else showCompanion()
+      if (action === 'theatre') openTheatre(); else showCompanion(true)
       return true
     },
   })

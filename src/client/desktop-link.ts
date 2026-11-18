@@ -161,6 +161,17 @@ export function readDesktopPresence(value: unknown): DesktopPresence | null {
 /** Only these can be asked of the companion from DSH: show her window, or open her theatre there. */
 export type DesktopRequest = 'show' | 'theatre'
 let desktopRequester: ((action: DesktopRequest) => Promise<boolean>) | null = null
+let desktopRecheck: (() => void) | null = null
+
+/** Fixed application link. The desktop companion only accepts the show action. */
+export function launchDesktopFromDsh(): void {
+  window.location.href = 'dsh-whale-pet://show'
+  recheckDesktopLink()
+}
+
+export function recheckDesktopLink(): void {
+  desktopRecheck?.()
+}
 /** DSH: ask the running companion to show her (false when none is connected or it refused). */
 export function requestDesktop(action: DesktopRequest): Promise<boolean> {
   return desktopRequester ? desktopRequester(action) : Promise.resolve(false)
@@ -406,6 +417,8 @@ export function startDesktopLink(machine: Pick<LinkDriver, 'getStatus'> & { subs
     } catch { return false }
   }
   desktopRequester = ownRequester
+  const ownRecheck = () => schedule(0)
+  desktopRecheck = ownRecheck
   const unsubscribe = machine.subscribe(() => {
     if (port === null) return
     const next = snapshot()
@@ -419,6 +432,7 @@ export function startDesktopLink(machine: Pick<LinkDriver, 'getStatus'> & { subs
     if (stopped) return
     stopped = true
     if (desktopRequester === ownRequester) desktopRequester = null
+    if (desktopRecheck === ownRecheck) desktopRecheck = null
     if (pollAbort) pollAbort.abort()
     if (timer !== null) d.clearTimeout(timer)
     unsubscribe()

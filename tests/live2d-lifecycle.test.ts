@@ -113,6 +113,7 @@ test('Live2D stages stop requesting frames while hidden or cached and resume exa
 
 test('Runtime keeps three minutes of quiet desktop performances at the ambient budget; carrying can still accelerate', async () => {
   let now = 0, next = 0, draws = 0, simulated = 0, performances = 0
+  let performanceName = ''
   const frames = new Map<number, (t:number)=>void>()
   const target = {addEventListener(){}, removeEventListener(){}}
   const parameterIds: string[] = [], values = new Map<number,number>()
@@ -131,7 +132,7 @@ test('Runtime keeps three minutes of quiet desktop performances at the ambient b
   }
   class Driver extends motion.Live2DDriver {
     constructor(){super(5)}
-    update(input:motion.Live2DDriveInput){const d = super.update(input); if(d.performance) performances++; return d}
+    update(input:motion.Live2DDriveInput){const d = super.update(input); performanceName = d.performance; if(d.performance) performances++; return d}
   }
   class Setting {getModelFileName(){return 'test.moc3'}; getPhysicsFileName(){return ''}; getEyeBlinkParameterCount(){return 0}; getTextureCount(){return 0}}
   const module = runtimeModule('../live2d/runtime.ts', {console, ...motion, Live2DDriver:Driver, performance:{now:()=>now},
@@ -178,6 +179,25 @@ test('Runtime keeps three minutes of quiet desktop performances at the ambient b
   assert.equal(value('LHand'),0,'fingers remain native rather than hidden by forced parameters')
   stage.setLook({idle:true});advance(3)
   assert.ok(Math.abs(value('Param60'))<.01 && Math.abs(value('Param41'))<.01,'return clears only the temporary native arm targets')
+  const stretching = {idle:true, allowIdleStretch:true}
+  stage.setLook(stretching)
+  for (let seconds = 0; seconds < 16 && performanceName !== 'stretch'; seconds++) advance(1)
+  assert.equal(performanceName, 'stretch', 'the stretch starts before a long uninterrupted idle is required')
+  advance(1)
+  const activeDraws = draws
+  advance(1)
+  assert.ok(Math.abs(draws - activeDraws - 60) <= 1, 'the stretch uses the active frame budget')
+  stage.setPowerSave(true)
+  const savingDraws = draws
+  advance(1)
+  assert.equal(performanceName, 'stretch')
+  assert.ok(Math.abs(draws - savingDraws - 30) <= 1, 'power save still caps the stretch')
+  stage.setLook({idle:true})
+  advance(3)
+  const ambientDraws = draws
+  advance(2)
+  assert.equal(performanceName, '')
+  assert.ok(Math.abs(draws - ambientDraws - 40) <= 1, 'interruption returns to the power-save idle rate')
   stage.dispose(); assert.equal(frames.size,0)
 })
 

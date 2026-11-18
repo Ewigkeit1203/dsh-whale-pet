@@ -7,6 +7,16 @@
 <a name="english"></a>
 ## English
 
+### [v0.8.5] - 2026-11-18
+
+- **A stretch (Live2D):** after a few quiet seconds she now and then stretches both arms over her head and lets her shoulders settle, at least 90 s apart; never in the theatre, while peeking, in Quiet mode or with reduced motion. Interrupted (pointer, answer, being picked up) she brings her arms down along the same path instead of snapping back.
+- **Theatre switch:** Theatre in the hover menu is a remembered switch for “click the chat box to open the theatre”; Alt+T opens it any time. On the desktop her menu still opens the theatre directly.
+- **Settings:** balance, then the pricing period, then “Keep me company on the desktop” with room around it; the “Open theatre” card is removed.
+- **To the desktop:** when the desktop app is not running, the button tries to start it through `dsh-whale-pet://show` (registered when the updated DaFeiYu.exe runs once); short leaving and arriving animations.
+- **English:** pricing periods are named Peak / Off-peak.
+- **Fix:** the desktop app treated itself as DSH until DSH connected (menu Theatre did not open; Settings offered the trip to the desktop).
+- **Docs:** current screenshots in the README and both user guides; unused screenshots removed.
+
 ### [v0.8.4] - 2026-11-15
 
 - **Fix: Log in the desktop theatre found no messages** when DSH puts the conversation identity on a header beside the messages. Log now reads the nearest scope that holds the messages, within the page it was given, and only when every conversation marker in it is the current one; otherwise it shows nothing rather than mixing conversations.
@@ -217,6 +227,16 @@
 
 <a name="chinese"></a>
 ## 中文版本
+
+### [v0.8.5] - 2026-11-18
+
+- **伸个懒腰（Live2D）：** 静静待几秒后她偶尔会双手举过头顶伸懒腰、再放松肩膀，两次至少隔 90 秒；剧场、探头、安静模式和减少动态效果时不会出现。被打断（动鼠标、开始回答、被拎起）时沿原路收手，不会突然弹回。
+- **剧场开关：** 悬停菜单的“剧场”变成会记住的“点击输入框进入剧场”开关；Alt+T 随时进入。桌面上菜单里的“剧场”仍直接打开剧场。
+- **设置：** 依次是余额、峰谷时段、“去桌面陪我”，按钮上下留出空隙；去掉“进入剧场模式”卡片。
+- **去桌面：** 桌面版没在运行时，按钮会通过 `dsh-whale-pet://show` 尝试启动它（新版 DaFeiYu.exe 运行过一次后注册）；离开和到达各有短动画。
+- **英文：** 时段名统一为 Peak / Off-peak。
+- **修复：** 桌面版在连上 DSH 之前会误以为自己在 DSH 里（菜单里的剧场打不开，设置显示去桌面）。
+- **文档：** README 和中英文使用说明换成当前界面截图，删掉没用的旧截图。
 
 ### [v0.8.4] - 2026-11-15
 

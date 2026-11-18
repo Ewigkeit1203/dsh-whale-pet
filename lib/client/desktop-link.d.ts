@@ -89,6 +89,9 @@ export interface DesktopPresence {
 export declare function readDesktopPresence(value: unknown): DesktopPresence | null;
 /** Only these can be asked of the companion from DSH: show her window, or open her theatre there. */
 export type DesktopRequest = 'show' | 'theatre';
+/** Fixed application link. The desktop companion only accepts the show action. */
+export declare function launchDesktopFromDsh(): void;
+export declare function recheckDesktopLink(): void;
 /** DSH: ask the running companion to show her (false when none is connected or it refused). */
 export declare function requestDesktop(action: DesktopRequest): Promise<boolean>;
 /** The latest link state, for the settings panel (the link may start before the panel mounts). */

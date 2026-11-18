@@ -618,11 +618,12 @@ export function createLive2DStage(canvas: HTMLCanvasElement, source: Live2DSourc
     const gesture = look.gesture && gestures.has(look.gesture) ? look.gesture : null
     gesturePlayer.want(look.held || look.guardChest || look.edgePeek ? null : gesture ?? (drive.gesture && gestures.has(drive.gesture) ? drive.gesture : null))
     const playing = gesturePlayer.update(dt)
-    // Long ambient performances keep the desktop's 30 fps budget. Only short
-    // reactions, carrying and gesture transitions request extra frames.
+    // A visible stretch moves both arms through a continuous path; use the same
+    // adaptive frame budget as other active motions until its blend fades out.
     moving = drive.moving
     swim.float = drive.float; swim.touchdown = drive.touchdown; swim.tilt = drive.swimTilt; swim.bob = drive.swimBob
-    lively = (drive.lively && (!drive.performance || Boolean(look.held))) || gesturePlayer.phase === 'enter' || gesturePlayer.phase === 'exit'
+    const stretching = drive.performance === 'stretch' && drive.performanceWeight > 0.04
+    lively = stretching || (drive.lively && (!drive.performance || Boolean(look.held))) || gesturePlayer.phase === 'enter' || gesturePlayer.phase === 'exit'
     if (playing) {
       const clip = gestures.get(playing.gesture)?.[playing.part]
       if (clip) for (const curve of clip.curves) whale.core.setParameterValueByIndex(curve.index, sampleMotionCurve(curve.segments, playing.time))

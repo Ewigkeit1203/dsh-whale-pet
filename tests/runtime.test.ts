@@ -5,7 +5,7 @@ import vm from 'node:vm'
 import { PetStateMachine } from '../lib/client/state-machine.js'
 
 // Exercise the real browser artifact as well as the TypeScript compiler output.
-function loadBundle(storage?: { getItem(key: string): string | null; setItem(key: string, value: string): void }, frames?: Array<() => void>, random?: () => number) {
+function loadBundle(storage?: { getItem(key: string): string | null; setItem(key: string, value: string): void }, frames?: Array<() => void>, random?: () => number, withModel = false) {
   let plugin: any
   let hookIndex = 0
   const hooks: any[] = []
@@ -43,7 +43,7 @@ function loadBundle(storage?: { getItem(key: string): string | null; setItem(key
   const bundle = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
     .replace('const DialogueContent =', 'globalThis.BundleAudio = PetVoice; const DialogueContent =')
     .replace('const MAID_DATA_URI =', 'globalThis.BundleStateMachine = PetStateMachine; const MAID_DATA_URI =')
-  vm.runInNewContext(bundle, context)
+  vm.runInNewContext(withModel ? bundle.replace('const TheatreView =', 'loadLive2DModel = async () => ({modelPath:"test.model3.json", expressions:{}, files:{}}); const TheatreView =') : bundle, context)
   let overlay: any
   const effects: any[] = []
   const mount = (extra: Record<string, unknown> = {}) => {
@@ -236,6 +236,36 @@ test('browser bundle: Hide restores the theatre, Log uses loaded messages and mu
   assert.ok(walk(tree).some(node => node.props.className === 'petLog'))
 })
 
+test('browser bundle: the DSH Live2D widget enables the idle stretch and theatre disables it', async t => {
+  const runtime = loadBundle(undefined, undefined, undefined, true)
+  const sm = runtime.mount()
+  t.after(() => sm.dispose())
+  runtime.render()
+  t.after(runtime.viewEffects.find(effect => String(effect).includes('loadLive2DModel()'))())
+  t.after(runtime.viewEffects.find(effect => String(effect).includes('stateMachine.subscribe'))())
+  await Promise.resolve()
+  const look = () => walk(runtime.render()).find(node => node.props.imgSrc).props.live2d.look
+  assert.equal(look().allowIdleStretch, true)
+  sm.setGalGameMode(true)
+  assert.equal(look().allowIdleStretch, false)
+  sm.setGalGameMode(false)
+  assert.equal(look().allowIdleStretch, true)
+})
+
+test('browser bundle: the desktop action requests the fixed application link when the companion is closed', t => {
+  const runtime = loadBundle()
+  const sm = runtime.mount()
+  t.after(() => sm.dispose())
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  runtime.context.window.location = {href: 'http://127.0.0.1:3456/'}
+  const tree = runtime.render()
+  walk(tree).find(node => node.props.className === 'toolBtn petSettingsButton').props.onClick()
+  const action = walk(runtime.render()).find(node => node.props.className === 'petPlaceButton')
+  action.props.onClick()
+  assert.equal(runtime.context.window.location.href, 'dsh-whale-pet://show')
+  assert.ok(runtime.render(), 'the DSH pet remains until desktop presence is confirmed')
+})
+
 test('browser bundle: on the desktop, Log reads the current DSH conversation and never shows a late or stale answer', t => {
   const runtime = loadBundle()
   // The desktop shell (desktop/shell.js) as the bundle sees it; no host here, so the rest runs as in DSH.
@@ -370,7 +400,7 @@ test('browser bundle: an old chibi preference renders the maiden portrait and no
   tree = runtime.render()
   const labels = walk(tree).flatMap(node => node.children.filter((child: any) => typeof child === 'string'))
   assert.ok(!labels.some((text: string) => /Q版|角色形态|Chibi/i.test(text)), 'no chibi entry in toolbar or settings')
-  assert.ok(labels.includes('进入剧场模式'), 'theatre entry kept in the footer')
+  assert.ok(walk(tree).some(node => node.props.role === 'switch' && String(node.props.className).includes('petTheatreToggle')), 'the theatre switch stays in the hover menu')
 })
 
 test('browser bundle: unread balance is shown as — with honest guidance, never as ¥0.00 (F05)', t => {
@@ -919,16 +949,57 @@ test('browser bundle: only one of her — while her desktop window is on screen 
   assert.ok(runtime.render(), 'back in DSH as soon as the companion lets go')
 })
 
-test('browser bundle: settings open with "go to the desktop" and the theatre as two big buttons; the desktop is asked only when it is connected', t => {
+test('browser bundle: settings open with the balance, then the pricing period, then a single "go to the desktop" button', t => {
   const runtime = loadBundle(); const sm = runtime.mount(); t.after(() => sm.dispose())
   let tree = runtime.render()
   walk(tree).find(node => node.children.includes('设置')).props.onClick()
   tree = runtime.render()
-  const buttons = walk(tree).filter(node => node.props.className === 'petPlaceButton')
+  const body = walk(tree).find(node => node.props.className === 'petSettingsBody')
+  assert.ok(body)
+  // Document order of the first blocks in the settings body.
+  const blocks = walk(body).map(node => node.props.className).filter((name: any) => ['petWalletCard', 'petTierCard', 'petPlaceActions', 'petSettingsGroup'].includes(name))
+  assert.deepEqual(blocks.slice(0, 4), ['petWalletCard', 'petTierCard', 'petPlaceActions', 'petSettingsGroup'])
+  const buttons = walk(body).filter(node => node.props.className === 'petPlaceButton')
   const text = (node: any) => walk(node).flatMap((n: any) => n.children.filter((c: any) => typeof c === 'string')).join(' ')
-  assert.deepEqual(buttons.map(b => text(b).split(' ')[0]), ['去桌面陪我', '进入剧场模式'])
-  assert.match(text(buttons[0]), /DaFeiYu\.exe/, 'not running: says how to start it')
-  buttons[0].props.onClick()
+  assert.deepEqual(buttons.map(b => text(b).split(' ')[0]), ['去桌面陪我'], 'only the desktop button; the theatre card is gone')
+  assert.ok(!walk(body).some(node => node.props['data-pet-theatre'] !== undefined))
+})
+
+test('browser bundle: the hover menu Theatre is a saved chat-input switch in DSH, and opens the theatre on the desktop', t => {
+  const runtime = loadBundle(); const sm = runtime.mount(); t.after(() => sm.dispose())
+  let tree = runtime.render()
+  t.after(runtime.viewEffects.find(fn => String(fn).includes('stateMachine.subscribe'))())
+  const theatre = () => walk(tree).find(node => node.type === 'button' && walk(node).some((n: any) => n.children.includes('剧场')))
+  // In DSH: a switch bound to "click the chat input to enter the theatre"; it never opens the theatre itself.
+  assert.equal(theatre().props.role, 'switch')
+  assert.equal(theatre().props['aria-checked'], true, 'on by default')
+  theatre().props.onClick()
   tree = runtime.render()
-  assert.ok(walk(tree).some(node => node.children.some((c: any) => typeof c === 'string' && c.includes('桌面伴侣没在运行'))), 'and says so instead of pretending')
+  assert.equal(sm.getStatus().autoGalGameOnChat, false)
+  assert.equal(sm.getStatus().isGalGameMode, false)
+  assert.equal(theatre().props['aria-checked'], false)
+  theatre().props.onClick()
+  tree = runtime.render()
+  assert.equal(sm.getStatus().autoGalGameOnChat, true)
+  // On the desktop there is no chat input: the same place opens her theatre directly.
+  for (const fn of [...runtime.viewEffects]) if (String(fn).includes('dsh-whale-pet:desktop-link')) fn()
+  runtime.dispatch('dsh-whale-pet:desktop-link', { detail: { status: 'searching', side: 'desktop' } })
+  tree = runtime.render()
+  assert.equal(theatre().props.role, undefined)
+  theatre().props.onClick()
+  assert.equal(sm.getStatus().isGalGameMode, true)
+})
+
+test('browser bundle: on the desktop the menu opens the theatre and Settings offer "Back into DSH" even before DSH connects', t => {
+  const runtime = loadBundle()
+  // desktop/shell.js as the bundle sees it; its one-time announcement happened before the view mounted.
+  runtime.context.window.__whaleDesktopShell = { sendToDsh() {}, hide() {} }
+  const sm = runtime.mount(); t.after(() => sm.dispose())
+  let tree = runtime.render()
+  const theatre = walk(tree).find(node => node.type === 'button' && walk(node).some((n: any) => n.children.includes('剧场')))
+  assert.equal(theatre.props.role, undefined, 'a plain button, not the chat-input switch')
+  walk(tree).find(node => node.children.includes('设置')).props.onClick()
+  tree = runtime.render()
+  const place = walk(tree).find(node => node.props.className === 'petPlaceButton')
+  assert.ok(walk(place).some((n: any) => n.children.includes('回 DSH 里陪我')))
 })
