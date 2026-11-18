@@ -33,11 +33,10 @@ export interface SettingsPanelProps {
     doctor: () => void;
     notify: () => void;
     close: () => void;
-    openTheatre: () => void;
     /** Roadmap step 4: where she keeps you company. In DSH: go to the desktop; on the desktop: back into DSH. */
     place?: {
         label: string;
-        hint: string;
+        hint?: string;
         go: () => void;
     };
     live2d: Live2DSettings;
@@ -51,5 +50,5 @@ export interface SettingsPanelProps {
     onSizeStart?: () => void;
 }
 /** Plain render function (no hooks): header, scrollable body, fixed footer. */
-export declare function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, quiet, reset, doctor, notify, close, openTheatre, live2d, importLive2D, removeLive2D, onSizeStart, discoveries, replayGuide, linkNote, place }: SettingsPanelProps): import("react").JSX.Element;
+export declare function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, quiet, reset, doctor, notify, close, live2d, importLive2D, removeLive2D, onSizeStart, discoveries, replayGuide, linkNote, place }: SettingsPanelProps): import("react").JSX.Element;
 //# sourceMappingURL=SettingsPanel.d.ts.map

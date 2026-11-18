@@ -42,7 +42,7 @@ How to install 大肥鱼 and use her day to day.
 
 | Action | Result |
 |---|---|
-| Hover over her | A quick menu above her head: Theatre, Settings, Quiet mode, Peek; Copy code when the latest answer has code |
+| Hover over her | A quick menu above her head: the Theatre switch, Settings, Quiet mode, Peek; Copy code when the latest answer has code |
 | Click her | Opens Settings |
 | Drag her | Picks her up: she struggles, dangles and swings with the pointer, then lands. With Settings open, she and the panel move together |
 | Move the pointer back and forth over her head | Head pat; she looks content or shy and uses the name you set |
@@ -54,9 +54,9 @@ Hold **Alt** and she turns translucent so you can click through her.
 
 ## Chips above her head
 
-- **Pricing period:** whether it is 梁文峰 (peak) or 梁文谷 (off-peak, half price) time and when it ends. Click the chip to hear it again. Follows DeepSeek's official rule: Beijing time, weekdays 09:00–12:00 and 14:00–18:00 are peak; other hours, weekends and Chinese public holidays are off-peak.
+- **Pricing period:** whether it is Peak or Off-peak (half price) and when it ends. Click the chip to hear it again. Follows DeepSeek's official rule: Beijing time, weekdays 09:00–12:00 and 14:00–18:00 are peak; other hours, weekends and Chinese public holidays are off-peak.
 - **Balance:** shown automatically when you are signed in to a DeepSeek account in DSH; click it for the last update or to retry. It shows “Balance —” when it cannot be read; with an API key only, DSH has no balance to show.
-- **Choose what is shown:** Settings › Companionship › Above her head: both, pricing period, balance or none.
+- **Choose what is shown:** Settings › Companionship › Above her head: Both, Peak/Off-peak, Balance or Neither.
 - She reminds you when the balance drops below an amount you set (Settings › Companionship; 0 turns it off).
 
 ## Peeking
@@ -74,7 +74,7 @@ When she is in the way, send her behind the right edge of the window, half out o
 
 A full-screen, visual-novel style conversation:
 
-- **Enter:** click the DSH chat box (turn this off in Settings › Theatre reading), press **Alt+T**, or choose Theatre in the hover menu.
+- **Enter:** Theatre in the hover menu is a switch that is remembered. While it is on, clicking the DSH chat box opens the theatre; while it is off, the chat box stays a normal chat box. **Alt+T** opens the theatre either way. The same switch is also in Settings › Theatre reading.
 - **Turn pages:** the first click reveals the rest of the current page, the next click turns it. ←/→ and Enter work too.
 - **Bottom bar:** Log (messages already loaded on the page), Auto, Skip (or hold Ctrl; jumps to the last page), Hide, Expand and the ⋯ menu (sounds, reading mode, theme, language).
 - **Chips at the top left:**
@@ -88,6 +88,8 @@ A full-screen, visual-novel style conversation:
 
 Without a model she uses the original illustrations. With the free **DeepSeek-chan (大肥鱼) Live2D model** imported she comes alive: her eyes and head follow the pointer, her hair and skirt move with the model's physics, and she has more motions and expressions.
 
+When the Live2D pet is idle outside the theatre, she can occasionally stretch both arms overhead and let her shoulders settle. In Quiet mode or with reduced motion enabled, she skips the stretch.
+
 1. Get the model from the author's [page](https://gf.bilibili.com/item/detail/1109618072?noTitleBar=1&from=mall-up_itemDetail&msource=cps_comments_13737731_cont-1-117527753588880&track_id=__BGMT__) (art and parts by 神宫凉子; Live2D rigging by 霓虹猫_NeonNeko).
 2. Extract the **whole** archive.
 3. Open Settings › Character model › **Import the model folder** and choose the folder that contains `大肥鱼.model3.json` (or drop the folder onto the import card).
@@ -98,14 +100,14 @@ Without a model she uses the original illustrations. With the free **DeepSeek-ch
 
 ## Settings at a glance
 
-Click her to open Settings. The panel sits beside her, never on top of her.
+Click her to open Settings. The panel sits beside her, never on top of her. At the top come your balance, the pricing period (Peak / Off-peak) and the “Keep me company on the desktop” button (“Back into DSH” on the desktop), then the groups below.
 
 | Section | What is there |
 |---|---|
 | Appearance | Light/dark theme, interface language (中文/English), size, opacity, text size, the peek shortcut, Peek |
 | Character model | Import, re-import or remove the Live2D model; model size for the companion and the theatre; use Live2D or the illustrations |
 | Sound | Character sounds (muted by default), volume |
-| Companionship | Quiet mode (pauses chatter, sounds and strolls), Power saving, Swaying clothes, Wander when idle, Lunch & late-night reminders, pricing announcements, your name, her nickname, Above her head, low-balance reminder, credit per bowl |
+| Companionship | Quiet mode (pauses chatter, sounds and strolls), Power saving, Swaying clothes, Wander when idle, Lunch & late-night reminders, Peak/Off-peak announcements, your name, her nickname, Above her head, low-balance reminder, credit per bowl |
 | Theatre reading | Typewriter, text speed, auto-advance, enter the theatre from the chat box |
 | Interaction gallery | The interactions you have found; replay the first-run guide |
 | Advanced | Answer-finished greeting, background completion notifications (asks the system for permission), Doctor compatibility check, reset to defaults |
@@ -137,7 +139,7 @@ In the theatre: ←/→ or Enter turn pages, hold **Ctrl** to skip, **L** log, *
 - **Quit / hide:** right-click the small blue round icon in the system tray and choose Quit; **Alt+Shift+H** hides or shows her.
 - **With DSH:** when DSH and desktop mode are both running they connect automatically. Ask something in DSH and she thinks, answers and has her rice break on the desktop too, with your balance. The first line of the tray menu, and a line under “Above her head” in her settings, show the connection.
 - **Ask from the desktop**: press **Alt+Shift+T** (works from any app), choose Theatre in the tray menu, or hover over her and choose Theatre. Type in the box at the bottom and press Enter: DSH sends the question and the answer appears in the theatre as it streams, without switching to the DSH window. DSH must be open with a conversation open; when it is not connected your draft is kept and she tells you why. Esc closes the theatre and gives the keyboard back to your window. Log (L) in the desktop theatre reads the messages already loaded in DSH's current conversation (the most recent 40) and follows when you switch conversations in DSH; nothing is kept once it closes.
-- **Only one of her:** while she is shown on the desktop she steps out of DSH, and comes back there when the desktop app hides her, quits or disconnects. “Keep me company on the desktop” (in DSH) and “Back into DSH” (on the desktop) at the top of Settings switch with one click.
+- **Only one of her:** while she is shown on the desktop she steps out of DSH, and comes back there when the desktop app hides her, quits or disconnects. “Keep me company on the desktop” (in DSH) and “Back into DSH” (on the desktop), below the balance and pricing cards in Settings, switch with one click; when the desktop app is not running, “Keep me company on the desktop” tries to start it (open the updated `DaFeiYu.exe` once by hand first).
 - The desktop companion has its own settings and model; import the Live2D model once more in her settings there.
 
 ## FAQ

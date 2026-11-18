@@ -31,9 +31,8 @@ export interface SettingsPanelProps {
   doctor: () => void
   notify: () => void
   close: () => void
-  openTheatre: () => void
   /** Roadmap step 4: where she keeps you company. In DSH: go to the desktop; on the desktop: back into DSH. */
-  place?: { label: string; hint: string; go: () => void }
+  place?: { label: string; hint?: string; go: () => void }
   live2d: Live2DSettings
   importLive2D: (files: File[]) => void
   /** Interactions found so far (id → first time), and a way to see the first-run guide again. */
@@ -49,7 +48,7 @@ const SIZE_STEPS = [0.5, 0.75, 1, 1.15, 1.3]
 const SIZE_NAMES = ['XS', 'S', 'M', 'L', 'XL']
 
 /** Plain render function (no hooks): header, scrollable body, fixed footer. */
-export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, quiet, reset, doctor, notify, close, openTheatre, live2d, importLive2D, removeLive2D, onSizeStart, discoveries, replayGuide, linkNote, place }: SettingsPanelProps) {
+export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, quiet, reset, doctor, notify, close, live2d, importLive2D, removeLive2D, onSizeStart, discoveries, replayGuide, linkNote, place }: SettingsPanelProps) {
   const t = (zh: string, en: string) => p.language === 'en' ? en : zh
   const selected = SIZE_STEPS.reduce((best, v) => Math.abs(v - p.scale) < Math.abs(best - p.scale) ? v : best)
   const sizeIndex = SIZE_STEPS.indexOf(selected)
@@ -81,10 +80,8 @@ export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, q
     </header>
 
     <div className="petSettingsBody">
-      <div className="petPlaceActions">
-        {place && <button type="button" className="petPlaceButton" data-pet-place onClick={place.go}><strong>{place.label}</strong><small>{place.hint}</small></button>}
-        <button type="button" className="petPlaceButton" data-pet-theatre onClick={openTheatre}><strong>{t('进入剧场模式', 'Open theatre')}</strong><small>{t('和她面对面聊天', 'Talk with her face to face')}</small></button>
-      </div>
+      {/* Balance first, the pricing period second, then where she keeps you company and the rest. The theatre opens
+          from the hover menu's switch (chat input) or Alt+T, so there is no separate card for it here. */}
       <section className="petWalletCard" data-status={wallet.status} data-low={wallet.low || undefined} aria-label={t('账户余额', 'Account balance')}>
         <div className="petWalletHead"><span>{t('账户余额', 'Account balance')}</span><span className="petWalletBadge">{walletBadge}</span></div>
         <dl className="petWalletFigures">
@@ -95,10 +92,14 @@ export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, q
       </section>
 
       <section className="petTierCard" data-tier={tier.tier} aria-label={t('API 计费时段', 'API pricing period')}>
-        <div className="petTierHead"><i aria-hidden="true" /><strong>{tier.name}</strong><span>{tier.tier === 'peak' ? t('高峰价', 'Peak price') : t('半价', 'Half price')}</span></div>
+        <div className="petTierHead"><i aria-hidden="true" /><strong>{tier.name}</strong><span>{tier.tier === 'peak' ? t('高峰价', 'Full price') : t('半价', 'Half price')}</span></div>
         <p>{tier.until && <>{tier.until}{t('（本机时间）。', ' (your local time). ')}</>}{tier.rule}</p>
-        {tier.holidayDataMissing && <p className="petTierWarn">{t('今年的法定节假日表尚未更新，节假日可能被误判为高峰。', 'This year’s public-holiday table is not updated yet; a holiday may show as peak.')}</p>}
+        {tier.holidayDataMissing && <p className="petTierWarn">{t('今年的法定节假日表尚未更新，节假日可能被误判为高峰。', 'This year’s public-holiday table is not updated yet; a holiday may show as Peak.')}</p>}
       </section>
+
+      {place && <div className="petPlaceActions">
+        <button type="button" className="petPlaceButton" data-pet-place onClick={place.go}><strong>{place.label}</strong>{place.hint && <small>{place.hint}</small>}</button>
+      </div>}
 
       <details className="petSettingsGroup" open>
         <summary>{t('外观', 'Appearance')}</summary>
@@ -198,11 +199,11 @@ export function SettingsPanel({ p, wallet, tier, detached, update, toggleMute, q
           {toggle(p.liveMotion, liveMotion => update({ liveMotion }), t('裙摆飘动', 'Swaying clothes'), { disabled: live2d.active, hint: live2d.active ? t('Live2D 模型自带物理摆动', 'The Live2D model has its own physics') : t('裙摆、发梢和尾巴轻轻摆动', 'Skirt, hair ends and tail sway gently') })}
           {toggle(p.wandering, wandering => update({ wandering }), t('闲置时散步', 'Wander when idle'), { disabled: p.quiet })}
           {toggle(p.reminders, reminders => update({ reminders }), t('午饭和熬夜提醒', 'Lunch & late-night reminders'))}
-          {toggle(p.peakNotice, peakNotice => update({ peakNotice }), t('峰谷时段播报', 'Peak / off-peak announcements'), { hint: t('切换到梁文峰 / 梁文谷时间时告诉你', 'Tell you when API pricing switches') })}
+          {toggle(p.peakNotice, peakNotice => update({ peakNotice }), t('峰谷时段播报', 'Peak/Off-peak announcements'), { hint: t('切换到梁文峰 / 梁文谷时间时告诉你', 'Tell you when pricing switches between Peak and Off-peak') })}
           <div className="petField"><label className="petFieldLabel" htmlFor="pet-user">{t('怎么称呼你', 'Your name')}</label><input id="pet-user" value={p.userName} maxLength={24} onChange={e => update({ userName: e.target.value })} /></div>
           <div className="petField"><label className="petFieldLabel" htmlFor="pet-name">{t('她的昵称', 'Her nickname')}</label><input id="pet-name" value={p.petName} maxLength={24} onChange={e => update({ petName: e.target.value })} /></div>
           <div className="petField petFieldStack"><span className="petFieldLabel" id="pet-head-chips-label">{t('头顶显示', 'Above her head')}</span>
-            <div id="pet-head-chips" className="petSegmented" role="group" aria-labelledby="pet-head-chips-label">{(['both', 'tier', 'balance', 'none'] as const).map((v, i) => <button type="button" key={v} aria-pressed={p.headChips === v} onClick={() => update({ headChips: v })}>{t(['都显示', '时段', '余额', '都不显示'][i], ['Both', 'Period', 'Balance', 'Neither'][i])}</button>)}</div>
+            <div id="pet-head-chips" className="petSegmented" role="group" aria-labelledby="pet-head-chips-label">{(['both', 'tier', 'balance', 'none'] as const).map((v, i) => <button type="button" key={v} aria-pressed={p.headChips === v} onClick={() => update({ headChips: v })}>{t(['都显示', '时段', '余额', '都不显示'][i], ['Both', 'Peak/Off-peak', 'Balance', 'Neither'][i])}</button>)}</div>
           </div>
           {linkNote && <p className="petHint" data-pet-link-note>{linkNote}</p>}
           <div className="petField"><label className="petFieldLabel" htmlFor="pet-low-balance">{t('余额低于多少元时提醒（0 为不提醒）', 'Remind me when the balance is under (¥, 0 = never)')}</label><input id="pet-low-balance" type="number" min="0" max="1000" step="1" value={p.lowBalanceAt} onChange={e => { const n = Number(e.target.value); if (e.target.value !== '' && n >= 0 && n <= 1000) update({ lowBalanceAt: n }) }} /></div>

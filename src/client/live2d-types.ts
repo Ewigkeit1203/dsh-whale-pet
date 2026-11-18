@@ -41,6 +41,8 @@ export interface Live2DLook {
   chew?: boolean
   walk?: boolean
   idle?: boolean
+  /** The visible companion may play the idle stretch. */
+  allowIdleStretch?: boolean
   /** How much she follows the pointer, 0..1 (default 1; lower while thinking). */
   gaze?: number
   /** Played once when this look starts (touch reactions). */

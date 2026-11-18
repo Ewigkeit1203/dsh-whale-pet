@@ -164,8 +164,28 @@ interface PerformanceDef {
         o: Offsets;
         gesture?: Live2DGesture;
     };
+    /**
+     * For poses that must not simply be scaled down (raised arms would swing out past her frame on the way):
+     * interrupted, the performance jumps to the matching point of its own way back, at or after `from`, and
+     * plays that out `speed` times faster; it fades once the arms are down (`settled`).
+     */
+    release?: {
+        from: number;
+        settled: number;
+        speed: number;
+    };
 }
 export declare const LIVE2D_PERFORMANCES: readonly PerformanceDef[];
+/**
+ * 伸个懒腰 (look.allowIdleStretch only; not one of LIVE2D_PERFORMANCES): a breath in, both arms up over her head
+ * (one a beat ahead and a little higher), a reach upwards with the chest lifted and a slow lean to one side,
+ * then the arms come down and the shoulders drop and settle with an out-breath. Unlike the yawn, the hands
+ * never rest on her head and the mouth stays nearly shut. Interrupted, it finishes its own way down quickly.
+ */
+export declare const LIVE2D_STRETCH: PerformanceDef;
+/** Quiet seconds before the stretch in a quiet spell (sooner than the long performances), and the least time between two. */
+export declare const LIVE2D_STRETCH_AFTER: readonly [4, 5];
+export declare const LIVE2D_STRETCH_GAP: readonly [90, 150];
 /** How likely a performance is at an hour of the day (1 = as usual): sleepy ones at night, gazing in the afternoon, humming in the evening. */
 export declare function performanceBias(name: string, hour: number | undefined): number;
 /** Quiet seconds before she starts to get drowsy (by day, at night) and how long the eyelids take to sink. */
@@ -205,6 +225,9 @@ export declare class Live2DDriver {
     /** Seconds of quiet idling (idle, full motion, nobody moving the pointer). */
     private quiet;
     private nextPerformanceAt;
+    /** Quiet seconds this spell needs before a stretch (-1 until drawn) and the time before which none may start. */
+    private stretchAfter;
+    private stretchReadyAt;
     private lastPerformance;
     private earlierPerformance;
     private drowsy;
@@ -254,7 +277,10 @@ export declare class Live2DDriver {
     }): void;
     /** The model's own "tracking lost" idle animation (脱捕), sampled by the runtime; 0 removes it. */
     setAuthorIdle(duration: number): void;
+    /** Ends the performance; with `playOut` one that has a release finishes its own way back instead of fading in place. */
     private stopPerformance;
+    /** Seconds into the performance's own timeline (frozen when it stops, unless it is playing out its release). */
+    private performanceClock;
     update({ dt, motion, look, pointer, talking, typing, hour, travel, landingHandled }: Live2DDriveInput): Live2DDrive;
 }
 /** Enter / exit animations shipped with the model, by gesture. */

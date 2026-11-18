@@ -24,9 +24,18 @@
     desktop.shown = shown
     document.dispatchEvent(new Event('visibilitychange'))
   }
+  var arrivalTimer = null
   if (bridge) bridge.onCommand(function (command) {
     if (command === 'shown') desktop.setShown(true)
     else if (command === 'hidden') desktop.setShown(false)
+    else if (command === 'arrive') {
+      document.documentElement.dataset.whaleDesktopArrival = 'true'
+      if (arrivalTimer !== null) clearTimeout(arrivalTimer)
+      arrivalTimer = setTimeout(function () {
+        delete document.documentElement.dataset.whaleDesktopArrival
+        arrivalTimer = null
+      }, 650)
+    }
   })
 
   // ---- desktop defaults ------------------------------------------------------------------------

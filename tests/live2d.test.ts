@@ -109,6 +109,9 @@ test('Live2D bundle: runtime is lazy, Core cannot register with a host AMD loade
   assert.ok(calls.length >= 2)
   assert.ok(!/\.moc3['"]?\s*:\s*['"]data:/.test(bundle), 'no embedded model')
   assert.ok(!bundle.includes('texture_00.png'), 'no model textures')
+  assert.ok(!bundle.includes('whale-animation-check'), 'release bundles omit the dev panel and its command')
+  const motion = readFileSync(new URL('../lib/client/live2d-motion.js', import.meta.url), 'utf8')
+  assert.ok(!motion.includes('previewStretch'), 'release modules omit the dev-only playback entry point')
   assert.ok(!/fetch\(['"]https?:/.test(bundle.slice(bundle.indexOf('function __dshLoadLive2DRuntime'), bundle.indexOf('function __dshLoadLive2DRuntime') + 600000)), 'runtime fetches nothing remote')
   assert.match(LIVE2D_CREDIT.art, /神宫凉子/)
 })
@@ -699,4 +702,68 @@ test('Live2D folder drop reads every browser batch with relative paths, supports
   assert.deepEqual(await live2dFilesFromDrop({items:[],files:[files[0]]} as any),[files[0]])
   const bad={isDirectory:true,createReader(){return {readEntries(_ok:any,fail:any){fail(new Error('access denied'))}}}}
   await assert.rejects(live2dFilesFromDrop({items:[{webkitGetAsEntry:()=>bad}]} as any),/access denied/)
+})
+
+test('Live2D stretch has a continuous arm path at 30 and 60 fps and eases out when interrupted', async () => {
+  const {Live2DDriver} = await import('../lib/client/live2d-motion.js')
+  type Pose = ReturnType<InstanceType<typeof Live2DDriver>['update']>
+  const look = {idle:true, allowIdleStretch:true}
+  const armKeys = ['lu', 'lf', 'lw', 'ru', 'rf', 'rw'] as const
+  const delta = (a: Pose, b: Pose) => Math.max(...armKeys.map(key => Math.abs(a.arms[key] - b.arms[key])))
+  const magnitude = (pose: Pose) => Math.max(...armKeys.map(key => Math.abs(pose.arms[key])))
+  const play = (fps: number) => {
+    const driver = new Live2DDriver(5)
+    const samples: Pose[] = []
+    for (let i = 0; i < 18 * fps; i++) {
+      const pose = driver.update({dt:1 / fps, motion:1, look, pointer:null, talking:0})
+      if (pose.performance === 'stretch') {
+        if (!samples.length) assert.ok(i / fps < 8, 'the first stretch can start before the earliest default stroll')
+        samples.push(pose)
+      }
+      else if (samples.length) break
+    }
+    assert.ok(samples.length > 4 * fps, 'a quiet widget plays a full stretch even before the long idle timer')
+    assert.ok(Math.max(...samples.map(magnitude)) > 0.25, 'the arms visibly extend')
+    for (let i = 1; i < samples.length; i++) assert.ok(delta(samples[i], samples[i - 1]) < 0.10, `arm step at ${fps} fps, frame ${i}`)
+    assert.ok(magnitude(samples.at(-1)!) < 0.12, 'arms settle near neutral before the clip ends')
+    return samples
+  }
+  const normal = play(60)
+  for (const sample of play(30)) {
+    const closest = normal.reduce((best, frame) => Math.abs(frame.performanceTime - sample.performanceTime) < Math.abs(best.performanceTime - sample.performanceTime) ? frame : best)
+    assert.ok(delta(sample, closest) < 0.09, `same arm path near ${sample.performanceTime.toFixed(2)} s`)
+  }
+
+  const driver = new Live2DDriver(5)
+  const input = {dt:1 / 60, motion:1, look, pointer:null, talking:0}
+  let pose = driver.update(input)
+  for (let i = 0; i < 15 * 60 && !(pose.performance === 'stretch' && magnitude(pose) > 0.27); i++) pose = driver.update(input)
+  assert.equal(pose.performance, 'stretch')
+  assert.ok(magnitude(pose) > 0.27)
+  const interrupted = {...input, pointer:{x:0, y:0, still:0}}
+  const next = driver.update(interrupted)
+  assert.ok(delta(pose, next) < 0.10, 'attention does not snap the arms back')
+  for (let i = 0; i < 180; i++) pose = driver.update(interrupted)
+  assert.notEqual(pose.performance, 'stretch')
+  assert.ok(magnitude(pose) < 0.12, 'the interrupted stretch releases the arms')
+})
+
+test('Live2D stretch: picked up while it plays out its way down, it fades where she is instead of finishing over the carry', async () => {
+  const {Live2DDriver} = await import('../lib/client/live2d-motion.js')
+  const driver = new Live2DDriver(5)
+  const look = {idle: true, allowIdleStretch: true}
+  let d = driver.update({dt: 1 / 60, motion: 1, look, pointer: null, talking: 0})
+  for (let i = 0; i < 20 * 60 && !(d.performance === 'stretch' && d.performanceTime > 2.5); i++) d = driver.update({dt: 1 / 60, motion: 1, look, pointer: null, talking: 0})
+  assert.equal(d.performance, 'stretch')
+  // The pointer moves: it starts its quick way down.
+  for (let i = 0; i < 10; i++) d = driver.update({dt: 1 / 60, motion: 1, look, pointer: {x: 0, y: 0, still: 0}, talking: 0})
+  const before = d.performanceTime
+  assert.ok(before > 2.5)
+  // Picked up now: the timeline stops moving and the stretch fades out quickly.
+  const held = {...look, held: true, heldKey: 1}
+  d = driver.update({dt: 1 / 60, motion: 1, look: held, pointer: null, talking: 0})
+  const frozen = d.performanceTime
+  for (let i = 0; i < 30; i++) { d = driver.update({dt: 1 / 60, motion: 1, look: held, pointer: null, talking: 0}); if (d.performance) assert.equal(d.performanceTime, frozen) }
+  for (let i = 0; i < 90 && d.performance; i++) d = driver.update({dt: 1 / 60, motion: 1, look: held, pointer: null, talking: 0})
+  assert.equal(d.performance, '', 'gone within two seconds of being picked up')
 })

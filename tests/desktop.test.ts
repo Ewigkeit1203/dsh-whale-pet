@@ -88,6 +88,37 @@ test('Desktop companion: she counts as "in front" while her window is shown, and
   p.fire('command','shown');assert.equal(p.document.hidden,false);assert.deepEqual(p.docEvents,['visibilitychange','visibilitychange'])
 })
 
+test('Desktop companion: the handoff command starts an arrival and removes its visual state',()=>{
+  const p=page()
+  assert.equal(p.html.dataset.whaleDesktopArrival,undefined)
+  p.fire('command','arrive')
+  assert.equal(p.html.dataset.whaleDesktopArrival,'true')
+  assert.equal(p.document.hidden,false)
+  p.timers.pop()!()
+  assert.equal(p.html.dataset.whaleDesktopArrival,undefined)
+})
+
+test('Desktop companion: the Windows registration command registers just the fixed handoff URL',()=>{
+  const registrations: string[] = [], exits: number[] = []
+  const app = {
+    isPackaged: true,
+    on() {},
+    whenReady: () => ({then: (ready: () => void) => ready()}),
+    requestSingleInstanceLock() { throw new Error('registration must not start the window') },
+    setAsDefaultProtocolClient(name: string) { registrations.push(name); return true },
+    exit(status: number) { exits.push(status) },
+  }
+  const accepts = vm.runInNewContext(read('main.cjs') + '\n;requestedFromDsh', {
+    require: (name: string) => name === 'electron' ? {app} : {},
+    process: {argv:['DaFeiYu.exe', '--register-whale-protocol'], platform:'win32'},
+  })
+  assert.deepEqual(registrations, ['dsh-whale-pet'])
+  assert.deepEqual(exits, [0])
+  assert.equal(accepts(['DaFeiYu.exe','dsh-whale-pet://show/']),true)
+  assert.equal(accepts(['DaFeiYu.exe','dsh-whale-pet://run']),false)
+  assert.equal(accepts(['DaFeiYu.exe','dsh-whale-pet://show?target=other']),false)
+})
+
 test('Desktop companion: power saving is on by default, but a choice the user made is kept',()=>{
   const key='dsh-whale-pet.preferences.v1'
   assert.equal(JSON.parse(page().store[key]).powerSave,true)

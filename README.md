@@ -6,26 +6,26 @@
 <a id="screenshots"></a>
 ## 使用截图 / Screenshots
 
-**她就住在 DSH 里。** 导入可选的 Live2D 模型后，她会用眼睛和头跟着鼠标看，呼吸、发呆、自己找点事做。头顶常显梁文峰 / 梁文谷时段和账户余额，时段切换时她会换个表情告诉你；鼠标移到她身上，上方弹出剧场、设置、安静模式、探头等快捷操作。没有模型时显示原版插图。
-**She lives inside DSH.** With the optional Live2D model imported she follows the pointer with her eyes and head, breathes, idles and keeps herself busy. Chips above her head always show the DeepSeek pricing period (梁文峰 = peak, 梁文谷 = off-peak) and your balance, and she announces each period switch with a new expression; hover over her for quick actions (Theatre, Settings, Quiet mode, Peek). Without the model, the original illustrations are shown.<br>
+**她就住在 DSH 里。** 导入可选的 Live2D 模型后，她会用眼睛和头跟着鼠标看，呼吸、发呆、自己找点事做。头顶常显梁文峰 / 梁文谷时段和账户余额，时段切换时她会换个表情告诉你；鼠标移到她身上，上方弹出剧场开关、设置、安静模式、探头等快捷操作。没有模型时显示原版插图。
+**She lives inside DSH.** With the optional Live2D model imported she follows the pointer with her eyes and head, breathes, idles and keeps herself busy. Chips above her head always show the DeepSeek pricing period (Peak / Off-peak) and your balance, and she announces each period switch with a new expression; hover over her for quick actions (the Theatre switch, Settings, Quiet mode, Peek). Without the model, the original illustrations are shown.<br>
 
 ![大肥鱼（Live2D）在 DSH 中：计费时段、余额与快捷操作 / The Live2D companion in DSH with pricing period, balance and quick actions](docs/screenshots/companion.jpg)
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/settings-dark.jpg" alt="深色设置：余额与梁文峰时间 / Dark settings with balance and peak period"></td>
-    <td width="50%"><img src="docs/screenshots/settings-light.jpg" alt="浅色设置：周末全天梁文谷 / Light settings, off-peak all weekend"></td>
+    <td width="50%"><img src="docs/screenshots/settings-dark.jpg" alt="深色设置：余额、梁文峰时间和去桌面按钮 / Dark settings: balance, Peak period and the desktop button"></td>
+    <td width="50%"><img src="docs/screenshots/settings-light.jpg" alt="浅色英文设置：周末全天 Off-peak / Light settings in English, Off-peak all weekend"></td>
   </tr>
   <tr>
-    <td>设置面板贴在她身旁，不会挡住她：余额卡片、计费时段，以及到几点结束。<br>Settings sit beside her, never on top: balance, pricing period and when it ends.</td>
-    <td>浅色主题，周末全天梁文谷（半价）。主题只影响插件本身。<br>Light theme; weekends are off-peak all day. Themes affect only the companion.</td>
+    <td>设置面板贴在她身旁，不会挡住她：最上面是余额、计费时段和到几点结束，接着是“去桌面陪我”。<br>Settings sit beside her, never on top: your balance, the pricing period and when it ends, then “Keep me company on the desktop”.</td>
+    <td>浅色主题和英文界面，周末全天梁文谷（Off-peak，半价）。主题只影响插件本身。<br>Light theme in English; weekends are Off-peak all day. Themes affect only the companion.</td>
   </tr>
 </table>
 
-**GalGame 对话剧场：** 点击输入框即可进入。全屏场景、居中的立绘、深蓝毛玻璃对话框和名字标签；她的表情会随每一页台词变化，头顶冒出情绪符号；文字逐字淡入，可以快进，代码有专门的卡片。<br>
-**Visual-novel theatre:** click the chat box to enter. A full-screen scene, a centred portrait and a deep-blue glass dialogue box with a name tag; her expression changes with each page, with a mood mark above her head; text fades in character by character, with Skip, and code gets copyable cards.
+**GalGame 对话剧场：** 悬停菜单里的“剧场”开关打开时，点击输入框即可进入；随时也可以按 **Alt+T**。全屏场景、居中的立绘、深蓝毛玻璃对话框和名字标签；她的表情会随每一页台词变化，头顶冒出情绪符号；文字逐字淡入，可以快进，代码有专门的卡片。<br>
+**Visual-novel theatre:** with the Theatre switch in the hover menu on, click the chat box to enter; **Alt+T** works any time. A full-screen scene, a centred portrait and a deep-blue glass dialogue box with a name tag; her expression changes with each page, with a mood mark above her head; text fades in character by character, with Skip, and code gets copyable cards.
 
-![剧场：场景、思考气泡与回答 / Theatre with a scene, reasoning bubble and answer](docs/screenshots/theatre.jpg)
+![剧场（Live2D）：场景、思考气泡与回答 / Theatre with the Live2D model, a scene, reasoning bubble and answer](docs/screenshots/theatre.jpg)
 
 **四套背景，也能用你自己的图：** 和室书房·夜、科技机房、午后咖啡厅、海边黄昏，默认跟随时间切换，切换时 0.7 秒交叉淡入；也可以保留「透明」显示 DSH。<br>
 **Four backgrounds, or your own picture:** a study at night, a server room, an afternoon café and a seaside dusk, following the time of day by default, with a 0.7 s crossfade; “Transparent” keeps DSH visible.
@@ -74,7 +74,7 @@
 
 </details>
 
-<sub>截图使用模拟的 DSH 页面和演示余额，插件界面是真实的 v0.8.0 代码；人物为可选导入的 DeepSeek-chan（大肥鱼）Live2D 模型（原画及拆分 [神宫凉子](https://space.bilibili.com/13737731)，Live2D 建模 霓虹猫_NeonNeko），模型不随插件提供。表情、场景与代码页截图来自 v0.6.0 的插图模式。 / Screenshots use a simulated DSH page and sample balance; the plugin UI is the actual v0.8.0 build. The character is the optionally imported DeepSeek-chan (大肥鱼) Live2D model (art and parts by [神宫凉子](https://space.bilibili.com/13737731), rigging by 霓虹猫_NeonNeko), which is not included with the plugin. The expression, scene and code-page screenshots come from v0.6.0 with illustrations.</sub>
+<sub>截图使用模拟的 DSH 页面和演示余额，首图、设置、探头和剧场首图来自 v0.8.5 的真实界面，其余为 v0.8.0；人物为可选导入的 DeepSeek-chan（大肥鱼）Live2D 模型（原画及拆分 [神宫凉子](https://space.bilibili.com/13737731)，Live2D 建模 霓虹猫_NeonNeko），模型不随插件提供。表情、场景与代码页截图来自 v0.6.0 的插图模式。 / Screenshots use a simulated DSH page and sample balance; the first picture, settings, peeking and the first theatre picture show the actual v0.8.5 build; the rest are v0.8.0. The character is the optionally imported DeepSeek-chan (大肥鱼) Live2D model (art and parts by [神宫凉子](https://space.bilibili.com/13737731), rigging by 霓虹猫_NeonNeko), which is not included with the plugin. The expression, scene and code-page screenshots come from v0.6.0 with illustrations.</sub>
 
 <a id="chinese"></a>
 ## 中文说明
@@ -87,24 +87,20 @@
 
 **👉 [操作说明](docs/USER_GUIDE.zh-CN.md)**：安装、互动、探头、剧场、Live2D 导入、设置和快捷键都在这里。
 
-### 最新版本：v0.8.4
+### 最新版本：v0.8.5
 
-- **修复：桌面剧场的回顾读不到消息。** DSH 把会话标识放在标题栏、消息排在它旁边时，回顾现在也能读到；同一范围里出现别的会话时宁可不显示，绝不混在一起。
-
-v0.8.4 是 v0.8.3 的修复版。v0.8.3 带来了：
-
-- **只有一个她：** 桌面版连上并显示她时，DSH 里的她暂时离开；桌面版隐藏、退出或断开后她回到 DSH。
-- **去桌面／回 DSH：** 设置最上面的大按钮，一键让她去桌面或回到 DSH，也能直接进入剧场。
-- **桌面剧场的回顾：** 读取 DSH 当前会话已加载的问答（最近 40 条），切换会话时自动跟上，关上不保留。
-- **修复：** 退出或切换账号后桌面上不再残留旧余额；Releases 只放 ZIP，不再附带 `.sha256`。
+- **伸个懒腰（Live2D）：** 静静待几秒后，她偶尔会双手举过头顶伸个懒腰，再放松肩膀；被打断时会顺势收手。
+- **剧场开关：** 悬停菜单里的“剧场”是会记住的开关，开着时点击输入框进入剧场，关掉后保持普通聊天；**Alt+T** 随时进入。
+- **设置整理：** 依次是余额、峰谷时段和“去桌面陪我”；桌面版没在运行时，这个按钮会尝试直接启动它。
+- **英文时段名** 统一为 Peak / Off-peak；**修复** 桌面版连上 DSH 之前菜单和设置的错误。
 
 桌面模式（预览）：她可以待在系统桌面上，透明置顶、不挡点击，DSH 开着时自动联动；Releases 里有点击即可运行的 Windows 版 `DaFeiYu.exe`，**Alt+Shift+T** 打开桌面剧场直接提问。
 
-完整说明见 [v0.8.4](docs/releases/v0.8.4.md) 和 [v0.8.3](docs/releases/v0.8.3.md) 发布说明。更早版本的更新内容请看[更新日志](CHANGELOG.md#chinese)。
+完整说明见 [v0.8.5 发布说明](docs/releases/v0.8.5.md)。更早版本的更新内容请看[更新日志](CHANGELOG.md#chinese)。
 
 ### 安装或升级
 
-1. 从 [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) 下载 **dsh-whale-pet-v0.8.4.zip**。
+1. 从 [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases) 下载 **dsh-whale-pet-v0.8.5.zip**。
 2. 完整解压到固定文件夹，例如 `D:\dsh-whale-pet`。
 3. 双击 `install.bat`，再打开 DSH，或在已打开的窗口中按 **Ctrl + R** 刷新。
 4. 升级时覆盖同一目录中的插件文件；若换了目录，请重新运行安装脚本。解压后的文件需要保留。
@@ -182,24 +178,20 @@ The product name is **大肥鱼** in both languages; `dsh-whale-pet` remains the
 
 **👉 [User guide](docs/USER_GUIDE.md)**: installing, playing with her, peeking, the theatre, importing the Live2D model, settings and shortcuts.
 
-### Latest release: v0.8.4
+### Latest release: v0.8.5
 
-- **Fix: Log in the desktop theatre found no messages.** When DSH puts the conversation identity on a header beside the messages, Log now reads them; if another conversation shows up in the same scope it shows nothing rather than mixing them.
-
-v0.8.4 is a fix release for v0.8.3, which brought:
-
-- **Only one of her:** while the desktop app is connected and shows her, she steps out of DSH; she comes back when it hides, quits or disconnects.
-- **To the desktop and back:** large buttons at the top of Settings send her to the desktop or back into DSH, or open the theatre.
-- **Log in the desktop theatre:** reads the messages already loaded in DSH's current conversation (the most recent 40), follows a conversation switch and keeps nothing once closed.
-- **Fixes:** no stale balance on the desktop after signing out or switching accounts; Releases carry only the ZIPs, without `.sha256` files.
+- **A stretch (Live2D):** after a few quiet seconds she now and then stretches both arms over her head and lets her shoulders settle; interrupted, she brings her arms down smoothly.
+- **Theatre switch:** Theatre in the hover menu is a remembered switch: on, clicking the chat box opens the theatre; off, it stays a normal chat box. **Alt+T** opens it any time.
+- **Tidier settings:** your balance, the pricing period, then “Keep me company on the desktop”, which now tries to start the desktop app when it is not running.
+- **Peak / Off-peak** in English; **fix** for her menu and settings on the desktop before DSH connects.
 
 Desktop mode (preview): she can live on your desktop, transparent and always on top without blocking clicks, following DSH automatically; Releases include a click-to-run Windows app, `DaFeiYu.exe`, and **Alt+Shift+T** opens her theatre there to ask directly.
 
-Full notes: [v0.8.4](docs/releases/v0.8.4.md) and [v0.8.3](docs/releases/v0.8.3.md). Earlier versions are in the [changelog](CHANGELOG.md#english).
+Full notes: [v0.8.5](docs/releases/v0.8.5.md). Earlier versions are in the [changelog](CHANGELOG.md#english).
 
 ### Install or upgrade
 
-1. Download **dsh-whale-pet-v0.8.4.zip** from [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases).
+1. Download **dsh-whale-pet-v0.8.5.zip** from [Releases](https://github.com/Ewigkeit1203/dsh-whale-pet/releases).
 2. Extract the entire archive into a permanent folder, such as `D:\dsh-whale-pet`.
 3. Run `install.bat`, then open DSH or press **Ctrl + R** in its window.
 4. Upgrade in the same folder, or rerun the installer if you moved the plugin. Keep the extracted files in place.

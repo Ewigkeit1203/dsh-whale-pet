@@ -8,7 +8,7 @@ import { FEATURES, effectiveForm } from './features.js'
 import { POSE_META, spriteGeometry, live2dWidgetGeometry } from './poses.js'
 import { layoutGroup, layoutResizedGroup, type GroupLayout, clampPet, rightPeekPosition, peekArtPosition, type EdgePeekRoom, wanderDestination, nextWanderDelay, placeGroupX, groupFits, type PanelSide } from './layout.js'
 import { walletView } from './wallet.js'
-import { desktopLinkState, requestDesktop, type DesktopLinkState } from './desktop-link.js'
+import { desktopLinkState, launchDesktopFromDsh, recheckDesktopLink, requestDesktop, type DesktopLinkState } from './desktop-link.js'
 import { submitToDshComposer, type ComposerResult } from './dsh-composer.js'
 import { balanceChipState, headChipsShown, lowBalanceDue, balanceDay, LOW_BALANCE_DAY_KEY } from './balance-chip.js'
 import { GUIDE_STEPS, readDiscoveries, saveDiscoveries, discover, guideStep, type InteractionId, type Discoveries } from './discovery.js'
@@ -199,7 +199,11 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const wheelTime = useRef(0)
   const [foreground, setForeground] = useState(true)
   // DSH ↔ desktop link (roadmap step 2): shown as one line in settings.
-  const [desktopLink, setDesktopLink] = useState<DesktopLinkState & { side?: 'desktop' }>(desktopLinkState)
+  // On the desktop, shell.js announces its side once while the plugin starts, before this view listens: read it
+  // from the page instead, so the desktop menu and settings are right before DSH connects.
+  const [desktopLink, setDesktopLink] = useState<DesktopLinkState & { side?: 'desktop' }>(() => desktopShell()
+    ? { status: typeof document !== 'undefined' && document.documentElement?.dataset?.whaleDshLink === 'on' ? 'connected' : 'searching', side: 'desktop' } as DesktopLinkState & { side: 'desktop' }
+    : desktopLinkState())
   useEffect(() => {
     const changed = (event: Event) => { const detail = (event as CustomEvent).detail; if (detail && typeof detail.status === 'string') setDesktopLink(detail) }
     window.addEventListener('dsh-whale-pet:desktop-link', changed)
@@ -207,6 +211,13 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   }, [])
   /** Only one of her (roadmap step 4): in DSH, she is away while her desktop window is on screen. */
   const away = desktopLink.side !== 'desktop' && desktopLink.status === 'connected' && desktopLink.shown === true
+  const [leavingForDesktop, setLeavingForDesktop] = useState(false)
+  const desktopHandoff = useRef<object | null>(null)
+  useEffect(() => {
+    if (!away) return
+    desktopHandoff.current = null
+    setLeavingForDesktop(false)
+  }, [away])
   const [reduceMotion, setReduceMotion] = useState(false)
   const previousStream = useRef(false)
   const [isDragging, setIsDragging] = useState(false)
@@ -350,7 +361,12 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   // Once the model has framed itself, the box follows its proportions (the illustration shows while it loads).
   const geometry = live2dOn ? live2dWidgetGeometry(viewport.width, viewport.height, preferences.scale * preferences.live2dWidgetScale, live2dAspect) : spriteGeometry(hitPose, viewport.height, preferences.scale)
   const live2dSleepy = preferences.reminders && new Date(clock).getHours() >= 1 && new Date(clock).getHours() < 5 && status.state === 'IDLE'
-  const live2dLook = useMemo(() => live2dLookFor(hitPose, { sleepy: live2dSleepy, state: status.state, held: Boolean(held), heldKey: held?.key, guardChest: poke === 'chest', edgePeek: preferences.docked && !status.isGalGameMode }), [hitPose, live2dSleepy, status.state, held, poke, preferences.docked, status.isGalGameMode])
+  const allowIdleStretch = status.state === 'IDLE' && !status.isGalGameMode && foreground && !away && !petHidden
+    && !isSettingsOpen && !isDragging && !preferences.docked && !preferences.quiet && !reduceMotion
+  const live2dLook = useMemo(() => ({
+    ...live2dLookFor(hitPose, { sleepy: live2dSleepy, state: status.state, held: Boolean(held), heldKey: held?.key, guardChest: poke === 'chest', edgePeek: preferences.docked && !status.isGalGameMode }),
+    allowIdleStretch,
+  }), [hitPose, live2dSleepy, status.state, held, poke, preferences.docked, status.isGalGameMode, allowIdleStretch])
   const live2dBinding = useMemo<Live2DBinding | undefined>(() => live2dOn && live2dSource ? {
     source: live2dSource,
     scale: status.isGalGameMode ? preferences.live2dTheatreScale : 1,
@@ -1245,12 +1261,13 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
     return d.toDateString() === new Date(clock).toDateString() ? time : d.toLocaleDateString(localeTag, { weekday: 'short' }) + ' ' + time
   }, [tariff.nextChange, localeTag, clockMinute])
   const tierShort = tariff.tier === 'peak' ? t('峰', 'Peak') : t('谷', 'Off-peak')
-  const tierName = tariff.tier === 'peak' ? t('梁文峰时间', 'Liang Wenfeng time') : t('梁文谷时间', 'Liang Wengu time')
+  // English names the periods plainly (Peak / Off-peak); Chinese keeps 梁文峰 / 梁文谷.
+  const tierName = tariff.tier === 'peak' ? t('梁文峰时间', 'Peak') : t('梁文谷时间', 'Off-peak')
   const tierUntil = tariff.nextChange !== null ? t(`至 ${nextChangeLabel}`, `until ${nextChangeLabel}`) : ''
   const tierRule = t('北京时间工作日 9:00–12:00、14:00–18:00 为高峰；其余时间及周末、法定节假日为空闲（半价）。', 'Peak: Beijing time, weekdays 09:00–12:00 and 14:00–18:00. Other hours, weekends and Chinese public holidays are off-peak at half price.')
   const tierLine = (tier: Tier) => tier === 'peak'
-    ? t('现在是梁文峰时间！API 高峰价，省着点用哦～', 'It’s Liang Wenfeng time! Peak API pricing — go easy.')
-    : t('现在是梁文谷时间！空闲时段半价，放开用吧～', 'It’s Liang Wengu time! Off-peak, half price.')
+    ? t('现在是梁文峰时间！API 高峰价，省着点用哦～', 'Peak hours now! Full API price — go easy.')
+    : t('现在是梁文谷时间！空闲时段半价，放开用吧～', 'Off-peak now! Half price — go for it.')
   const tierAnnouncing = preferences.peakNotice && !preferences.quiet && tierAnnounce !== null && tierAnnounce.until > clock
   const wallet = walletView({ host: status.hostBalance ?? null, known: status.balancesKnown, toppedUp: status.toppedUpBalance, granted: status.grantedBalance, checkedAt: stateMachine.getStatus().balancesCheckedAt ?? null, now: clock, ricePrice: preferences.ricePrice, lowAt: preferences.lowBalanceAt })
   walletLow.current = wallet.low
@@ -1364,7 +1381,13 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   const live2dSettings: Live2DSettings = { bundled: live2dIncluded, ...live2dState, needsReimport: live2dNeedsReimport(live2dRecord), active: live2dOn && live2dAspect !== null }
 
   const lang = preferences.language === 'zh' ? 'zh-CN' : 'en'
-  const openTheatre = () => { setIsSettingsOpen(false); stateMachine.setGalGameMode(true) }
+  /** Hover menu: the saved "click the chat input to enter the theatre" switch (Alt+T always opens it). */
+  const toggleAutoTheatre = () => {
+    const next = !status.autoGalGameOnChat
+    update({ autoGalGame: next })
+    stateMachine.setAutoGalGameOnChat(next)
+    flash(next ? t('已开启：点击输入框进入剧场', 'On: clicking the chat input opens the theatre') : t('已关闭：输入框保持普通聊天（Alt+T 仍可进入剧场）', 'Off: the chat input stays normal (Alt+T still opens the theatre)'))
+  }
 
   const settingsProps = () => ({
     p: { ...preferences, autoGalGame: status.autoGalGameOnChat }, wallet, detached: group?.mode === 'detached',
@@ -1392,7 +1415,6 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       if (permission !== 'granted') setToast(t('未获得通知权限，已保持关闭', 'Permission not granted; notifications remain off'))
     },
     close: () => setIsSettingsOpen(false),
-    openTheatre,
     place: desktopLink.side === 'desktop'
       ? {
         label: t('回 DSH 里陪我', 'Back into DSH'),
@@ -1403,13 +1425,27 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       }
       : {
         label: t('去桌面陪我', 'Keep me company on the desktop'),
-        hint: desktopLink.status === 'connected'
-          ? t('她会跑到桌面上；这期间 DSH 里看不到她。', 'She moves onto your desktop; meanwhile she is not shown in DSH.')
-          : t('需要先启动桌面伴侣（DaFeiYu.exe；开发时 npm.cmd run desktop），启动后她会自己过去。', 'Start the desktop companion first (DaFeiYu.exe; npm.cmd run desktop when developing); she goes over by herself.'),
         go: () => {
-          if (desktopLink.status !== 'connected') { flash(t('桌面伴侣没在运行：请先启动 DaFeiYu.exe', 'The desktop companion is not running: start DaFeiYu.exe first')); return }
+          if (desktopHandoff.current) return
+          const attempt = {}
+          desktopHandoff.current = attempt
           setIsSettingsOpen(false)
-          void requestDesktop('show').then(ok => { if (!ok) flash(t('桌面伴侣没有回应，请从托盘打开她', 'The desktop companion did not answer; open her from its tray icon')) })
+          const pending = () => desktopHandoff.current === attempt
+          const failed = () => {
+            if (!pending()) return
+            desktopHandoff.current = null
+            setLeavingForDesktop(false)
+            flash(t('未连上桌面伴侣。请打开一次新版 DaFeiYu.exe，再试。', 'Could not reach the desktop companion. Open the updated DaFeiYu.exe once and try again.'))
+          }
+          if (desktopLink.status === 'connected') {
+            if (!reduceMotion) setLeavingForDesktop(true)
+            const show = () => { if (pending()) void requestDesktop('show').then(ok => { if (!ok) failed() }) }
+            if (reduceMotion) show(); else later(show, 240)
+          } else {
+            try { launchDesktopFromDsh() } catch { failed(); return }
+            for (const delay of [750, 2300, 4800]) later(() => { if (pending()) recheckDesktopLink() }, delay)
+          }
+          later(failed, 10500)
         },
       },
     live2d: live2dSettings,
@@ -1420,7 +1456,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
   })
   // The panel does not depend on the pet's position, so a drag never rebuilds it.
   const settingsPanel = useMemo(() => isSettingsOpen ? SettingsPanel(settingsProps()) : null,
-    [isSettingsOpen, preferences, status.autoGalGameOnChat, JSON.stringify(wallet), tariff.tier, tierUntil, tariff.holidayDataMissing, group?.mode, viewport.width, viewport.height, JSON.stringify(live2dSettings), live2dRecord, discoveries, desktopLink])
+    [isSettingsOpen, preferences, status.autoGalGameOnChat, JSON.stringify(wallet), tariff.tier, tierUntil, tariff.holidayDataMissing, group?.mode, viewport.width, viewport.height, JSON.stringify(live2dSettings), live2dRecord, discoveries, desktopLink, reduceMotion])
 
   // ---- Theatre: background, music and upload handlers ----------------------------
   const pickScene = (id: string) => {
@@ -1600,6 +1636,7 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
       data-paused={!foreground || reduceMotion} data-docked={docked} data-peek-edge={docked ? 'right' : undefined} data-peek-lean={docked && live2dOn ? true : undefined} data-peek-swap={peekArt || undefined}
       data-sizing={Boolean(sizeAnchor) || undefined} data-returning={returning || undefined} data-dragging={isDragging || undefined} data-settling={affection === 'float' || affection === 'dizzy' || undefined}
       data-wandering={status.state === 'WANDERING' || undefined}
+      data-desktop-departure={leavingForDesktop || undefined}
       data-whale-pet="widget" data-pet-theme={preferences.theme} lang={lang}
       className="petWidget"
       style={{ left: `${petPos.x}px`, top: `${petPos.y}px`, width: `${stageW}px`, height: `${stageH}px` }}
@@ -1624,13 +1661,21 @@ export function PetOverlay({ stateMachine }: PetOverlayProps) {
               {dockIcon(PEEK_ICON)}<span>{t('回来', 'Come back')}</span>{preferences.peekShortcut && <kbd>{preferences.peekShortcut}</kbd>}
             </button>
           </div> : <div className="toolbar" data-visible={showDock} data-settings-open={isSettingsOpen} onMouseEnter={handleMouseEnterPet} onMouseLeave={handleMouseLeavePet} role="toolbar" aria-label={t('大肥鱼快捷操作', '大肥鱼 actions')}>
-            <button type="button" className="toolBtn toolBtnPrimary" onClick={openTheatre} title={t('进入剧场模式（Alt+T）', 'Open theatre (Alt+T)')}>{dockIcon('M2.5 4.5h11v7h-11zM5.5 13.5h5')}{t('剧场', 'Theatre')}</button>
+            {/* On the desktop there is no chat input to click: her menu opens the theatre directly (as before). */}
+            {desktopLink.side === 'desktop'
+              ? <button type="button" className="toolBtn toolBtnPrimary" onClick={() => { setIsSettingsOpen(false); stateMachine.setGalGameMode(true) }} title={t('进入剧场（Alt+Shift+T）', 'Open theatre (Alt+Shift+T)')}>{dockIcon('M2.5 4.5h11v7h-11zM5.5 13.5h5')}{t('剧场', 'Theatre')}</button>
+              : <button type="button" role="switch" className="toolBtn petTheatreToggle" aria-checked={status.autoGalGameOnChat} onClick={toggleAutoTheatre}
+              aria-label={t('点击输入框进入剧场', 'Open the theatre from the chat input')}
+              title={status.autoGalGameOnChat ? t('剧场：开，点击输入框进入剧场（Alt+T 随时进入）', 'Theatre: on, clicking the chat input opens it (Alt+T any time)') : t('剧场：关，输入框保持普通聊天（Alt+T 随时进入）', 'Theatre: off, the chat input stays normal (Alt+T any time)')}>
+              {dockIcon('M2.5 4.5h11v7h-11zM5.5 13.5h5')}<span>{t('剧场', 'Theatre')}</span><i className="toolSwitch" aria-hidden="true" />
+            </button>}
             <button type="button" className="toolBtn petSettingsButton" aria-expanded={isSettingsOpen} onClick={() => setIsSettingsOpen(!isSettingsOpen)} title={t('打开设置', 'Open settings')}>{dockIcon(SETTINGS_ICON)}{t('设置', 'Settings')}</button>
             <span className="toolDivider" aria-hidden="true" />
             <button type="button" className="toolBtn toolIcon" aria-pressed={preferences.quiet} onClick={() => setPreferences(previous => quietPreset(previous))} aria-label={preferences.quiet ? t('结束安静模式', 'End quiet mode') : t('安静模式', 'Quiet mode')} title={preferences.quiet ? t('结束安静模式', 'End quiet mode') : t('安静模式：暂停闲聊、音效和游荡', 'Quiet mode: pause chatter, sounds and wandering')}>{dockIcon('M12.5 9.5A5 5 0 016.5 3.5a5 5 0 106 6z')}</button>
             <button type="button" className="toolBtn petEdgePeek" aria-pressed={docked} onClick={togglePeek} aria-keyshortcuts={preferences.peekShortcut || undefined} aria-label={docked ? t('回来陪我', 'Come back') : t('去边缘偷看', 'Peek from the edge')} title={docked ? t('回来陪我：回到刚才的位置', 'Come back to your previous spot') : t('到右侧探头陪伴', 'Keep you company from the right edge')}>
               {dockIcon(PEEK_ICON)}
-              <span>{docked ? t('回来', 'Come back') : t('探头', 'Peek')}</span><kbd>{preferences.peekShortcut || t('未设置', 'No shortcut')}</kbd>
+              {/* The shortcut stays visible; without one there is no placeholder chip taking room in the crowded menu. */}
+              <span>{docked ? t('回来', 'Come back') : t('探头', 'Peek')}</span>{preferences.peekShortcut && <kbd>{preferences.peekShortcut}</kbd>}
             </button>
             {codeText && <button type="button" className="toolBtn toolIcon" onClick={() => void copyCode(codeText)} aria-label={t('复制代码', 'Copy code')} title={t('复制最近回答中的代码', 'Copy code from the latest answer')}>{dockIcon('M5.5 5.5h8v8h-8zM10.5 5.5v-3h-8v8h3')}</button>}
           </div>}
